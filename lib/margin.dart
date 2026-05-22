@@ -23,3 +23,8 @@ export 'src/repository/note.dart';
 export 'src/repository/repository.dart';
 export 'src/repository/repository_exception.dart';
 export 'src/repository/repository_properties.dart';
+
+// Content layer.
+export 'src/content/content_exception.dart';
+export 'src/content/content_service.dart';
+export 'src/content/repository_node.dart';
