@@ -43,6 +43,8 @@ class _MarginAppState extends State<MarginApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Margin',
+      // Follow the OS light/dark setting.
+      themeMode: ThemeMode.system,
       theme: ThemeData(
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,

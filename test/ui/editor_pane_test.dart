@@ -59,4 +59,21 @@ void main() {
     expect(find.byType(MarkdownPreview), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
   });
+
+  testWidgets('title shows the repo name with tree shown, note path when hidden',
+      (tester) async {
+    final controller = await openWithNote(tester);
+    await tester.pumpWidget(
+      MaterialApp(home: RepositoryScreen(controller: controller)),
+    );
+    await tester.pumpAndSettle();
+
+    // Tree shown -> repository name only.
+    expect(find.text('My Notes'), findsOneWidget);
+
+    // Hide the tree -> repository name plus the full note path.
+    await tester.tap(find.byIcon(Icons.menu_open));
+    await tester.pumpAndSettle();
+    expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
+  });
 }

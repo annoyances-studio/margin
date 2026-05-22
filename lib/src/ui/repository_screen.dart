@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../content/repository_node.dart';
 import 'app_controller.dart';
+import 'color_hex.dart';
 import 'widgets/folder_tree.dart';
 import 'widgets/note_editor_pane.dart';
 
@@ -38,7 +39,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
               icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
               onPressed: () => setState(() => _showTree = !_showTree),
             ),
-            title: Text(controller.repositoryName),
+            title: Text(_titleText()),
             actions: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -76,6 +77,17 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         );
       },
     );
+  }
+
+  /// Always shows the repository name; when the tree is hidden it also appends
+  /// the open note's full path so you still know where you are.
+  String _titleText() {
+    final repo = controller.repositoryName;
+    final notePath = controller.selectedNotePath;
+    if (!_showTree && notePath != null) {
+      return '$repo / ${notePath.replaceAll('/', ' / ')}';
+    }
+    return repo;
   }
 
   Widget _viewModeControl() {
@@ -123,12 +135,17 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       children: [
         SizedBox(
           width: 280,
-          child: FolderTreeView(
-            root: tree,
-            selectedNotePath: controller.selectedNotePath,
-            onNoteTap: controller.selectNote,
-            onFolderAction: _handleFolderAction,
-            onNoteAction: _handleNoteAction,
+          child: Material(
+            // A slightly distinct surface tone sets the sidebar apart from the
+            // editor (VS Code / Claude-desktop style).
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            child: FolderTreeView(
+              root: tree,
+              selectedNotePath: controller.selectedNotePath,
+              onNoteTap: controller.selectNote,
+              onFolderAction: _handleFolderAction,
+              onNoteAction: _handleNoteAction,
+            ),
           ),
         ),
         const VerticalDivider(width: 1),
@@ -169,6 +186,14 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         if (name != null && name.isNotEmpty) {
           await controller.createFolder(name, parentPath: folder.path);
         }
+      case TreeAction.setColor:
+        final choice = await _promptFolderColor(folder.color);
+        if (choice != null) {
+          await controller.setFolderColor(
+            folder.path,
+            choice.isEmpty ? null : choice,
+          );
+        }
       case TreeAction.deleteFolder:
         final confirmed = await _confirmDelete(
           'Delete folder "${folder.name}"?',
@@ -188,6 +213,41 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       );
       if (confirmed) await controller.deleteNote(note.path);
     }
+  }
+
+  /// Returns null if cancelled, '' to clear the color, or a `#RRGGBB` hex.
+  Future<String?> _promptFolderColor(String? current) async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Folder color'),
+          content: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final swatch in folderColorPalette)
+                _ColorSwatch(
+                  color: colorFromHex(swatch.hex)!,
+                  tooltip: swatch.label,
+                  selected: current == swatch.hex,
+                  onTap: () => Navigator.of(context).pop(swatch.hex),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(''),
+              child: const Text('No color'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<bool> _confirmDelete(String title, String message) async {
@@ -240,6 +300,46 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+/// A tappable color circle used in the folder-color picker.
+class _ColorSwatch extends StatelessWidget {
+  final Color color;
+  final String tooltip;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ColorSwatch({
+    required this.color,
+    required this.tooltip,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Colors.black26,
+              width: selected ? 3 : 1,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

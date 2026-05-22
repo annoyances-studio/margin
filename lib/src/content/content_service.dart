@@ -64,7 +64,28 @@ class ContentService {
     folders.sort(byName);
     notes.sort(byName);
 
-    return FolderNode(path: path, name: name, folders: folders, notes: notes);
+    // Folders are few, so reading per-folder metadata here is cheap (DESIGN.md).
+    // The root has no folder properties (its properties.yaml is the repo root).
+    String? color;
+    if (!isRoot) {
+      color = (await _tryReadFolderProperties(path))?.color;
+    }
+
+    return FolderNode(
+      path: path,
+      name: name,
+      folders: folders,
+      notes: notes,
+      color: color,
+    );
+  }
+
+  Future<FolderProperties?> _tryReadFolderProperties(String folderPath) async {
+    try {
+      return await readFolderProperties(folderPath);
+    } catch (_) {
+      return null; // missing or unreadable properties -> no metadata
+    }
   }
 
   /// Reads and parses the note at [path] (decoding through the codec).
@@ -144,6 +165,31 @@ class ContentService {
   Future<FolderProperties> readFolderProperties(String folderPath) async {
     final stored = await backend.read(_join(folderPath, propertiesFileName));
     return FolderProperties.parse(utf8.decode(codec.decode(stored)));
+  }
+
+  /// Writes a folder's metadata (encoding through the codec).
+  Future<void> writeFolderProperties(
+    String folderPath,
+    FolderProperties properties,
+  ) async {
+    final plain = Uint8List.fromList(utf8.encode(properties.toYaml()));
+    await backend.write(_join(folderPath, propertiesFileName), codec.encode(plain));
+  }
+
+  /// Sets (or clears, with a null [colorHex]) a folder's accent color, creating
+  /// its properties if they do not yet exist.
+  Future<void> setFolderColor(String folderPath, String? colorHex) async {
+    FolderProperties properties;
+    try {
+      properties = await readFolderProperties(folderPath);
+    } catch (_) {
+      final name = folderPath.split('/').where((s) => s.isNotEmpty).last;
+      properties = FolderProperties(title: name, created: DateTime.now().toUtc());
+    }
+    await writeFolderProperties(
+      folderPath,
+      properties.copyWith(color: colorHex, clearColor: colorHex == null),
+    );
   }
 
   /// Deletes the note at [path].

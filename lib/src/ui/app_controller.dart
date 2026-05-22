@@ -168,6 +168,14 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  /// Sets (or clears, with null) a folder's accent color.
+  Future<void> setFolderColor(String path, String? colorHex) async {
+    await _run(() async {
+      await _content!.setFolderColor(path, colorHex);
+      await _reloadTree();
+    });
+  }
+
   Future<void> deleteNote(String path) async {
     await _run(() async {
       await _content!.deleteNote(path);

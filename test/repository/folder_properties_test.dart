@@ -18,6 +18,34 @@ void main() {
       expect(parsed.created, DateTime.utc(2026, 5, 22, 9));
     });
 
+    test('round-trips an optional color', () {
+      final props = FolderProperties(
+        title: 'Project X',
+        created: DateTime.utc(2026, 5, 22, 9),
+        color: '#E57373',
+      );
+      final parsed = FolderProperties.parse(props.toYaml());
+      expect(parsed.color, '#E57373');
+    });
+
+    test('omits color when absent', () {
+      final props = FolderProperties(
+        title: 'No color',
+        created: DateTime.utc(2026, 5, 22, 9),
+      );
+      expect(props.toYaml().contains('color:'), isFalse);
+      expect(FolderProperties.parse(props.toYaml()).color, isNull);
+    });
+
+    test('copyWith can clear the color', () {
+      final props = FolderProperties(
+        title: 'X',
+        created: DateTime.utc(2026),
+        color: '#FFB74D',
+      );
+      expect(props.copyWith(clearColor: true).color, isNull);
+    });
+
     test('parse rejects a non-map document', () {
       expect(
         () => FolderProperties.parse('- just\n- a\n- list\n'),

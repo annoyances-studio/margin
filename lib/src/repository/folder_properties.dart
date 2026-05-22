@@ -15,7 +15,15 @@ class FolderProperties {
   final String title;
   final DateTime created;
 
-  const FolderProperties({required this.title, required this.created});
+  /// Optional accent color as a `#RRGGBB` hex string, for a visual cue in the
+  /// tree. `null` means no color.
+  final String? color;
+
+  const FolderProperties({
+    required this.title,
+    required this.created,
+    this.color,
+  });
 
   /// Parses folder properties from YAML text.
   ///
@@ -28,6 +36,7 @@ class FolderProperties {
     return FolderProperties(
       title: doc['title']?.toString() ?? '',
       created: _parseDate(doc['created']),
+      color: doc['color']?.toString(),
     );
   }
 
@@ -36,7 +45,26 @@ class FolderProperties {
     final buf = StringBuffer()
       ..writeln('title: ${yamlQuote(title)}')
       ..writeln('created: ${yamlDate(created)}');
+    if (color != null) {
+      buf.writeln('color: ${yamlQuote(color!)}');
+    }
     return buf.toString();
+  }
+
+  /// Returns a copy with the given fields replaced. Pass [clearColor] to remove
+  /// the color (since passing `color: null` cannot be distinguished from "leave
+  /// unchanged").
+  FolderProperties copyWith({
+    String? title,
+    DateTime? created,
+    String? color,
+    bool clearColor = false,
+  }) {
+    return FolderProperties(
+      title: title ?? this.title,
+      created: created ?? this.created,
+      color: clearColor ? null : (color ?? this.color),
+    );
   }
 
   static DateTime _parseDate(dynamic value) {

@@ -5,9 +5,10 @@
 import 'package:flutter/material.dart';
 
 import '../../content/repository_node.dart';
+import '../color_hex.dart';
 
 /// Contextual actions available from the tree's right-click menus.
-enum TreeAction { newNote, newSubfolder, deleteFolder, deleteNote }
+enum TreeAction { newNote, newSubfolder, setColor, deleteFolder, deleteNote }
 
 /// Renders the repository tree: folders as expandable tiles, notes as leaves.
 ///
@@ -53,10 +54,14 @@ class FolderTreeView extends StatelessWidget {
       ];
 
   Widget _folderTile(FolderNode folder) {
+    final color = colorFromHex(folder.color);
     return ExpansionTile(
       key: PageStorageKey(folder.path),
       initiallyExpanded: true,
-      leading: const Icon(Icons.folder_outlined),
+      leading: Icon(
+        color != null ? Icons.folder : Icons.folder_outlined,
+        color: color,
+      ),
       title: Builder(
         builder: (context) => GestureDetector(
           onSecondaryTapDown: (details) =>
@@ -79,6 +84,8 @@ class FolderTreeView extends StatelessWidget {
           leading: const Icon(Icons.description_outlined),
           title: Text(note.title),
           selected: note.path == selectedNotePath,
+          selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
+          selectedColor: Theme.of(context).colorScheme.onPrimaryContainer,
           onTap: () => onNoteTap(note),
         ),
       ),
@@ -94,6 +101,7 @@ class FolderTreeView extends StatelessWidget {
         PopupMenuItem(value: TreeAction.newNote, child: Text('New note')),
         PopupMenuItem(
             value: TreeAction.newSubfolder, child: Text('New subfolder')),
+        PopupMenuItem(value: TreeAction.setColor, child: Text('Set color…')),
         PopupMenuDivider(),
         PopupMenuItem(
             value: TreeAction.deleteFolder, child: Text('Delete folder')),

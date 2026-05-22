@@ -148,6 +148,24 @@ void main() {
         throwsA(isA<ContentException>()),
       );
     });
+
+    test('setFolderColor persists and surfaces in the tree', () async {
+      await service.createFolder('', 'Work');
+      await service.setFolderColor('Work', '#64B5F6');
+
+      expect((await service.readFolderProperties('Work')).color, '#64B5F6');
+
+      final root = await service.tree();
+      expect(root.folders.single.color, '#64B5F6');
+    });
+
+    test('setFolderColor with null clears the color', () async {
+      await service.createFolder('', 'Work');
+      await service.setFolderColor('Work', '#64B5F6');
+      await service.setFolderColor('Work', null);
+
+      expect((await service.readFolderProperties('Work')).color, isNull);
+    });
   });
 
   group('codec seam', () {
