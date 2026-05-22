@@ -29,4 +29,7 @@ reused, and given back.
 
 ## License
 
-To be selected before publishing.
+Mozilla Public License 2.0 (MPL-2.0). See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Commercial use is allowed, but modifications to Margin's own source files must be
+published. The project name and branding are handled separately as trademarks.

@@ -22,8 +22,16 @@ project was called NotesWriter (never published); an earlier one was NotesLite.
 
 ## License
 
-Undecided, to be selected before publishing. Preference is for a simple,
-permissive, direct license.
+Mozilla Public License 2.0 (MPL-2.0). Chosen as a balance: it allows commercial
+use, is compatible with mobile app stores, but requires that modifications to
+the project's own source files be published (file-level copyleft). This blocks
+silently closing the core while keeping distribution practical.
+
+The MPL governs the code. The project name and branding ("Margin") are handled
+separately as trademarks; the license does not grant rights to them.
+
+Source files carry the standard MPL header (Exhibit A) once code exists. AI
+assistance is disclosed in the NOTICE file and README.
 
 ---
 
