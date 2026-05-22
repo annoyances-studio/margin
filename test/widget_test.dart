@@ -1,30 +1,41 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:margin/main.dart';
+import 'package:margin/margin.dart';
+import 'package:margin/src/ui/app_controller.dart';
+import 'package:margin/src/ui/margin_app.dart';
+import 'package:margin/src/ui/repository_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('landing screen offers open and create', (tester) async {
+    await tester.pumpWidget(const MarginApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Margin'), findsOneWidget);
+    expect(find.text('Open a notes folder'), findsOneWidget);
+    expect(find.text('Create a new notes folder'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('repository screen renders the tree and a note', (tester) async {
+    final backend = MemoryBackend();
+    final controller = AppController();
+    addTearDown(controller.dispose);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    controller.selectFolder('Work');
+    await controller.createNote('meeting');
+
+    await tester.pumpWidget(
+      MaterialApp(home: RepositoryScreen(controller: controller)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('My Notes'), findsOneWidget); // app bar title
+    expect(find.text('Work'), findsOneWidget); // folder in tree
+    expect(find.text('meeting'), findsOneWidget); // note in tree
   });
 }

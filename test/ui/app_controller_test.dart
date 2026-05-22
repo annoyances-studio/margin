@@ -1,0 +1,90 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:margin/margin.dart';
+import 'package:margin/src/ui/app_controller.dart';
+
+void main() {
+  late MemoryBackend backend;
+  late AppController controller;
+
+  setUp(() {
+    backend = MemoryBackend();
+    controller = AppController();
+  });
+
+  tearDown(() => controller.dispose());
+
+  NoteNode? findNote(FolderNode root, String title) {
+    for (final folder in root.folders) {
+      for (final note in folder.notes) {
+        if (note.title == title) return note;
+      }
+      final nested = findNote(folder, title);
+      if (nested != null) return nested;
+    }
+    return null;
+  }
+
+  test('create opens a repository and loads an (empty) tree', () async {
+    await controller.create(backend, 'My Notes');
+    expect(controller.hasRepository, isTrue);
+    expect(controller.repositoryName, 'My Notes');
+    expect(controller.tree, isNotNull);
+    expect(controller.tree!.isEmpty, isTrue);
+  });
+
+  test('create folder and note, then edit and save', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    controller.selectFolder('Work');
+    await controller.createNote('meeting');
+
+    expect(controller.selectedNotePath, 'Work/meeting.md');
+    expect(controller.currentNote!.frontmatter.title, 'meeting');
+
+    controller.updateBody('# Hello\n\nbody');
+    expect(controller.isDirty, isTrue);
+    await controller.save();
+    expect(controller.isDirty, isFalse);
+
+    // Re-open with a fresh controller against the same in-memory backend.
+    final reopened = AppController();
+    addTearDown(reopened.dispose);
+    await reopened.open(backend);
+    final note = findNote(reopened.tree!, 'meeting')!;
+    await reopened.selectNote(note);
+    expect(reopened.currentNote!.body, '# Hello\n\nbody');
+  });
+
+  test('refuses to create a note at the root', () async {
+    await controller.create(backend, 'My Notes');
+    controller.selectFolder(''); // root
+    await controller.createNote('orphan');
+    expect(controller.error, isNotNull);
+    expect(controller.selectedNotePath, isNull);
+  });
+
+  test('switching notes flushes a dirty buffer first (save-before-switch)',
+      () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    controller.selectFolder('Work');
+    await controller.createNote('first');
+    await controller.createNote('second');
+
+    // Select 'first', edit it, then switch to 'second' without saving.
+    final first = findNote(controller.tree!, 'first')!;
+    final second = findNote(controller.tree!, 'second')!;
+    await controller.selectNote(first);
+    controller.updateBody('edited first');
+    await controller.selectNote(second);
+
+    // The edit to 'first' must have been persisted by the switch.
+    final content = ContentService(backend);
+    final reloaded = await content.readNote('Work/first.md');
+    expect(reloaded.body, 'edited first');
+  });
+}
