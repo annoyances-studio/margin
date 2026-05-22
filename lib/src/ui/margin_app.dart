@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../settings/settings_store.dart';
 import 'app_controller.dart';
 import 'open_repository_screen.dart';
 import 'repository_screen.dart';
@@ -11,14 +12,26 @@ import 'repository_screen.dart';
 /// Root widget: themes the app and shows either the open/create screen or the
 /// repository screen depending on whether a repository is open.
 class MarginApp extends StatefulWidget {
-  const MarginApp({super.key});
+  /// Optional persistence; defaults to a non-persistent in-memory store (used
+  /// by widget tests). The real app injects a shared_preferences store.
+  final SettingsStore? settings;
+
+  const MarginApp({super.key, this.settings});
 
   @override
   State<MarginApp> createState() => _MarginAppState();
 }
 
 class _MarginAppState extends State<MarginApp> {
-  final AppController _controller = AppController();
+  late final AppController _controller =
+      AppController(settings: widget.settings);
+
+  @override
+  void initState() {
+    super.initState();
+    // Reopen the last repository, if any (silently falls back to landing).
+    _controller.restoreLastRepository();
+  }
 
   @override
   void dispose() {

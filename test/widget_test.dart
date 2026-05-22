@@ -26,8 +26,7 @@ void main() {
 
     await controller.create(backend, 'My Notes');
     await controller.createFolder('Work');
-    controller.selectFolder('Work');
-    await controller.createNote('meeting');
+    await controller.createNote('meeting', folderPath: 'Work');
 
     await tester.pumpWidget(
       MaterialApp(home: RepositoryScreen(controller: controller)),

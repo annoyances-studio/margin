@@ -4,8 +4,13 @@
 
 import 'package:flutter/material.dart';
 
+import 'src/desktop/desktop_integration.dart';
+import 'src/settings/settings_store.dart';
 import 'src/ui/margin_app.dart';
 
-void main() {
-  runApp(const MarginApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initDesktopWindow();
+  await DesktopTray.instance.setup();
+  runApp(MarginApp(settings: SharedPreferencesSettingsStore()));
 }

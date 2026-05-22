@@ -39,8 +39,7 @@ void main() {
   test('create folder and note, then edit and save', () async {
     await controller.create(backend, 'My Notes');
     await controller.createFolder('Work');
-    controller.selectFolder('Work');
-    await controller.createNote('meeting');
+    await controller.createNote('meeting', folderPath: 'Work');
 
     expect(controller.selectedNotePath, 'Work/meeting.md');
     expect(controller.currentNote!.frontmatter.title, 'meeting');
@@ -61,19 +60,40 @@ void main() {
 
   test('refuses to create a note at the root', () async {
     await controller.create(backend, 'My Notes');
-    controller.selectFolder(''); // root
-    await controller.createNote('orphan');
+    await controller.createNote('orphan', folderPath: '');
     expect(controller.error, isNotNull);
     expect(controller.selectedNotePath, isNull);
+  });
+
+  test('deleting the open note clears the selection', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    await controller.createNote('temp', folderPath: 'Work');
+    expect(controller.selectedNotePath, 'Work/temp.md');
+
+    await controller.deleteNote('Work/temp.md');
+    expect(controller.selectedNotePath, isNull);
+    expect(await backend.exists('Work/temp.md'), isFalse);
+  });
+
+  test('deleting a folder removes it and clears a note open inside it',
+      () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    await controller.createNote('inside', folderPath: 'Work');
+
+    await controller.deleteFolder('Work');
+    expect(controller.selectedNotePath, isNull);
+    expect(await backend.exists('Work'), isFalse);
+    expect(findNote(controller.tree!, 'inside'), isNull);
   });
 
   test('switching notes flushes a dirty buffer first (save-before-switch)',
       () async {
     await controller.create(backend, 'My Notes');
     await controller.createFolder('Work');
-    controller.selectFolder('Work');
-    await controller.createNote('first');
-    await controller.createNote('second');
+    await controller.createNote('first', folderPath: 'Work');
+    await controller.createNote('second', folderPath: 'Work');
 
     // Select 'first', edit it, then switch to 'second' without saving.
     final first = findNote(controller.tree!, 'first')!;

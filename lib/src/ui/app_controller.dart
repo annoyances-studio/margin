@@ -2,12 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../content/content_service.dart';
 import '../content/repository_node.dart';
 import '../repository/note.dart';
 import '../repository/repository.dart';
+import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
 import '../storage/storage_backend.dart';
 
@@ -18,11 +21,15 @@ import '../storage/storage_backend.dart';
 /// Implements the save-before-switch rule from DESIGN.md: changing the selected
 /// note flushes a dirty buffer to disk first.
 class AppController extends ChangeNotifier {
+  final SettingsStore _settings;
+
+  AppController({SettingsStore? settings})
+      : _settings = settings ?? InMemorySettingsStore();
+
   Repository? _repository;
   ContentService? _content;
   FolderNode? _tree;
 
-  String? _selectedFolderPath; // target for new notes/folders ('' = root)
   String? _selectedNotePath;
   Note? _currentNote;
   String _workingBody = '';
@@ -35,7 +42,6 @@ class AppController extends ChangeNotifier {
   bool get hasRepository => _repository != null;
   String get repositoryName => _repository?.name ?? 'Margin';
   FolderNode? get tree => _tree;
-  String? get selectedFolderPath => _selectedFolderPath;
   String? get selectedNotePath => _selectedNotePath;
   Note? get currentNote => _currentNote;
   String get workingBody => _workingBody;
@@ -45,10 +51,35 @@ class AppController extends ChangeNotifier {
 
   // --- opening / creating (path-based, used by the picker UI) ---
 
-  Future<void> openPath(String path) => open(LocalFolderBackend(path));
+  /// Attempts to reopen the last-used repository, if any. Silently falls back
+  /// to the landing screen if it is missing or invalid (and forgets it).
+  Future<void> restoreLastRepository() async {
+    String? path;
+    try {
+      path = await _settings.getLastRepositoryPath();
+    } catch (_) {
+      return; // settings unavailable (e.g. in tests) -> show landing
+    }
+    if (path == null) return;
+    await openPath(path);
+    if (!hasRepository) {
+      await _settings.setLastRepositoryPath(null);
+    }
+  }
 
-  Future<void> createPath(String path, String name) =>
-      create(LocalFolderBackend(path), name);
+  Future<void> openPath(String path) async {
+    await open(LocalFolderBackend(path));
+    if (hasRepository) {
+      await _settings.setLastRepositoryPath(path);
+    }
+  }
+
+  Future<void> createPath(String path, String name) async {
+    await create(LocalFolderBackend(path), name);
+    if (hasRepository) {
+      await _settings.setLastRepositoryPath(path);
+    }
+  }
 
   /// Opens an existing repository on [backend]. Exposed for tests.
   Future<void> open(StorageBackend backend) async {
@@ -72,20 +103,17 @@ class AppController extends ChangeNotifier {
     _repository = null;
     _content = null;
     _tree = null;
-    _selectedFolderPath = null;
     _selectedNotePath = null;
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
+    // Explicit close: forget the repository so the next launch shows the
+    // landing screen rather than reopening it.
+    unawaited(_settings.setLastRepositoryPath(null));
     notifyListeners();
   }
 
   // --- navigation ---
-
-  void selectFolder(String path) {
-    _selectedFolderPath = path;
-    notifyListeners();
-  }
 
   Future<void> selectNote(NoteNode note) async {
     if (note.path == _selectedNotePath) return;
@@ -115,18 +143,20 @@ class AppController extends ChangeNotifier {
 
   // --- mutations ---
 
-  Future<void> createFolder(String name) async {
+  /// Creates a folder named [name] under [parentPath] (default: the root).
+  Future<void> createFolder(String name, {String parentPath = ''}) async {
     await _run(() async {
-      await _content!.createFolder(_selectedFolderPath ?? '', name);
+      await _content!.createFolder(parentPath, name);
       await _reloadTree();
     });
   }
 
-  Future<void> createNote(String name) async {
+  /// Creates a note named [name] inside [folderPath] and selects it.
+  Future<void> createNote(String name, {required String folderPath}) async {
     await _run(() async {
       final now = DateTime.now().toUtc();
       final node = await _content!.createNote(
-        _selectedFolderPath ?? '',
+        folderPath,
         name,
         initial: Note(
           frontmatter: NoteFrontmatter(title: name, created: now, updated: now),
@@ -138,12 +168,40 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<void> deleteNote(String path) async {
+    await _run(() async {
+      await _content!.deleteNote(path);
+      if (_selectedNotePath == path) {
+        _selectedNotePath = null;
+        _currentNote = null;
+        _workingBody = '';
+        _dirty = false;
+      }
+      await _reloadTree();
+    });
+  }
+
+  Future<void> deleteFolder(String path) async {
+    await _run(() async {
+      await _content!.deleteFolder(path);
+      // If the open note lived inside the deleted folder, clear it.
+      final selected = _selectedNotePath;
+      if (selected != null &&
+          (selected == path || selected.startsWith('$path/'))) {
+        _selectedNotePath = null;
+        _currentNote = null;
+        _workingBody = '';
+        _dirty = false;
+      }
+      await _reloadTree();
+    });
+  }
+
   // --- internals ---
 
   void _adopt(Repository repo, ContentService content) {
     _repository = repo;
     _content = content;
-    _selectedFolderPath = '';
     _selectedNotePath = null;
     _currentNote = null;
     _workingBody = '';

@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../content/repository_node.dart';
 import 'app_controller.dart';
 import 'widgets/folder_tree.dart';
 import 'widgets/note_editor.dart';
@@ -39,14 +40,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             title: Text(controller.repositoryName),
             actions: [
               IconButton(
-                tooltip: 'New folder',
+                tooltip: 'New top-level folder',
                 icon: const Icon(Icons.create_new_folder_outlined),
-                onPressed: _promptNewFolder,
-              ),
-              IconButton(
-                tooltip: 'New note',
-                icon: const Icon(Icons.note_add_outlined),
-                onPressed: _promptNewNote,
+                onPressed: _promptNewRootFolder,
               ),
               IconButton(
                 tooltip: 'Save',
@@ -97,9 +93,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           child: FolderTreeView(
             root: tree,
             selectedNotePath: controller.selectedNotePath,
-            selectedFolderPath: controller.selectedFolderPath,
             onNoteTap: controller.selectNote,
-            onFolderTap: (folder) => controller.selectFolder(folder.path),
+            onFolderAction: _handleFolderAction,
+            onNoteAction: _handleNoteAction,
           ),
         ),
         const VerticalDivider(width: 1),
@@ -117,9 +113,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     );
   }
 
-  Future<void> _promptNewFolder() async {
+  Future<void> _promptNewRootFolder() async {
     final name = await _promptName(
-      title: 'New folder',
+      title: 'New top-level folder',
       label: 'Folder name',
     );
     if (name != null && name.isNotEmpty) {
@@ -127,21 +123,59 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     }
   }
 
-  Future<void> _promptNewNote() async {
-    final folder = controller.selectedFolderPath;
-    if (folder == null || folder.isEmpty) {
-      _showMessage('Select a folder first — notes cannot live at the root.');
-      return;
-    }
-    final name = await _promptName(title: 'New note', label: 'Note name');
-    if (name != null && name.isNotEmpty) {
-      await controller.createNote(name);
+  Future<void> _handleFolderAction(FolderNode folder, TreeAction action) async {
+    switch (action) {
+      case TreeAction.newNote:
+        final name = await _promptName(title: 'New note', label: 'Note name');
+        if (name != null && name.isNotEmpty) {
+          await controller.createNote(name, folderPath: folder.path);
+        }
+      case TreeAction.newSubfolder:
+        final name =
+            await _promptName(title: 'New subfolder', label: 'Folder name');
+        if (name != null && name.isNotEmpty) {
+          await controller.createFolder(name, parentPath: folder.path);
+        }
+      case TreeAction.deleteFolder:
+        final confirmed = await _confirmDelete(
+          'Delete folder "${folder.name}"?',
+          'This deletes the folder and all notes inside it.',
+        );
+        if (confirmed) await controller.deleteFolder(folder.path);
+      case TreeAction.deleteNote:
+        break; // not applicable to folders
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _handleNoteAction(NoteNode note, TreeAction action) async {
+    if (action == TreeAction.deleteNote) {
+      final confirmed = await _confirmDelete(
+        'Delete note "${note.title}"?',
+        'This permanently removes the note file.',
+      );
+      if (confirmed) await controller.deleteNote(note.path);
+    }
+  }
+
+  Future<bool> _confirmDelete(String title, String message) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Future<String?> _promptName({
