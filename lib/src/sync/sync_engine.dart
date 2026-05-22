@@ -1,0 +1,122 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import '../storage/storage_backend.dart';
+import '../storage/storage_entry.dart';
+import '../storage/storage_exception.dart';
+import 'content_hash.dart';
+import 'sync_action.dart';
+import 'sync_planner.dart';
+import 'sync_state.dart';
+
+/// The outcome of a sync run.
+class SyncResult {
+  final SyncPlan plan;
+
+  /// The new last-synced state to persist for next time.
+  final SyncState newState;
+
+  const SyncResult(this.plan, this.newState);
+
+  List<SyncAction> get conflicts => plan.conflicts;
+  bool get hadConflicts => conflicts.isNotEmpty;
+  bool get madeChanges => plan.actions.isNotEmpty;
+}
+
+/// Reconciles a [local] working copy with a [remote] backend, moving raw bytes
+/// in both directions (DESIGN.md).
+///
+/// Sync operates below the content layer: it moves the at-rest bytes as-is and
+/// never applies the [ContentCodec]. The conflict policy is "keep both" via a
+/// conflict copy; delete-vs-edit keeps the edit to avoid data loss.
+class SyncEngine {
+  final StorageBackend local;
+  final StorageBackend remote;
+
+  /// Used to label conflict copies, e.g. "Phone" or "Desktop".
+  final String deviceName;
+
+  /// Injectable clock for deterministic conflict-copy names in tests.
+  final DateTime Function() _clock;
+
+  SyncEngine({
+    required this.local,
+    required this.remote,
+    this.deviceName = 'device',
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
+
+  /// Runs one synchronization against the last-synced [base] state and returns
+  /// the actions taken plus the new state to persist.
+  Future<SyncResult> sync(SyncState base) async {
+    final localSnapshot = await _snapshot(local);
+    final remoteSnapshot = await _snapshot(remote);
+
+    final plan = SyncPlanner.plan(
+      local: localSnapshot,
+      remote: remoteSnapshot,
+      base: base.hashes,
+      conflictLabel: _conflictLabel(),
+    );
+
+    for (final action in plan.actions) {
+      await _apply(action);
+    }
+
+    return SyncResult(plan, SyncState(plan.resultingState));
+  }
+
+  String _conflictLabel() {
+    final now = _clock();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$deviceName, $y-$m-$d';
+  }
+
+  Future<void> _apply(SyncAction action) async {
+    switch (action.type) {
+      case SyncActionType.pushToRemote:
+        await remote.write(action.path, await local.read(action.path));
+      case SyncActionType.pullToLocal:
+        await local.write(action.path, await remote.read(action.path));
+      case SyncActionType.deleteLocal:
+        await local.delete(action.path);
+      case SyncActionType.deleteRemote:
+        await remote.delete(action.path);
+      case SyncActionType.conflict:
+        // Read the local divergent version BEFORE overwriting it.
+        final localContent = await local.read(action.path);
+        final remoteContent = await remote.read(action.path);
+        final copyPath = action.conflictCopyPath!;
+        // Preserve the local version as a copy on both sides.
+        await local.write(copyPath, localContent);
+        await remote.write(copyPath, localContent);
+        // Converge the original path to the remote version locally.
+        await local.write(action.path, remoteContent);
+    }
+  }
+
+  /// Walks [backend] recursively, returning path -> content hash for every
+  /// file. A missing root is treated as empty.
+  Future<Map<String, String>> _snapshot(StorageBackend backend,
+      [String path = '']) async {
+    final result = <String, String>{};
+    final List<StorageEntry> entries;
+    try {
+      entries = await backend.list(path);
+    } on NotFoundException {
+      return result; // missing directory => nothing here
+    }
+
+    for (final entry in entries) {
+      if (entry.isDirectory) {
+        result.addAll(await _snapshot(backend, entry.path));
+      } else {
+        result[entry.path] = contentHash(await backend.read(entry.path));
+      }
+    }
+    return result;
+  }
+}

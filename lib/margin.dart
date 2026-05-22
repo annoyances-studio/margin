@@ -12,6 +12,7 @@ export 'src/app_info.dart';
 // Storage layer.
 export 'src/storage/content_codec.dart';
 export 'src/storage/local_folder_backend.dart';
+export 'src/storage/memory_backend.dart';
 export 'src/storage/storage_backend.dart';
 export 'src/storage/storage_entry.dart';
 export 'src/storage/storage_exception.dart';
@@ -28,3 +29,10 @@ export 'src/repository/repository_properties.dart';
 export 'src/content/content_exception.dart';
 export 'src/content/content_service.dart';
 export 'src/content/repository_node.dart';
+
+// Sync layer.
+export 'src/sync/content_hash.dart';
+export 'src/sync/sync_action.dart';
+export 'src/sync/sync_engine.dart';
+export 'src/sync/sync_planner.dart';
+export 'src/sync/sync_state.dart';
