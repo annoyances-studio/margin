@@ -1,0 +1,45 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+pubspec.lock        # remove this line if/when this becomes an app, not a package
+*.iml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/local.properties
+**/android/key.properties
+*.keystore
+*.jks
+
+# iOS / macOS
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Pods/
+**/ios/.symlinks/
+**/Flutter/ephemeral/
+**/Pods/
+
+# Secrets / local config
+*.env
+.env.local
+secrets.*

@@ -1,0 +1,346 @@
+# Margin — Design Document
+
+Margin is a multiplatform note-taking application. This is a ground-up rework of
+an abandoned 2006-era .NET notepad project (NotesWriter). It shares nothing with
+that codebase beyond lineage and intent.
+
+## On AI assistance
+
+This project is developed openly with the help of Claude (Anthropic). We state
+this plainly rather than hiding it. The code and design are open source so the
+work can be inspected, reused, and given back to the community.
+
+## Status
+
+Design phase. No application code written yet. This document is the
+specification to build against.
+
+## Name
+
+Margin. Chosen from the working candidates (Folio, Margin, Notesmith). The old
+project was called NotesWriter (never published); an earlier one was NotesLite.
+
+## License
+
+Undecided, to be selected before publishing. Preference is for a simple,
+permissive, direct license.
+
+---
+
+## Goals
+
+- Replace OneNote for personal daily use. The app is niche by design. If it
+  proves useful, it will be published.
+- First-class on both desktop and mobile.
+- Open source.
+- Private. The user owns their storage and decides where notes live.
+
+## Non-goals
+
+- The app does not run code. Fenced code blocks are rendered, never executed.
+- It is not an IDE and does not aim to replace one.
+- No plugin system.
+
+---
+
+## Core principles
+
+1. Notes are plain Markdown files in a folder the user controls. No lock-in.
+   The default experience is files you can also read with any other tool.
+2. Storage is a dumb folder. The app provides sync and history; the backend
+   only needs to store and retrieve files.
+3. Folder-enforced structure. Organization comes from directories, not tags or
+   a flat pile of files.
+4. Adapt the same model to each platform rather than maintaining divergent
+   designs.
+
+---
+
+## Technology
+
+- Flutter, single codebase for desktop and mobile. (Also a deliberate learning
+  goal for the author.)
+- Markdown: GitHub-Flavored Markdown (GFM) — tables, task lists, strikethrough,
+  fenced code blocks (rendered only).
+- Credentials and encryption keys: OS secure keystore via `flutter_secure_storage`
+  (Keychain on Apple platforms, Keystore on Android, platform equivalents on
+  desktop).
+
+---
+
+## Storage architecture
+
+A single storage interface with multiple backend implementations. Everything
+above the interface (sync engine, conflict handling, UI) is backend-agnostic.
+
+```
+StorageBackend (interface)
+  list(path)        -> entries with modified-time / etag / hash
+  read(path)        -> bytes
+  write(path, bytes)
+  delete(path)
+```
+
+### Backends
+
+| Backend      | Server software | Desktop | Mobile | Notes                              |
+|--------------|-----------------|---------|--------|------------------------------------|
+| Local folder | none            | yes     | yes    | Zero-config default                |
+| WebDAV       | none (NAS/Nextcloud already speak it) | yes | yes | Cross-platform backbone; URL + credentials |
+| SMB          | none (NAS native) | yes   | poor   | Mobile sandboxing makes this painful |
+| NFS          | none            | yes     | no     | Desktop / NAS only                 |
+| Cloud (Dropbox, Drive, etc.) | account + API | yes | medium | Later                       |
+| Git remote   | git host or self-hosted | yes | poor (auth) | Optional, later, behind the same interface |
+
+WebDAV is the cross-platform backbone: it is the only backend fully viable on
+both desktop and mobile, because the app speaks the protocol directly rather
+than relying on the OS to mount anything. The UI should present only the
+backends the current platform actually supports.
+
+### Self-hosting story
+
+Rather than "install a notes server," a power user can run a small Docker
+container that publishes a chosen folder over WebDAV. The app stays a dumb
+client; the data remains plain files in a folder the user can also access by
+other means.
+
+### Why not Git as the foundation
+
+Git was considered as the primary sync mechanism but rejected as the
+foundation. It assumes the user has somewhere repositories can live, and it
+brings auth pain on mobile (SSH keys, tokens on a phone). Because the app owns
+its own sync and conflict logic, Git's merge machinery is unnecessary. Git
+remains a possible opt-in backend for users who want real history, but it is
+not required.
+
+---
+
+## Sync and history
+
+History model: current state only. No app-managed version history. A dumb
+folder has no history of its own, and conflict-copy covers the divergence case.
+
+Save and sync are two distinct layers:
+
+```
+Layer 1 - SAVE   (edits -> local file)
+  - debounced autosave while typing
+  - force-flush on: switching notes, app backgrounding, minimize-to-tray, close
+  - synchronous and instant (a local file write)
+
+Layer 2 - SYNC   (local files <-> backend)
+  - pull / sync on open
+  - commit (save) and push after edits
+  - runs in the background; can be slow or offline without blocking the UI
+  - all defaults are user-configurable
+```
+
+The save/sync split is what makes fast note-switching safe: switching a note
+force-flushes the local save first (instant, local), then changes the view;
+sync catches up in the background. The same flush on app-pause protects against
+the OS killing a backgrounded mobile app.
+
+### Conflict handling
+
+Each device keeps a small local sync-state record (last-synced hash per file).
+On sync, a three-way comparison decides the action:
+
+- Local changed, remote did not -> push.
+- Remote changed, local did not -> pull.
+- Both changed since last sync -> conflict.
+
+On conflict, the app warns the user and creates a new copy of the conflicting
+file rather than overwriting, for example:
+
+```
+note.md
+note (conflict, Phone, 2026-05-22).md
+```
+
+The user reconciles manually. No automatic merge.
+
+---
+
+## Repository and metadata
+
+One repository is open at a time. The user can switch between repositories.
+
+Folder-enforced structure: no `.md` files at the repository root. All notes
+live inside directories.
+
+### Repository identity
+
+Each repository has a random UUID, generated once at creation. It ties the
+local sync-state and the stored credentials/keys to the repository regardless
+of which access route reached it. The root `properties.yaml` is the marker that
+tells the app it is dealing with the same repository.
+
+### Three metadata layers
+
+Root `properties.yaml` — identity and how to reach the repository:
+
+```yaml
+schemaVersion: 1
+id: 7f3c9a1e-...        # random UUID, generated once at creation
+name: "My Notes"
+created: 2026-05-22T10:00:00Z
+updated: 2026-05-22T14:30:00Z
+appVersion: "0.1.0"     # for upgrade migrations / compatibility warnings
+# Alternate routes to the same data. Discovered after first connection,
+# used as fallback or convenience. Never contains credentials.
+endpoints:
+  - type: webdav
+    url: https://nas.local/dav/notes
+  - type: smb
+    path: \\nas\notes
+```
+
+Folder `properties.yaml` — per-directory metadata:
+
+```yaml
+title: "Project X"
+created: 2026-05-22T...
+# sort order, icon/color, etc. as needed
+```
+
+Note frontmatter — at the top of each `.md`:
+
+```yaml
+---
+title: "Meeting notes"
+created: 2026-05-22T...
+updated: 2026-05-22T...
+tags: [work, q2]
+---
+# Body in GitHub-Flavored Markdown
+```
+
+### Endpoints and the bootstrapping rule
+
+The `endpoints` list cannot be used to make first contact, because reading it
+requires access to the folder in the first place. Therefore:
+
+- Creating a new repository writes a fresh `properties.yaml`; the user may add
+  extra access paths.
+- Opening an existing repository reads the paths already present and offers them
+  as alternate routes (for example, a faster LAN SMB path discovered after
+  connecting once over WebDAV).
+
+### Credentials
+
+Credentials are never written to `properties.yaml` (the file syncs with the
+notes). Addresses and paths live in `properties.yaml`; credentials live in the
+OS secure keystore, keyed by the repository `id`.
+
+### Attachments
+
+Each directory has an `_attachments/` folder for embedded files:
+
+```
+Project X/
+  properties.yaml
+  meeting-notes.md
+  _attachments/
+    diagram.png
+```
+
+Keeping attachments local to the directory that uses them makes a future
+"clean up unused attachments" scan simple and well-scoped.
+
+---
+
+## User interface
+
+The core model is "tree plus editor," with tree visibility adapting to the
+platform:
+
+| State        | Desktop            | Mobile              |
+|--------------|--------------------|---------------------|
+| Tree visible | panel expanded     | slide-over open     |
+| Tree hidden  | collapsed to editor| drawer closed (note view) |
+
+### Mobile
+
+- Note view is primary. A slide-over drawer reveals the folder tree.
+- The drawer overlays the note (does not push it aside).
+- New-note action via a floating button; tapping the title opens rename/metadata.
+- Switching notes from the drawer force-flushes the current note's save first.
+
+### Desktop
+
+- Two-panel layout: persistent folder tree on the left, editor on the right.
+- The tree panel collapses to leave only the editor.
+- Two panels are preferred over three. Folders are few and notes are many, so a
+  notes-as-tabs or three-panel layout scales poorly; a clean collapsible
+  two-panel layout fits better.
+- Minimize to tray. Tray menu: Open, Sync now, Quit.
+
+### Shared behaviors
+
+- Editing is WYSIWYG by default, with a per-note toggle to a raw "code view".
+  The last-used mode is remembered.
+- A sync indicator is always visible: synced, syncing, conflict, offline.
+  Tapping it shows details and a "sync now" action.
+- Conflicts surface as a banner offering to create the conflict copy.
+- Settings cover backends/endpoints, sync defaults (on-open, after-edit, all
+  toggleable), credentials, and attachment cleanup.
+
+---
+
+## Encryption (future, post-v1)
+
+Encryption is planned for untrusted backends (notably cloud storage) but
+deferred. The important decision now is to leave a clean seam for it.
+
+Encryption is opt-in, per-repository. The default stays plaintext, preserving
+the "plain files, readable by any tool" principle. An encrypted repository
+trades that browsability for confidentiality from the storage provider.
+
+### Architectural seam to build now
+
+A codec layer sits between the sync engine and the backend:
+
+```
+Note model <-> Sync engine <-> [ Codec ] <-> StorageBackend
+                                  |
+                       identity (default passthrough)
+                       encrypt   (opt-in, later)
+```
+
+Because the sync engine operates on opaque bytes, it does not care whether those
+bytes are plaintext or ciphertext; conflict-copy and push/pull are unaffected.
+Building the codec as a no-op passthrough now means adding encryption later is
+"implement one more codec," not a rewrite of the sync engine.
+
+### Intended scheme (for later)
+
+- Passphrase -> Argon2id key derivation -> AEAD cipher (XChaCha20-Poly1305 or
+  AES-256-GCM), random nonce per file, authenticated to detect tampering.
+- The key lives in the OS keystore, keyed by the repository `id`.
+- The KDF salt, cipher, and scheme version live in the root `properties.yaml`,
+  which stays plaintext (every device needs the recipe to derive the key). It
+  holds the recipe, never the key:
+
+```yaml
+encryption:
+  scheme: xchacha20poly1305
+  kdf: argon2id
+  salt: <base64>
+  version: 1        # algorithm agility for future migration
+```
+
+- When encryption is enabled, it covers everything: content, attachments, and
+  filenames. If a user opts in, they want full privacy, and encrypting names
+  avoids leaking titles and tags. The schema should allow leaving names
+  plaintext as an option.
+- Search still works: the app decrypts locally and indexes plaintext in memory.
+  Only the data at rest on the remote is encrypted.
+
+---
+
+## Open items
+
+- Choose the name.
+- Choose the license before publishing.
+- Mobile drawer interaction details (gesture thresholds, animation).
+- Decide v1 backend set (likely local folder + WebDAV).
