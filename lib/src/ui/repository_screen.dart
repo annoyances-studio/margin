@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../content/repository_node.dart';
 import 'app_controller.dart';
 import 'widgets/folder_tree.dart';
-import 'widgets/note_editor.dart';
+import 'widgets/note_editor_pane.dart';
 
 /// The two-panel desktop layout (DESIGN.md): a collapsible folder tree on the
 /// left, the note editor on the right.
@@ -22,6 +22,7 @@ class RepositoryScreen extends StatefulWidget {
 
 class _RepositoryScreenState extends State<RepositoryScreen> {
   bool _showTree = true;
+  EditorViewMode _viewMode = EditorViewMode.split;
 
   AppController get controller => widget.controller;
 
@@ -39,6 +40,10 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             ),
             title: Text(controller.repositoryName),
             actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: _viewModeControl(),
+              ),
               IconButton(
                 tooltip: 'New top-level folder',
                 icon: const Icon(Icons.create_new_folder_outlined),
@@ -73,12 +78,40 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     );
   }
 
+  Widget _viewModeControl() {
+    return SegmentedButton<EditorViewMode>(
+      showSelectedIcon: false,
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+      segments: const [
+        ButtonSegment(
+          value: EditorViewMode.edit,
+          icon: Icon(Icons.code),
+          tooltip: 'Code',
+        ),
+        ButtonSegment(
+          value: EditorViewMode.split,
+          icon: Icon(Icons.vertical_split_outlined),
+          tooltip: 'Split',
+        ),
+        ButtonSegment(
+          value: EditorViewMode.preview,
+          icon: Icon(Icons.visibility_outlined),
+          tooltip: 'Preview',
+        ),
+      ],
+      selected: {_viewMode},
+      onSelectionChanged: (selection) =>
+          setState(() => _viewMode = selection.first),
+    );
+  }
+
   Widget _body() {
     final tree = controller.tree;
-    final editor = NoteEditor(
+    final editor = NoteEditorPane(
       notePath: controller.selectedNotePath,
       body: controller.workingBody,
       onChanged: controller.updateBody,
+      mode: _viewMode,
     );
 
     if (!_showTree || tree == null) {
