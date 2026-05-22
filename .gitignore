@@ -6,7 +6,7 @@ build/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-pubspec.lock        # remove this line if/when this becomes an app, not a package
+# pubspec.lock is intentionally committed: Margin is an application, not a package.
 *.iml
 
 # IDE
