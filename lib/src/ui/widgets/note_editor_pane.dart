@@ -7,12 +7,15 @@ import 'package:flutter/material.dart';
 import 'markdown_preview.dart';
 import 'note_editor.dart';
 
-/// How the editor area is presented (DESIGN.md: WYSIWYG default with a code
-/// view). Until true WYSIWYG lands, "preview" is a rendered read-only view and
-/// "split" shows raw editing beside the live render.
+/// How the editor area is presented (DESIGN.md):
+/// - [edit]: the inline-styled Markdown editor (default; bold renders bold,
+///   headings larger, etc. while the text stays raw Markdown).
+/// - [split]: that editor beside the live rendered preview.
+/// - [preview]: the rendered Markdown only, read-only.
 enum EditorViewMode { edit, split, preview }
 
-/// Arranges the raw editor and the live Markdown preview according to [mode].
+/// Arranges the inline-styled editor and the rendered preview according to
+/// [mode].
 class NoteEditorPane extends StatelessWidget {
   final String? notePath;
   final String body;

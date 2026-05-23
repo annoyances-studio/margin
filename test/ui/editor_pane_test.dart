@@ -20,37 +20,33 @@ void main() {
     return controller;
   }
 
-  testWidgets('defaults to split: both editor and preview are shown',
-      (tester) async {
+  Widget app(AppController controller) =>
+      MaterialApp(home: RepositoryScreen(controller: controller));
+
+  testWidgets('defaults to the inline editor (no preview)', (tester) async {
     final controller = await openWithNote(tester);
-    await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.byType(MarkdownPreview), findsOneWidget);
-  });
-
-  testWidgets('Code mode shows only the editor', (tester) async {
-    final controller = await openWithNote(tester);
-    await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.code));
+    await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byType(MarkdownPreview), findsNothing);
   });
 
+  testWidgets('Split mode shows editor and preview', (tester) async {
+    final controller = await openWithNote(tester);
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.vertical_split_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(MarkdownPreview), findsOneWidget);
+  });
+
   testWidgets('Preview mode shows only the rendered preview', (tester) async {
     final controller = await openWithNote(tester);
-    await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
-    );
+    await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.visibility_outlined));
@@ -63,15 +59,11 @@ void main() {
   testWidgets('title shows the repo name with tree shown, note path when hidden',
       (tester) async {
     final controller = await openWithNote(tester);
-    await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
-    );
+    await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    // Tree shown -> repository name only.
     expect(find.text('My Notes'), findsOneWidget);
 
-    // Hide the tree -> repository name plus the full note path.
     await tester.tap(find.byIcon(Icons.menu_open));
     await tester.pumpAndSettle();
     expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);

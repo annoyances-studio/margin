@@ -4,11 +4,14 @@
 
 import 'package:flutter/material.dart';
 
-/// A raw Markdown ("code view") editor for the selected note.
+import 'markdown_editing_controller.dart';
+
+/// The note editor: a text field whose Markdown is styled inline as you type
+/// (headings larger, **bold** bold, `code` monospaced) via
+/// [MarkdownEditingController]. The stored text remains raw Markdown.
 ///
-/// WYSIWYG is a later slice; this gets real notes round-tripping through the
-/// stack first. The editor resets its text when [notePath] changes so switching
-/// notes loads fresh content.
+/// Resets its buffer when [notePath] changes so switching notes loads fresh
+/// content without disturbing in-progress edits.
 class NoteEditor extends StatefulWidget {
   final String? notePath;
   final String body;
@@ -26,8 +29,8 @@ class NoteEditor extends StatefulWidget {
 }
 
 class _NoteEditorState extends State<NoteEditor> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.body);
+  late final MarkdownEditingController _controller =
+      MarkdownEditingController(text: widget.body);
 
   @override
   void didUpdateWidget(NoteEditor oldWidget) {
@@ -58,7 +61,7 @@ class _NoteEditorState extends State<NoteEditor> {
         maxLines: null,
         expands: true,
         textAlignVertical: TextAlignVertical.top,
-        style: const TextStyle(fontFamily: 'monospace', height: 1.4),
+        style: const TextStyle(fontSize: 15, height: 1.45),
         decoration: const InputDecoration(
           border: InputBorder.none,
           hintText: 'Write in Markdown...',

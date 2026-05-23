@@ -23,7 +23,7 @@ class RepositoryScreen extends StatefulWidget {
 
 class _RepositoryScreenState extends State<RepositoryScreen> {
   bool _showTree = true;
-  EditorViewMode _viewMode = EditorViewMode.split;
+  EditorViewMode _viewMode = EditorViewMode.edit;
 
   AppController get controller => widget.controller;
 
@@ -97,13 +97,13 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       segments: const [
         ButtonSegment(
           value: EditorViewMode.edit,
-          icon: Icon(Icons.code),
-          tooltip: 'Code',
+          icon: Icon(Icons.edit_note),
+          tooltip: 'Editor',
         ),
         ButtonSegment(
           value: EditorViewMode.split,
           icon: Icon(Icons.vertical_split_outlined),
-          tooltip: 'Split',
+          tooltip: 'Split (editor + preview)',
         ),
         ButtonSegment(
           value: EditorViewMode.preview,
