@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/desktop/desktop_integration.dart';
+import 'src/desktop/startup_service.dart';
 import 'src/settings/settings_store.dart';
 import 'src/ui/margin_app.dart';
 
@@ -12,5 +13,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDesktopWindow();
   await DesktopTray.instance.setup();
-  runApp(MarginApp(settings: SharedPreferencesSettingsStore()));
+
+  final startupService = LaunchAtStartupService()..configure();
+
+  runApp(MarginApp(
+    settings: SharedPreferencesSettingsStore(),
+    startupService: startupService,
+  ));
 }

@@ -88,6 +88,19 @@ void main() {
     expect(findNote(controller.tree!, 'inside'), isNull);
   });
 
+  test('renameFolder keeps the open note selected under its new path',
+      () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    await controller.createNote('meeting', folderPath: 'Work');
+    expect(controller.selectedNotePath, 'Work/meeting.md');
+
+    await controller.renameFolder('Work', 'Job');
+
+    expect(controller.selectedNotePath, 'Job/meeting.md');
+    expect(findNote(controller.tree!, 'meeting')!.path, 'Job/meeting.md');
+  });
+
   test('switching notes flushes a dirty buffer first (save-before-switch)',
       () async {
     await controller.create(backend, 'My Notes');

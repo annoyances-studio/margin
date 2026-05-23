@@ -166,6 +166,43 @@ void main() {
 
       expect((await service.readFolderProperties('Work')).color, isNull);
     });
+
+    test('renameFolder moves contents and updates the title', () async {
+      await service.createFolder('', 'Work');
+      await service.createNote('Work', 'meeting');
+      await service.createFolder('Work', 'Sub');
+      await service.createNote('Work/Sub', 'deep');
+
+      final newPath = await service.renameFolder('Work', 'Job');
+      expect(newPath, 'Job');
+
+      expect(await backend.exists('Work'), isFalse);
+      expect(await backend.exists('Job/meeting.md'), isTrue);
+      expect(await backend.exists('Job/Sub/deep.md'), isTrue);
+      expect((await service.readFolderProperties('Job')).title, 'Job');
+    });
+
+    test('renameFolder refuses an existing sibling name', () async {
+      await service.createFolder('', 'A');
+      await service.createFolder('', 'B');
+      expect(
+        () => service.renameFolder('A', 'B'),
+        throwsA(isA<ContentException>()),
+      );
+    });
+
+    test('renameFolder supports a case-only change', () async {
+      await service.createFolder('', 'LEvel');
+      await service.createNote('LEvel', 'note');
+
+      final newPath = await service.renameFolder('LEvel', 'Level');
+      expect(newPath, 'Level');
+      expect(await backend.exists('Level/note.md'), isTrue);
+
+      // The on-disk casing actually changed.
+      final root = await service.tree();
+      expect(root.folders.single.name, 'Level');
+    });
   });
 
   group('codec seam', () {

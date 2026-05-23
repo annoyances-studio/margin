@@ -317,8 +317,6 @@ future option if a compatible engine becomes available.
 
 - A sync indicator is always visible: synced, syncing, conflict, offline.
   Tapping it shows details and a "sync now" action.
-- A sync indicator is always visible: synced, syncing, conflict, offline.
-  Tapping it shows details and a "sync now" action.
 - Conflicts surface as a banner offering to create the conflict copy.
 - Settings cover backends/endpoints, sync defaults (on-open, after-edit, all
   toggleable), credentials, and attachment cleanup.
@@ -378,7 +376,17 @@ encryption:
 
 ## Open items
 
-- Choose the name.
-- Choose the license before publishing.
-- Mobile drawer interaction details (gesture thresholds, animation).
-- Decide v1 backend set (likely local folder + WebDAV).
+- Mobile layout (slide-over tree) and the Android/iOS builds.
+- Decide v1 backend set (likely local folder + WebDAV); WebDAV not yet built.
+- Attachments (`_attachments/` per folder) and the later "clean up unused" scan.
+
+## Backlog
+
+Smaller items to tackle later:
+
+- Paste handling: when clipboard content carries formatting (HTML/RTF), convert
+  it to Markdown on paste rather than dropping to plain text. May be non-trivial.
+- Widen the folder right-click hit area to the whole row (currently the label).
+- Editor styling for links `[text](url)`, list bullets, and task checkboxes.
+- Optionally start hidden to the tray when launched at login.
+- Live tree refresh when files change on disk externally.

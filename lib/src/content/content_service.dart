@@ -198,6 +198,75 @@ class ContentService {
   /// Deletes the folder at [path] and everything in it.
   Future<void> deleteFolder(String path) => backend.delete(path);
 
+  /// Renames the folder at [folderPath] to [newName] within the same parent,
+  /// moving all of its contents. Returns the new folder path.
+  ///
+  /// Throws [ContentException] if the name is invalid, the folder is the root,
+  /// or a sibling with that name already exists.
+  Future<String> renameFolder(String folderPath, String newName) async {
+    if (_isRoot(folderPath)) {
+      throw const ContentException('The repository root cannot be renamed');
+    }
+    _validateSegment(newName);
+    if (newName == attachmentsDirName) {
+      throw const ContentException('"$attachmentsDirName" is a reserved name');
+    }
+
+    final parent = _parentOf(folderPath);
+    final newPath = _join(parent, newName);
+    if (newPath == folderPath) return folderPath;
+
+    // A case-only rename (e.g. "LEvel" -> "Level") collides with itself on
+    // case-insensitive filesystems (Windows, default macOS): the target
+    // "exists" because it is the same directory. Detect it and route through a
+    // temporary name so the copy/delete don't operate on the same path.
+    final caseOnly = newPath.toLowerCase() == folderPath.toLowerCase();
+    if (!caseOnly && await backend.exists(newPath)) {
+      throw ContentException('A folder named "$newName" already exists');
+    }
+
+    // Move raw bytes (no codec) so any encryption is preserved as-is.
+    if (caseOnly) {
+      final temp = _join(
+        parent,
+        '.margin-rename-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await _copyDirectoryRaw(folderPath, temp);
+      await backend.delete(folderPath);
+      await _copyDirectoryRaw(temp, newPath);
+      await backend.delete(temp);
+    } else {
+      await _copyDirectoryRaw(folderPath, newPath);
+      await backend.delete(folderPath);
+    }
+
+    // Keep the folder's own title in sync with its new name (best effort).
+    try {
+      final props = await readFolderProperties(newPath);
+      await writeFolderProperties(newPath, props.copyWith(title: newName));
+    } catch (_) {
+      // No/unreadable properties: nothing to update.
+    }
+    return newPath;
+  }
+
+  Future<void> _copyDirectoryRaw(String from, String to) async {
+    for (final entry in await backend.list(from)) {
+      final target = _join(to, entry.name);
+      if (entry.isDirectory) {
+        await _copyDirectoryRaw(entry.path, target);
+      } else {
+        await backend.write(target, await backend.read(entry.path));
+      }
+    }
+  }
+
+  String _parentOf(String path) {
+    final clean = path.trim().replaceAll(RegExp(r'^/+|/+$'), '');
+    final slash = clean.lastIndexOf('/');
+    return slash < 0 ? '' : clean.substring(0, slash);
+  }
+
   // --- helpers ---
 
   bool _isRoot(String path) {

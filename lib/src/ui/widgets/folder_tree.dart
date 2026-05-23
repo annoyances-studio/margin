@@ -8,7 +8,14 @@ import '../../content/repository_node.dart';
 import '../color_hex.dart';
 
 /// Contextual actions available from the tree's right-click menus.
-enum TreeAction { newNote, newSubfolder, setColor, deleteFolder, deleteNote }
+enum TreeAction {
+  newNote,
+  newSubfolder,
+  renameFolder,
+  setColor,
+  deleteFolder,
+  deleteNote,
+}
 
 /// Renders the repository tree: folders as expandable tiles, notes as leaves.
 ///
@@ -101,6 +108,8 @@ class FolderTreeView extends StatelessWidget {
         PopupMenuItem(value: TreeAction.newNote, child: Text('New note')),
         PopupMenuItem(
             value: TreeAction.newSubfolder, child: Text('New subfolder')),
+        PopupMenuItem(
+            value: TreeAction.renameFolder, child: Text('Rename…')),
         PopupMenuItem(value: TreeAction.setColor, child: Text('Set color…')),
         PopupMenuDivider(),
         PopupMenuItem(

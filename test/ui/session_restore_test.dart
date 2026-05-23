@@ -64,4 +64,37 @@ void main() {
     expect(controller.hasRepository, isFalse);
     expect(await settings.getLastRepositoryPath(), isNull);
   });
+
+  test('reopens the last note when it still exists', () async {
+    final first = AppController(settings: settings);
+    await first.createPath(tempDir.path, 'My Notes');
+    await first.createFolder('Work');
+    await first.createNote('meeting', folderPath: 'Work');
+    expect(await settings.getLastNotePath(), 'Work/meeting.md');
+    first.dispose();
+
+    final restored = AppController(settings: settings);
+    addTearDown(restored.dispose);
+    await restored.restoreLastRepository();
+
+    expect(restored.selectedNotePath, 'Work/meeting.md');
+  });
+
+  test('shows no note when the last note is missing', () async {
+    final first = AppController(settings: settings);
+    await first.createPath(tempDir.path, 'My Notes');
+    await first.createFolder('Work');
+    await first.createNote('meeting', folderPath: 'Work');
+    first.dispose();
+
+    // Point lastNotePath at a note that does not exist.
+    await settings.setLastNotePath('Work/ghost.md');
+
+    final restored = AppController(settings: settings);
+    addTearDown(restored.dispose);
+    await restored.restoreLastRepository();
+
+    expect(restored.hasRepository, isTrue);
+    expect(restored.selectedNotePath, isNull);
+  });
 }

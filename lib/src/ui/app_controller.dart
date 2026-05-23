@@ -87,6 +87,7 @@ class AppController extends ChangeNotifier {
       final repo = await Repository.open(backend);
       _adopt(repo, ContentService(backend));
       await _reloadTree();
+      await _restoreLastNote();
     });
   }
 
@@ -107,9 +108,10 @@ class AppController extends ChangeNotifier {
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
-    // Explicit close: forget the repository so the next launch shows the
-    // landing screen rather than reopening it.
+    // Explicit close: forget the repository (and note) so the next launch shows
+    // the landing screen rather than reopening it.
     unawaited(_settings.setLastRepositoryPath(null));
+    unawaited(_settings.setLastNotePath(null));
     notifyListeners();
   }
 
@@ -124,6 +126,7 @@ class AppController extends ChangeNotifier {
       _currentNote = loaded;
       _workingBody = loaded.body;
       _dirty = false;
+      unawaited(_settings.setLastNotePath(note.path));
     });
   }
 
@@ -176,6 +179,22 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  /// Renames the folder at [path] to [newName], keeping the open note selected
+  /// if it lived inside the renamed folder.
+  Future<void> renameFolder(String path, String newName) async {
+    await _run(() async {
+      final newPath = await _content!.renameFolder(path, newName);
+      final selected = _selectedNotePath;
+      if (selected != null &&
+          (selected == path || selected.startsWith('$path/'))) {
+        final updated = selected.replaceFirst(path, newPath);
+        _selectedNotePath = updated;
+        unawaited(_settings.setLastNotePath(updated));
+      }
+      await _reloadTree();
+    });
+  }
+
   Future<void> deleteNote(String path) async {
     await _run(() async {
       await _content!.deleteNote(path);
@@ -218,6 +237,35 @@ class AppController extends ChangeNotifier {
 
   Future<void> _reloadTree() async {
     _tree = await _content!.tree();
+  }
+
+  /// Reselects the last opened note if it still exists; otherwise leaves no
+  /// selection (the editor shows its "select a note" message).
+  Future<void> _restoreLastNote() async {
+    final notePath = await _settings.getLastNotePath();
+    if (notePath == null || _tree == null) return;
+    final node = _findNote(_tree!, notePath);
+    if (node == null) return;
+    try {
+      final loaded = await _content!.readNote(node.path);
+      _selectedNotePath = node.path;
+      _currentNote = loaded;
+      _workingBody = loaded.body;
+      _dirty = false;
+    } catch (_) {
+      // File vanished between listing and reading: leave unselected.
+    }
+  }
+
+  NoteNode? _findNote(FolderNode folder, String path) {
+    for (final note in folder.notes) {
+      if (note.path == path) return note;
+    }
+    for (final child in folder.folders) {
+      final found = _findNote(child, path);
+      if (found != null) return found;
+    }
+    return null;
   }
 
   Future<void> _flushIfDirty() async {

@@ -5,8 +5,10 @@
 import 'package:flutter/material.dart';
 
 import '../content/repository_node.dart';
+import '../desktop/startup_service.dart';
 import 'app_controller.dart';
 import 'color_hex.dart';
+import 'settings_dialog.dart';
 import 'widgets/folder_tree.dart';
 import 'widgets/note_editor_pane.dart';
 
@@ -14,8 +16,13 @@ import 'widgets/note_editor_pane.dart';
 /// left, the note editor on the right.
 class RepositoryScreen extends StatefulWidget {
   final AppController controller;
+  final StartupService startupService;
 
-  const RepositoryScreen({super.key, required this.controller});
+  const RepositoryScreen({
+    super.key,
+    required this.controller,
+    this.startupService = const NoopStartupService(),
+  });
 
   @override
   State<RepositoryScreen> createState() => _RepositoryScreenState();
@@ -46,14 +53,15 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
                 child: _viewModeControl(),
               ),
               IconButton(
-                tooltip: 'New top-level folder',
-                icon: const Icon(Icons.create_new_folder_outlined),
-                onPressed: _promptNewRootFolder,
-              ),
-              IconButton(
                 tooltip: 'Save',
                 icon: const Icon(Icons.save_outlined),
                 onPressed: controller.isDirty ? () => controller.save() : null,
+              ),
+              IconButton(
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () =>
+                    SettingsDialog.show(context, widget.startupService),
               ),
               IconButton(
                 tooltip: 'Close repository',
@@ -139,18 +147,47 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             // A slightly distinct surface tone sets the sidebar apart from the
             // editor (VS Code / Claude-desktop style).
             color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: FolderTreeView(
-              root: tree,
-              selectedNotePath: controller.selectedNotePath,
-              onNoteTap: controller.selectNote,
-              onFolderAction: _handleFolderAction,
-              onNoteAction: _handleNoteAction,
+            child: Column(
+              children: [
+                _treeHeader(),
+                const Divider(height: 1),
+                Expanded(
+                  child: FolderTreeView(
+                    root: tree,
+                    selectedNotePath: controller.selectedNotePath,
+                    onNoteTap: controller.selectNote,
+                    onFolderAction: _handleFolderAction,
+                    onNoteAction: _handleNoteAction,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         const VerticalDivider(width: 1),
         Expanded(child: editor),
       ],
+    );
+  }
+
+  Widget _treeHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+      child: Row(
+        children: [
+          Text(
+            'Folders',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'New top-level folder',
+            icon: const Icon(Icons.create_new_folder_outlined),
+            visualDensity: VisualDensity.compact,
+            onPressed: _promptNewRootFolder,
+          ),
+        ],
+      ),
     );
   }
 
@@ -185,6 +222,16 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             await _promptName(title: 'New subfolder', label: 'Folder name');
         if (name != null && name.isNotEmpty) {
           await controller.createFolder(name, parentPath: folder.path);
+        }
+      case TreeAction.renameFolder:
+        final name = await _promptName(
+          title: 'Rename folder',
+          label: 'Folder name',
+          initialValue: folder.name,
+          confirmLabel: 'Rename',
+        );
+        if (name != null && name.isNotEmpty && name != folder.name) {
+          await controller.renameFolder(folder.path, name);
         }
       case TreeAction.setColor:
         final choice = await _promptFolderColor(folder.color);
@@ -274,8 +321,12 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   Future<String?> _promptName({
     required String title,
     required String label,
+    String initialValue = '',
+    String confirmLabel = 'Create',
   }) async {
-    final field = TextEditingController();
+    final field = TextEditingController(text: initialValue);
+    field.selection =
+        TextSelection(baseOffset: 0, extentOffset: initialValue.length);
     return showDialog<String>(
       context: context,
       builder: (context) {
@@ -295,7 +346,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             FilledButton(
               onPressed: () =>
                   Navigator.of(context).pop(field.text.trim()),
-              child: const Text('Create'),
+              child: Text(confirmLabel),
             ),
           ],
         );

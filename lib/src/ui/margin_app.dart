@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../desktop/startup_service.dart';
 import '../settings/settings_store.dart';
 import 'app_controller.dart';
 import 'open_repository_screen.dart';
@@ -16,7 +17,14 @@ class MarginApp extends StatefulWidget {
   /// by widget tests). The real app injects a shared_preferences store.
   final SettingsStore? settings;
 
-  const MarginApp({super.key, this.settings});
+  /// Run-at-login control; defaults to a no-op (used by widget tests).
+  final StartupService startupService;
+
+  const MarginApp({
+    super.key,
+    this.settings,
+    this.startupService = const NoopStartupService(),
+  });
 
   @override
   State<MarginApp> createState() => _MarginAppState();
@@ -59,7 +67,10 @@ class _MarginAppState extends State<MarginApp> {
         listenable: _controller,
         builder: (context, _) {
           return _controller.hasRepository
-              ? RepositoryScreen(controller: _controller)
+              ? RepositoryScreen(
+                  controller: _controller,
+                  startupService: widget.startupService,
+                )
               : OpenRepositoryScreen(controller: _controller);
         },
       ),
