@@ -88,6 +88,22 @@ void main() {
     expect(findNote(controller.tree!, 'inside'), isNull);
   });
 
+  test('selectedNoteFolderColor reflects the open note\'s folder', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    await controller.setFolderColor('Work', '#64B5F6');
+    await controller.createNote('meeting', folderPath: 'Work');
+
+    expect(controller.selectedNoteFolderColor, '#64B5F6');
+  });
+
+  test('memory-backed repository is not local and has no absolute path',
+      () async {
+    await controller.create(backend, 'My Notes');
+    expect(controller.isLocalRepository, isFalse);
+    expect(controller.localAbsolutePath('Work'), isNull);
+  });
+
   test('renameFolder keeps the open note selected under its new path',
       () async {
     await controller.create(backend, 'My Notes');

@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../content/repository_node.dart';
+import '../desktop/file_reveal.dart';
 import '../desktop/startup_service.dart';
 import 'app_controller.dart';
 import 'color_hex.dart';
@@ -78,6 +79,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           ),
           body: Column(
             children: [
+              _accentDivider(),
               if (controller.error != null) _errorBanner(controller.error!),
               Expanded(child: _body()),
             ],
@@ -155,6 +157,8 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
                   child: FolderTreeView(
                     root: tree,
                     selectedNotePath: controller.selectedNotePath,
+                    canRevealInFileManager:
+                        canRevealInFileManager && controller.isLocalRepository,
                     onNoteTap: controller.selectNote,
                     onFolderAction: _handleFolderAction,
                     onNoteAction: _handleNoteAction,
@@ -170,7 +174,16 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     );
   }
 
+  /// A thin line separating the toolbar from the content. When the selected
+  /// note's folder has a color, the line takes that color as a visual cue.
+  Widget _accentDivider() {
+    final color = colorFromHex(controller.selectedNoteFolderColor) ??
+        Theme.of(context).colorScheme.outlineVariant;
+    return Container(height: 2, color: color);
+  }
+
   Widget _treeHeader() {
+    final canReveal = canRevealInFileManager && controller.isLocalRepository;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
       child: Row(
@@ -180,6 +193,16 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             style: Theme.of(context).textTheme.labelLarge,
           ),
           const Spacer(),
+          if (canReveal)
+            IconButton(
+              tooltip: 'Open repository in file manager',
+              icon: const Icon(Icons.folder_open_outlined),
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                final abs = controller.localAbsolutePath('');
+                if (abs != null) revealInFileManager(abs);
+              },
+            ),
           IconButton(
             tooltip: 'New top-level folder',
             icon: const Icon(Icons.create_new_folder_outlined),
@@ -241,6 +264,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             choice.isEmpty ? null : choice,
           );
         }
+      case TreeAction.openInFileManager:
+        final abs = controller.localAbsolutePath(folder.path);
+        if (abs != null) await revealInFileManager(abs);
       case TreeAction.deleteFolder:
         final confirmed = await _confirmDelete(
           'Delete folder "${folder.name}"?',

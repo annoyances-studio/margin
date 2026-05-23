@@ -23,6 +23,10 @@ class LocalFolderBackend implements StorageBackend {
 
   LocalFolderBackend(String rootPath) : rootPath = p.normalize(rootPath);
 
+  /// The absolute on-disk path for a repository-relative [path]. Useful for
+  /// revealing a file or folder in the OS file manager.
+  String absolutePathOf(String path) => _resolve(path);
+
   /// Resolves a repository-relative [path] to an absolute local path,
   /// rejecting `..` traversal and backslash separators.
   String _resolve(String path) {

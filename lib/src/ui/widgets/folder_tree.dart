@@ -13,6 +13,7 @@ enum TreeAction {
   newSubfolder,
   renameFolder,
   setColor,
+  openInFileManager,
   deleteFolder,
   deleteNote,
 }
@@ -25,6 +26,9 @@ enum TreeAction {
 class FolderTreeView extends StatelessWidget {
   final FolderNode root;
   final String? selectedNotePath;
+
+  /// Whether to offer "Open in file manager" (local desktop repositories only).
+  final bool canRevealInFileManager;
   final ValueChanged<NoteNode> onNoteTap;
   final void Function(FolderNode folder, TreeAction action) onFolderAction;
   final void Function(NoteNode note, TreeAction action) onNoteAction;
@@ -36,6 +40,7 @@ class FolderTreeView extends StatelessWidget {
     required this.onFolderAction,
     required this.onNoteAction,
     this.selectedNotePath,
+    this.canRevealInFileManager = false,
   });
 
   @override
@@ -104,15 +109,21 @@ class FolderTreeView extends StatelessWidget {
     final action = await showMenu<TreeAction>(
       context: context,
       position: _menuPosition(position),
-      items: const [
-        PopupMenuItem(value: TreeAction.newNote, child: Text('New note')),
-        PopupMenuItem(
+      items: [
+        const PopupMenuItem(value: TreeAction.newNote, child: Text('New note')),
+        const PopupMenuItem(
             value: TreeAction.newSubfolder, child: Text('New subfolder')),
-        PopupMenuItem(
+        const PopupMenuItem(
             value: TreeAction.renameFolder, child: Text('Rename…')),
-        PopupMenuItem(value: TreeAction.setColor, child: Text('Set color…')),
-        PopupMenuDivider(),
-        PopupMenuItem(
+        const PopupMenuItem(
+            value: TreeAction.setColor, child: Text('Set color…')),
+        if (canRevealInFileManager)
+          const PopupMenuItem(
+            value: TreeAction.openInFileManager,
+            child: Text('Open in file manager'),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
             value: TreeAction.deleteFolder, child: Text('Delete folder')),
       ],
     );

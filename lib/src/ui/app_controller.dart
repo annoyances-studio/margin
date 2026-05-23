@@ -43,6 +43,28 @@ class AppController extends ChangeNotifier {
   String get repositoryName => _repository?.name ?? 'Margin';
   FolderNode? get tree => _tree;
   String? get selectedNotePath => _selectedNotePath;
+
+  /// Whether the open repository lives on the local filesystem (so its files
+  /// can be revealed in the OS file manager).
+  bool get isLocalRepository => _repository?.backend is LocalFolderBackend;
+
+  /// The absolute on-disk path for a repository-relative [path], or null if the
+  /// repository is not on the local filesystem.
+  String? localAbsolutePath(String path) {
+    final backend = _repository?.backend;
+    return backend is LocalFolderBackend ? backend.absolutePathOf(path) : null;
+  }
+
+  /// The accent color (`#RRGGBB`) of the folder containing the selected note,
+  /// or null. Used as a per-note visual cue.
+  String? get selectedNoteFolderColor {
+    final notePath = _selectedNotePath;
+    final tree = _tree;
+    if (notePath == null || tree == null) return null;
+    final slash = notePath.lastIndexOf('/');
+    final folderPath = slash < 0 ? '' : notePath.substring(0, slash);
+    return _findFolder(tree, folderPath)?.color;
+  }
   Note? get currentNote => _currentNote;
   String get workingBody => _workingBody;
   bool get isDirty => _dirty;
@@ -263,6 +285,15 @@ class AppController extends ChangeNotifier {
     }
     for (final child in folder.folders) {
       final found = _findNote(child, path);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  FolderNode? _findFolder(FolderNode folder, String path) {
+    if (folder.path == path) return folder;
+    for (final child in folder.folders) {
+      final found = _findFolder(child, path);
       if (found != null) return found;
     }
     return null;
