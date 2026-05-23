@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import '../repository/folder_properties.dart';
 import '../repository/note.dart';
+import '../repository/note_properties.dart';
 import '../storage/content_codec.dart';
 import '../storage/storage_backend.dart';
 import 'content_exception.dart';
@@ -161,6 +162,41 @@ class ContentService {
     return FolderNode(path: path, name: name);
   }
 
+  /// Stores [bytes] as an attachment inside [folderPath]'s `_attachments/`
+  /// directory and returns a note-relative link (e.g. `_attachments/pic.png`).
+  ///
+  /// The name is sanitized and de-duplicated. Attachment bytes go through the
+  /// codec like note content (so encryption, when enabled, covers them too).
+  Future<String> addAttachment(
+    String folderPath,
+    String fileName,
+    Uint8List bytes,
+  ) async {
+    final dir = _join(folderPath, attachmentsDirName);
+    var name = _sanitizeFileName(fileName);
+    if (await backend.exists(_join(dir, name))) {
+      final dot = name.lastIndexOf('.');
+      final stem = dot > 0 ? name.substring(0, dot) : name;
+      final ext = dot > 0 ? name.substring(dot) : '';
+      name = '$stem-${DateTime.now().millisecondsSinceEpoch}$ext';
+    }
+    await backend.write(_join(dir, name), codec.encode(bytes));
+    return '$attachmentsDirName/$name';
+  }
+
+  String _sanitizeFileName(String fileName) {
+    final base = fileName.split(RegExp(r'[\\/]')).last.trim();
+    // Replace only characters that are illegal on common filesystems, plus
+    // spaces (to keep Markdown links simple). Unicode letters — Japanese,
+    // accented, etc. — are preserved.
+    var cleaned = base
+        .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+        .replaceAll(' ', '_');
+    // Windows disallows trailing dots/spaces.
+    cleaned = cleaned.replaceAll(RegExp(r'[. ]+$'), '');
+    return cleaned.isEmpty ? 'attachment' : cleaned;
+  }
+
   /// Reads a folder's metadata (decoding through the codec).
   Future<FolderProperties> readFolderProperties(String folderPath) async {
     final stored = await backend.read(_join(folderPath, propertiesFileName));
@@ -192,8 +228,48 @@ class ContentService {
     );
   }
 
-  /// Deletes the note at [path].
-  Future<void> deleteNote(String path) => backend.delete(path);
+  /// Deletes the note at [path] and its sidecar properties, if any.
+  Future<void> deleteNote(String path) async {
+    await backend.delete(path);
+    await backend.delete(_notePropertiesPath(path));
+  }
+
+  String _notePropertiesPath(String notePath) => '$notePath.yaml';
+
+  /// Reads a note's sidecar properties (decoding through the codec); returns
+  /// empty properties if there is no sidecar.
+  Future<NoteProperties> readNoteProperties(String notePath) async {
+    try {
+      final stored = await backend.read(_notePropertiesPath(notePath));
+      return NoteProperties.parse(utf8.decode(codec.decode(stored)));
+    } catch (_) {
+      return const NoteProperties();
+    }
+  }
+
+  /// Writes a note's sidecar properties, deleting the sidecar if empty.
+  Future<void> writeNoteProperties(
+    String notePath,
+    NoteProperties properties,
+  ) async {
+    final path = _notePropertiesPath(notePath);
+    if (properties.isEmpty) {
+      await backend.delete(path);
+      return;
+    }
+    final plain = Uint8List.fromList(utf8.encode(properties.toYaml()));
+    await backend.write(path, codec.encode(plain));
+  }
+
+  /// The stored view id for a note (`editor`/`split`/`preview`), or null.
+  Future<String?> readNoteViewId(String notePath) async =>
+      (await readNoteProperties(notePath)).view;
+
+  /// Records the view id for a note in its sidecar.
+  Future<void> setNoteView(String notePath, String viewId) async {
+    final props = await readNoteProperties(notePath);
+    await writeNoteProperties(notePath, props.copyWith(view: viewId));
+  }
 
   /// Deletes the folder at [path] and everything in it.
   Future<void> deleteFolder(String path) => backend.delete(path);

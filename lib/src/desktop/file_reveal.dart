@@ -22,3 +22,18 @@ Future<void> revealInFileManager(String absolutePath) async {
   // explorer.exe returns a non-zero exit code even on success, so ignore it.
   await Process.run(command, args);
 }
+
+/// Opens [target] (a file path or a URL) with the OS default handler — the
+/// associated app for a file, the browser for an http(s) URL. No-op on
+/// unsupported platforms.
+Future<void> openWithDefaultApp(String target) async {
+  if (!canRevealInFileManager) return;
+  if (Platform.isWindows) {
+    // `start` needs an empty title argument first.
+    await Process.run('cmd', ['/c', 'start', '', target]);
+  } else if (Platform.isMacOS) {
+    await Process.run('open', [target]);
+  } else {
+    await Process.run('xdg-open', [target]);
+  }
+}

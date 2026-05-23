@@ -13,6 +13,7 @@ import '../repository/repository.dart';
 import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
 import '../storage/storage_backend.dart';
+import 'editor_view_mode.dart';
 
 /// Drives the UI: owns the open repository, the folder tree, the selected note
 /// and its editing buffer. Widget-independent so it can be unit-tested without
@@ -34,6 +35,15 @@ class AppController extends ChangeNotifier {
   Note? _currentNote;
   String _workingBody = '';
   bool _dirty = false;
+
+  /// Bumped when the working body is changed programmatically (e.g. inserting
+  /// an attachment) so the editor widget reloads from it.
+  int _editorRevision = 0;
+
+  // View settings (device-local) and the current note's resolved view.
+  DefaultViewPolicy _viewPolicy = DefaultViewPolicy.noteSpecified;
+  EditorViewMode _defaultNoteView = EditorViewMode.edit;
+  EditorViewMode _viewMode = EditorViewMode.edit;
 
   bool _busy = false;
   String? _error;
@@ -67,11 +77,33 @@ class AppController extends ChangeNotifier {
   }
   Note? get currentNote => _currentNote;
   String get workingBody => _workingBody;
+  int get editorRevision => _editorRevision;
   bool get isDirty => _dirty;
+
+  DefaultViewPolicy get viewPolicy => _viewPolicy;
+  EditorViewMode get defaultNoteView => _defaultNoteView;
+  EditorViewMode get viewMode => _viewMode;
   bool get isBusy => _busy;
   String? get error => _error;
 
   // --- opening / creating (path-based, used by the picker UI) ---
+
+  /// App startup: load view settings, then restore the last repository.
+  Future<void> start() async {
+    await _loadViewSettings();
+    await restoreLastRepository();
+  }
+
+  Future<void> _loadViewSettings() async {
+    try {
+      _viewPolicy = defaultViewPolicyFromId(await _settings.getViewPolicy());
+      _defaultNoteView =
+          editorViewModeFromId(await _settings.getDefaultNoteView()) ??
+              EditorViewMode.edit;
+    } catch (_) {
+      // Settings unavailable (e.g. tests): keep defaults.
+    }
+  }
 
   /// Attempts to reopen the last-used repository, if any. Silently falls back
   /// to the landing screen if it is missing or invalid (and forgets it).
@@ -148,6 +180,7 @@ class AppController extends ChangeNotifier {
       _currentNote = loaded;
       _workingBody = loaded.body;
       _dirty = false;
+      _viewMode = await _resolveViewMode();
       unawaited(_settings.setLastNotePath(note.path));
     });
   }
@@ -164,6 +197,74 @@ class AppController extends ChangeNotifier {
   Future<void> save() async {
     if (!_dirty || _currentNote == null || _selectedNotePath == null) return;
     await _run(_flushIfDirty);
+  }
+
+  /// Stores [bytes] as an attachment of the open note, inserts a Markdown link
+  /// (an image embed for image types), and saves. Does nothing if no note is
+  /// open.
+  Future<void> attachToCurrentNote(String fileName, Uint8List bytes) async {
+    final notePath = _selectedNotePath;
+    if (notePath == null) return;
+    await _run(() async {
+      final slash = notePath.lastIndexOf('/');
+      final folderPath = slash < 0 ? '' : notePath.substring(0, slash);
+      final link = await _content!.addAttachment(folderPath, fileName, bytes);
+
+      final snippet =
+          _looksLikeImage(fileName) ? '![]($link)' : '[$fileName]($link)';
+      final needsNewline = _workingBody.isNotEmpty && !_workingBody.endsWith('\n');
+      _workingBody = '$_workingBody${needsNewline ? '\n' : ''}$snippet\n';
+      _dirty = true;
+      _editorRevision++;
+      await _flushIfDirty();
+    });
+  }
+
+  bool _looksLikeImage(String fileName) {
+    final lower = fileName.toLowerCase();
+    return const ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg']
+        .any(lower.endsWith);
+  }
+
+  // --- view mode ---
+
+  /// Sets the current note's view. Under the "note specified" policy this is
+  /// remembered in the note's sidecar so it reopens the same way.
+  Future<void> setViewMode(EditorViewMode mode) async {
+    _viewMode = mode;
+    notifyListeners();
+    if (_viewPolicy == DefaultViewPolicy.noteSpecified &&
+        _selectedNotePath != null) {
+      try {
+        await _content!.setNoteView(_selectedNotePath!, mode.id);
+      } catch (_) {
+        // Persisting the view is best-effort.
+      }
+    }
+  }
+
+  Future<void> setViewPolicy(DefaultViewPolicy policy) async {
+    _viewPolicy = policy;
+    await _settings.setViewPolicy(policy.id);
+    _viewMode = await _resolveViewMode();
+    notifyListeners();
+  }
+
+  Future<void> setDefaultNoteView(EditorViewMode mode) async {
+    _defaultNoteView = mode;
+    await _settings.setDefaultNoteView(mode.id);
+    _viewMode = await _resolveViewMode();
+    notifyListeners();
+  }
+
+  /// Resolves which view the open note should use, per the policy.
+  Future<EditorViewMode> _resolveViewMode() async {
+    final forced = _viewPolicy.forcedMode;
+    if (forced != null) return forced;
+    final notePath = _selectedNotePath;
+    if (notePath == null) return _defaultNoteView;
+    final stored = editorViewModeFromId(await _content?.readNoteViewId(notePath));
+    return stored ?? _defaultNoteView;
   }
 
   // --- mutations ---
@@ -274,6 +375,7 @@ class AppController extends ChangeNotifier {
       _currentNote = loaded;
       _workingBody = loaded.body;
       _dirty = false;
+      _viewMode = await _resolveViewMode();
     } catch (_) {
       // File vanished between listing and reading: leave unselected.
     }

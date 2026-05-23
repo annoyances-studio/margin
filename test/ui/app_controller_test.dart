@@ -2,9 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/ui/app_controller.dart';
+import 'package:margin/src/ui/editor_view_mode.dart';
 
 void main() {
   late MemoryBackend backend;
@@ -102,6 +106,82 @@ void main() {
     await controller.create(backend, 'My Notes');
     expect(controller.isLocalRepository, isFalse);
     expect(controller.localAbsolutePath('Work'), isNull);
+  });
+
+  test('attachToCurrentNote stores the file and inserts a link', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    await controller.createNote('meeting', folderPath: 'Work');
+
+    await controller.attachToCurrentNote(
+      'pic.png',
+      Uint8List.fromList(utf8.encode('imgdata')),
+    );
+
+    expect(controller.workingBody, contains('![](_attachments/pic.png)'));
+    expect(await backend.exists('Work/_attachments/pic.png'), isTrue);
+    expect(controller.isDirty, isFalse); // saved
+
+    // The link was persisted to the note file.
+    final reread = await ContentService(backend).readNote('Work/meeting.md');
+    expect(reread.body, contains('_attachments/pic.png'));
+  });
+
+  test('attachToCurrentNote inserts a plain link for non-image files',
+      () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Work');
+    await controller.createNote('meeting', folderPath: 'Work');
+
+    await controller.attachToCurrentNote(
+      'report.pdf',
+      Uint8List.fromList(utf8.encode('%PDF')),
+    );
+
+    // Non-image -> a labelled link, not an image embed.
+    expect(controller.workingBody, contains('[report.pdf](_attachments/report.pdf)'));
+    expect(controller.workingBody, isNot(contains('![]')));
+  });
+
+  group('view mode', () {
+    Future<void> openNote() async {
+      await controller.create(backend, 'My Notes');
+      await controller.createFolder('Work');
+      await controller.createNote('meeting', folderPath: 'Work');
+    }
+
+    test('note-specified policy remembers per-note view via the sidecar',
+        () async {
+      await openNote();
+      // Default for new notes is editor.
+      expect(controller.viewMode, EditorViewMode.edit);
+
+      await controller.setViewMode(EditorViewMode.split);
+      // Persisted to a sidecar (does not touch the note file).
+      expect(await backend.exists('Work/meeting.md.yaml'), isTrue);
+
+      // Reopen with a fresh controller -> the note reopens in split.
+      final reopened = AppController();
+      addTearDown(reopened.dispose);
+      await reopened.open(backend);
+      final node = findNote(reopened.tree!, 'meeting')!;
+      await reopened.selectNote(node);
+      expect(reopened.viewMode, EditorViewMode.split);
+    });
+
+    test('a fixed policy forces its mode regardless of the note', () async {
+      await openNote();
+      await controller.setViewMode(EditorViewMode.split); // sidecar says split
+
+      await controller.setViewPolicy(DefaultViewPolicy.preview);
+      expect(controller.viewMode, EditorViewMode.preview);
+    });
+
+    test('default-for-notes applies when a note has no stored view', () async {
+      await controller.setDefaultNoteView(EditorViewMode.split);
+      await openNote();
+      expect(controller.viewMode, EditorViewMode.split);
+    });
   });
 
   test('renameFolder keeps the open note selected under its new path',

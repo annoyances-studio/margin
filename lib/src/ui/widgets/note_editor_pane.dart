@@ -4,15 +4,11 @@
 
 import 'package:flutter/material.dart';
 
+import '../editor_view_mode.dart';
 import 'markdown_preview.dart';
 import 'note_editor.dart';
 
-/// How the editor area is presented (DESIGN.md):
-/// - [edit]: the inline-styled Markdown editor (default; bold renders bold,
-///   headings larger, etc. while the text stays raw Markdown).
-/// - [split]: that editor beside the live rendered preview.
-/// - [preview]: the rendered Markdown only, read-only.
-enum EditorViewMode { edit, split, preview }
+export '../editor_view_mode.dart' show EditorViewMode;
 
 /// Arranges the inline-styled editor and the rendered preview according to
 /// [mode].
@@ -22,12 +18,22 @@ class NoteEditorPane extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final EditorViewMode mode;
 
+  /// Bumped to force the editor to reload [body] (e.g. after inserting an
+  /// attachment link programmatically).
+  final int revision;
+
+  /// Absolute folder of the open note, used to resolve relative image links in
+  /// the preview.
+  final String? imageBaseDir;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
     required this.body,
     required this.onChanged,
     required this.mode,
+    this.revision = 0,
+    this.imageBaseDir,
   });
 
   @override
@@ -37,11 +43,12 @@ class NoteEditorPane extends StatelessWidget {
     }
 
     final editor = NoteEditor(
+      key: ValueKey('$notePath#$revision'),
       notePath: notePath,
       body: body,
       onChanged: onChanged,
     );
-    final preview = MarkdownPreview(data: body);
+    final preview = MarkdownPreview(data: body, imageBaseDir: imageBaseDir);
 
     switch (mode) {
       case EditorViewMode.edit:

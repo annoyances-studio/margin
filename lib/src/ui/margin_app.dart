@@ -37,8 +37,8 @@ class _MarginAppState extends State<MarginApp> {
   @override
   void initState() {
     super.initState();
-    // Reopen the last repository, if any (silently falls back to landing).
-    _controller.restoreLastRepository();
+    // Load view settings and reopen the last repository (falls back to landing).
+    _controller.start();
   }
 
   @override

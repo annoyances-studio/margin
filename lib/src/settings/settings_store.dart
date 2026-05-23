@@ -15,6 +15,14 @@ abstract interface class SettingsStore {
   /// Repository-relative path of the last opened note (or null).
   Future<String?> getLastNotePath();
   Future<void> setLastNotePath(String? path);
+
+  /// The default-view policy id (`note`/`editor`/`split`/`preview`).
+  Future<String?> getViewPolicy();
+  Future<void> setViewPolicy(String id);
+
+  /// The default view id for notes without their own setting.
+  Future<String?> getDefaultNoteView();
+  Future<void> setDefaultNoteView(String id);
 }
 
 /// A non-persistent [SettingsStore] for tests and as a safe default.
@@ -37,12 +45,29 @@ class InMemorySettingsStore implements SettingsStore {
   Future<void> setLastNotePath(String? path) async {
     _lastNotePath = path;
   }
+
+  String? _viewPolicy;
+  String? _defaultNoteView;
+
+  @override
+  Future<String?> getViewPolicy() async => _viewPolicy;
+
+  @override
+  Future<void> setViewPolicy(String id) async => _viewPolicy = id;
+
+  @override
+  Future<String?> getDefaultNoteView() async => _defaultNoteView;
+
+  @override
+  Future<void> setDefaultNoteView(String id) async => _defaultNoteView = id;
 }
 
 /// A [SettingsStore] backed by `shared_preferences`.
 class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _lastRepoKey = 'lastRepositoryPath';
   static const String _lastNoteKey = 'lastNotePath';
+  static const String _viewPolicyKey = 'viewPolicy';
+  static const String _defaultNoteViewKey = 'defaultNoteView';
 
   @override
   Future<String?> getLastRepositoryPath() async {
@@ -74,5 +99,29 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     } else {
       await prefs.setString(_lastNoteKey, path);
     }
+  }
+
+  @override
+  Future<String?> getViewPolicy() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_viewPolicyKey);
+  }
+
+  @override
+  Future<void> setViewPolicy(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_viewPolicyKey, id);
+  }
+
+  @override
+  Future<String?> getDefaultNoteView() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_defaultNoteViewKey);
+  }
+
+  @override
+  Future<void> setDefaultNoteView(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_defaultNoteViewKey, id);
   }
 }

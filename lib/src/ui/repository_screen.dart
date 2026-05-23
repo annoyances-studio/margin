@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../content/repository_node.dart';
@@ -31,7 +32,6 @@ class RepositoryScreen extends StatefulWidget {
 
 class _RepositoryScreenState extends State<RepositoryScreen> {
   bool _showTree = true;
-  EditorViewMode _viewMode = EditorViewMode.edit;
 
   AppController get controller => widget.controller;
 
@@ -53,6 +53,12 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: _viewModeControl(),
               ),
+              if (controller.selectedNotePath != null)
+                IconButton(
+                  tooltip: 'Attach file',
+                  icon: const Icon(Icons.attach_file),
+                  onPressed: _attachFile,
+                ),
               IconButton(
                 tooltip: 'Save',
                 icon: const Icon(Icons.save_outlined),
@@ -61,8 +67,11 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
               IconButton(
                 tooltip: 'Settings',
                 icon: const Icon(Icons.settings_outlined),
-                onPressed: () =>
-                    SettingsDialog.show(context, widget.startupService),
+                onPressed: () => SettingsDialog.show(
+                  context,
+                  startupService: widget.startupService,
+                  controller: controller,
+                ),
               ),
               IconButton(
                 tooltip: 'Close repository',
@@ -121,9 +130,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           tooltip: 'Preview',
         ),
       ],
-      selected: {_viewMode},
+      selected: {controller.viewMode},
       onSelectionChanged: (selection) =>
-          setState(() => _viewMode = selection.first),
+          controller.setViewMode(selection.first),
     );
   }
 
@@ -133,7 +142,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       notePath: controller.selectedNotePath,
       body: controller.workingBody,
       onChanged: controller.updateBody,
-      mode: _viewMode,
+      mode: controller.viewMode,
+      revision: controller.editorRevision,
+      imageBaseDir: _imageBaseDir(),
     );
 
     if (!_showTree || tree == null) {
@@ -172,6 +183,24 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         Expanded(child: editor),
       ],
     );
+  }
+
+  /// Absolute folder of the open note, used to resolve relative image links in
+  /// the preview (null for non-local repositories or when no note is open).
+  String? _imageBaseDir() {
+    final notePath = controller.selectedNotePath;
+    if (notePath == null) return null;
+    final slash = notePath.lastIndexOf('/');
+    final folder = slash < 0 ? '' : notePath.substring(0, slash);
+    return controller.localAbsolutePath(folder);
+  }
+
+  Future<void> _attachFile() async {
+    // Accept any file: images are embedded, other types become openable links.
+    final file = await openFile();
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    await controller.attachToCurrentNote(file.name, bytes);
   }
 
   /// A thin line separating the toolbar from the content. When the selected

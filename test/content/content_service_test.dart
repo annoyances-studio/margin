@@ -205,6 +205,50 @@ void main() {
     });
   });
 
+  group('attachments', () {
+    test('addAttachment stores under _attachments and returns a link',
+        () async {
+      await service.createFolder('', 'Work');
+      final link = await service.addAttachment('Work', 'pic.png', bytes('img'));
+
+      expect(link, '_attachments/pic.png');
+      expect(await backend.exists('Work/_attachments/pic.png'), isTrue);
+    });
+
+    test('addAttachment de-duplicates a repeated name', () async {
+      await service.createFolder('', 'Work');
+      await service.addAttachment('Work', 'pic.png', bytes('a'));
+      final second = await service.addAttachment('Work', 'pic.png', bytes('b'));
+
+      expect(second, isNot('_attachments/pic.png'));
+      expect(second, startsWith('_attachments/pic-'));
+    });
+
+    test('addAttachment replaces spaces but keeps the extension', () async {
+      await service.createFolder('', 'Work');
+      final link =
+          await service.addAttachment('Work', 'my photo.png', bytes('x'));
+      expect(link, '_attachments/my_photo.png');
+    });
+
+    test('addAttachment preserves non-ASCII (e.g. Japanese) names', () async {
+      await service.createFolder('', 'Work');
+      final link =
+          await service.addAttachment('Work', 'スクリーンショット.png', bytes('x'));
+      expect(link, '_attachments/スクリーンショット.png');
+      expect(await backend.exists('Work/_attachments/スクリーンショット.png'), isTrue);
+    });
+
+    test('_attachments is excluded from the tree', () async {
+      await service.createFolder('', 'Work');
+      await service.addAttachment('Work', 'pic.png', bytes('img'));
+
+      final root = await service.tree();
+      final work = root.folders.single;
+      expect(work.folders, isEmpty); // _attachments not shown as a folder
+    });
+  });
+
   group('codec seam', () {
     test('note content is encoded on disk and decoded on read', () async {
       final encrypted = ContentService(backend, codec: const _XorCodec(0x5a));
