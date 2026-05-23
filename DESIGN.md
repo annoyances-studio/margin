@@ -112,6 +112,15 @@ container that publishes a chosen folder over WebDAV. The app stays a dumb
 client; the data remains plain files in a folder the user can also access by
 other means.
 
+### Sync for free via a cloud-synced folder
+
+Because a repository is just a folder of plain files, the simplest "sync" needs
+no app support at all: put the repository inside a directory that a cloud client
+already keeps in sync (OneDrive, Dropbox, iCloud Drive, Nextcloud, ...). The
+local-folder backend reads and writes it; the cloud client handles propagation.
+This is the recommended easy path on desktop and reinforces the core principle:
+your notes are openable safely anywhere, by Margin or anything else.
+
 ### Why not Git as the foundation
 
 Git was considered as the primary sync mechanism but rejected as the
@@ -282,11 +291,32 @@ platform:
   notes-as-tabs or three-panel layout scales poorly; a clean collapsible
   two-panel layout fits better.
 - Minimize to tray. Tray menu: Open, Sync now, Quit.
+- A small Settings dialog; on desktop it offers "start at login" (run on logon).
+
+### Editor (realized approach)
+
+The original intent was a true block WYSIWYG editor. That was attempted with a
+rich-editor engine (appflowy_editor) but its latest release does not compile on
+the current Flutter SDK (a newly-required `TextInputClient` method is
+unimplemented). Rather than pin an old SDK or take another heavy dependency, the
+editor follows what the old NotesWriter did with its rich-text control: extend
+the editing primitive.
+
+`MarkdownEditingController` (a `TextEditingController` subclass) styles Markdown
+inline as you type — headings render larger/bold, `**bold**`, `*italic*`,
+`~~strike~~`, `` `code` ``, block quotes, fenced code — while the stored text
+stays raw Markdown. Benefits: no heavy dependency or SDK-compat risk, exact
+round-trip, and "the formatting is the typing" (no toolbar or shortcuts), which
+suits mobile especially. Markers stay visible but dimmed.
+
+View modes: **Editor** (this inline-styled view, default), **Split** (editor +
+rendered preview), **Preview** (read-only render). True block WYSIWYG remains a
+future option if a compatible engine becomes available.
 
 ### Shared behaviors
 
-- Editing is WYSIWYG by default, with a per-note toggle to a raw "code view".
-  The last-used mode is remembered.
+- A sync indicator is always visible: synced, syncing, conflict, offline.
+  Tapping it shows details and a "sync now" action.
 - A sync indicator is always visible: synced, syncing, conflict, offline.
   Tapping it shows details and a "sync now" action.
 - Conflicts surface as a banner offering to create the conflict copy.
