@@ -12,6 +12,7 @@ import 'app_controller.dart';
 import 'color_hex.dart';
 import 'settings_dialog.dart';
 import 'widgets/folder_tree.dart';
+import 'widgets/markdown_preview.dart';
 import 'widgets/note_editor_pane.dart';
 
 /// The two-panel desktop layout (DESIGN.md): a collapsible folder tree on the
@@ -31,82 +32,261 @@ class RepositoryScreen extends StatefulWidget {
 }
 
 class _RepositoryScreenState extends State<RepositoryScreen> {
+  /// Breakpoint below which the phone (drawer) layout is used.
+  static const double _wideBreakpoint = 720;
+
   bool _showTree = true;
 
+  // Phone layout: three swipeable pages (0 folders, 1 editor, 2 preview).
+  final PageController _pageController = PageController(initialPage: 1);
+  int _currentPage = 1;
+
   AppController get controller => widget.controller;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goToPage(int index) {
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _openSettings() => SettingsDialog.show(
+        context,
+        startupService: widget.startupService,
+        controller: controller,
+      );
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
-        return Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              tooltip: _showTree ? 'Hide folders' : 'Show folders',
-              icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
-              onPressed: () => setState(() => _showTree = !_showTree),
-            ),
-            title: Text(_titleText()),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: _viewModeControl(),
-              ),
-              if (controller.selectedNotePath != null)
-                IconButton(
-                  tooltip: 'Attach file',
-                  icon: const Icon(Icons.attach_file),
-                  onPressed: _attachFile,
-                ),
-              IconButton(
-                tooltip: 'Save',
-                icon: const Icon(Icons.save_outlined),
-                onPressed: controller.isDirty ? () => controller.save() : null,
-              ),
-              IconButton(
-                tooltip: 'Settings',
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () => SettingsDialog.show(
-                  context,
-                  startupService: widget.startupService,
-                  controller: controller,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Close repository',
-                icon: const Icon(Icons.close),
-                onPressed: controller.closeRepository,
-              ),
-            ],
-            bottom: controller.isBusy
-                ? const PreferredSize(
-                    preferredSize: Size.fromHeight(2),
-                    child: LinearProgressIndicator(minHeight: 2),
-                  )
-                : null,
-          ),
-          body: Column(
-            children: [
-              _accentDivider(),
-              if (controller.error != null) _errorBanner(controller.error!),
-              Expanded(child: _body()),
-            ],
-          ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return constraints.maxWidth >= _wideBreakpoint
+                ? _buildWide(context)
+                : _buildNarrow(context);
+          },
         );
       },
     );
   }
 
-  /// Always shows the repository name; when the tree is hidden it also appends
-  /// the open note's full path so you still know where you are.
-  String _titleText() {
+  // --- wide (desktop) layout: tree panel + editor, with view-mode control ---
+
+  Widget _buildWide(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: _showTree ? 'Hide folders' : 'Show folders',
+          icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
+          onPressed: () => setState(() => _showTree = !_showTree),
+        ),
+        title: Text(_wideTitle()),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: _viewModeControl(),
+          ),
+          if (controller.selectedNotePath != null)
+            IconButton(
+              tooltip: 'Attach file',
+              icon: const Icon(Icons.attach_file),
+              onPressed: _attachFile,
+            ),
+          _saveAction(),
+          _settingsAction(),
+          _closeAction(),
+        ],
+        bottom: _busyBar(),
+      ),
+      body: Column(
+        children: [
+          _accentDivider(),
+          if (controller.error != null) _errorBanner(controller.error!),
+          Expanded(child: _wideContent()),
+        ],
+      ),
+    );
+  }
+
+  // --- narrow (phone) layout: editor body, swipe-in tree & preview drawers ---
+
+  Widget _buildNarrow(BuildContext context) {
+    return Scaffold(
+      // resizeToAvoidBottomInset (default true) lifts the bottom bar above the
+      // keyboard.
+      body: SafeArea(
+        child: Column(
+          children: [
+            _mobileHeader(),
+            _accentDivider(),
+            if (controller.error != null) _errorBanner(controller.error!),
+            if (controller.isBusy) const LinearProgressIndicator(minHeight: 2),
+            Expanded(child: _mobilePager()),
+            _mobileBottomBar(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Text(
+        _mobileTitle(),
+        style: Theme.of(context).textTheme.titleMedium,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  /// Three swipeable pages: folders, editor, preview. Center swipe avoids the
+  /// screen edges, so it doesn't fight Android's system back gesture.
+  Widget _mobilePager() {
+    final tree = controller.tree;
+    final notePath = controller.selectedNotePath;
+    return PageView(
+      controller: _pageController,
+      onPageChanged: (i) => setState(() => _currentPage = i),
+      children: [
+        tree == null
+            ? const SizedBox.shrink()
+            : Material(
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
+                child: _treePanelContent(onNoteSelected: () => _goToPage(1)),
+              ),
+        NoteEditorPane(
+          notePath: notePath,
+          body: controller.workingBody,
+          onChanged: controller.updateBody,
+          mode: EditorViewMode.edit, // preview is its own page here
+          revision: controller.editorRevision,
+          imageBaseDir: _imageBaseDir(),
+        ),
+        notePath == null
+            ? const Center(child: Text('Select a note to preview.'))
+            : MarkdownPreview(
+                data: controller.workingBody,
+                imageBaseDir: _imageBaseDir(),
+              ),
+      ],
+    );
+  }
+
+  Widget _mobileBottomBar() {
+    final hasNote = controller.selectedNotePath != null;
+    return Material(
+      elevation: 8,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            _pageNavButton(0, Icons.folder_outlined, 'Folders'),
+            _pageNavButton(1, Icons.edit_note, 'Editor'),
+            _pageNavButton(2, Icons.visibility_outlined, 'Preview'),
+            const Spacer(),
+            IconButton.filled(
+              tooltip: 'New note',
+              icon: const Icon(Icons.add),
+              onPressed: _promptNewNote,
+            ),
+            const Spacer(),
+            if (hasNote)
+              IconButton(
+                tooltip: 'Attach file',
+                icon: const Icon(Icons.attach_file),
+                onPressed: _attachFile,
+              ),
+            if (hasNote) _saveAction(),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'More',
+              onSelected: (value) {
+                if (value == 'settings') _openSettings();
+                if (value == 'close') controller.closeRepository();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'settings', child: Text('Settings')),
+                PopupMenuItem(value: 'close', child: Text('Close repository')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pageNavButton(int index, IconData icon, String tooltip) {
+    final selected = _currentPage == index;
+    return IconButton(
+      tooltip: tooltip,
+      isSelected: selected,
+      color: selected ? Theme.of(context).colorScheme.primary : null,
+      icon: Icon(icon),
+      onPressed: () => _goToPage(index),
+    );
+  }
+
+  // --- shared app-bar actions ---
+
+  Widget _saveAction() => IconButton(
+        tooltip: 'Save',
+        icon: const Icon(Icons.save_outlined),
+        onPressed: controller.isDirty ? () => controller.save() : null,
+      );
+
+  Widget _settingsAction() => IconButton(
+        tooltip: 'Settings',
+        icon: const Icon(Icons.settings_outlined),
+        onPressed: () => SettingsDialog.show(
+          context,
+          startupService: widget.startupService,
+          controller: controller,
+        ),
+      );
+
+  Widget _closeAction() => IconButton(
+        tooltip: 'Close repository',
+        icon: const Icon(Icons.close),
+        onPressed: controller.closeRepository,
+      );
+
+  PreferredSizeWidget? _busyBar() => controller.isBusy
+      ? const PreferredSize(
+          preferredSize: Size.fromHeight(2),
+          child: LinearProgressIndicator(minHeight: 2),
+        )
+      : null;
+
+  /// Wide title: repository name, plus the note path when the tree is hidden.
+  String _wideTitle() {
     final repo = controller.repositoryName;
     final notePath = controller.selectedNotePath;
     if (!_showTree && notePath != null) {
       return '$repo / ${notePath.replaceAll('/', ' / ')}';
     }
     return repo;
+  }
+
+  /// Narrow title: the open note's name, or the repository name.
+  String _mobileTitle() {
+    final notePath = controller.selectedNotePath;
+    if (notePath == null) return controller.repositoryName;
+    final name = notePath.split('/').last;
+    return name.endsWith('.md') ? name.substring(0, name.length - 3) : name;
   }
 
   Widget _viewModeControl() {
@@ -136,7 +316,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     );
   }
 
-  Widget _body() {
+  Widget _wideContent() {
     final tree = controller.tree;
     final editor = NoteEditorPane(
       notePath: controller.selectedNotePath,
@@ -160,27 +340,39 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             // A slightly distinct surface tone sets the sidebar apart from the
             // editor (VS Code / Claude-desktop style).
             color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: Column(
-              children: [
-                _treeHeader(),
-                const Divider(height: 1),
-                Expanded(
-                  child: FolderTreeView(
-                    root: tree,
-                    selectedNotePath: controller.selectedNotePath,
-                    canRevealInFileManager:
-                        canRevealInFileManager && controller.isLocalRepository,
-                    onNoteTap: controller.selectNote,
-                    onFolderAction: _handleFolderAction,
-                    onNoteAction: _handleNoteAction,
-                  ),
-                ),
-              ],
-            ),
+            child: _treePanelContent(),
           ),
         ),
         const VerticalDivider(width: 1),
         Expanded(child: editor),
+      ],
+    );
+  }
+
+  /// The folder tree with its header, shared by the desktop side panel and the
+  /// phone folders page. [onNoteSelected] fires after a note is tapped (used on
+  /// phones to swipe to the editor page).
+  Widget _treePanelContent({VoidCallback? onNoteSelected}) {
+    final tree = controller.tree;
+    if (tree == null) return const SizedBox.shrink();
+    return Column(
+      children: [
+        _treeHeader(),
+        const Divider(height: 1),
+        Expanded(
+          child: FolderTreeView(
+            root: tree,
+            selectedNotePath: controller.selectedNotePath,
+            canRevealInFileManager:
+                canRevealInFileManager && controller.isLocalRepository,
+            onNoteTap: (note) {
+              controller.selectNote(note);
+              onNoteSelected?.call();
+            },
+            onFolderAction: _handleFolderAction,
+            onNoteAction: _handleNoteAction,
+          ),
+        ),
       ],
     );
   }
@@ -193,6 +385,105 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     final slash = notePath.lastIndexOf('/');
     final folder = slash < 0 ? '' : notePath.substring(0, slash);
     return controller.localAbsolutePath(folder);
+  }
+
+  /// The phone "+" action: create a note, picking the destination folder
+  /// (notes can't live at the root). Defaults to the open note's folder.
+  Future<void> _promptNewNote() async {
+    final tree = controller.tree;
+    if (tree == null) return;
+
+    final folders = <({String path, String label})>[];
+    void walk(FolderNode folder, int depth) {
+      for (final child in folder.folders) {
+        folders.add((path: child.path, label: '${'   ' * depth}${child.name}'));
+        walk(child, depth + 1);
+      }
+    }
+
+    walk(tree, 0);
+    if (folders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Create a folder first (Folders page).')),
+      );
+      _goToPage(0);
+      return;
+    }
+
+    // Default to the open note's folder when there is one.
+    var folderPath = folders.first.path;
+    final notePath = controller.selectedNotePath;
+    if (notePath != null) {
+      final slash = notePath.lastIndexOf('/');
+      final current = slash < 0 ? '' : notePath.substring(0, slash);
+      if (folders.any((f) => f.path == current)) folderPath = current;
+    }
+
+    final result = await _showNewNoteDialog(folders, folderPath);
+    if (result != null && result.name.isNotEmpty) {
+      await controller.createNote(result.name, folderPath: result.folder);
+      _goToPage(1);
+    }
+  }
+
+  Future<({String name, String folder})?> _showNewNoteDialog(
+    List<({String path, String label})> folders,
+    String initialFolder,
+  ) {
+    final field = TextEditingController();
+    var folder = initialFolder;
+    return showDialog<({String name, String folder})>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocal) => AlertDialog(
+            title: const Text('New note'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: field,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Note name'),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('Folder:'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: folder,
+                        onChanged: (v) => setLocal(() => folder = v ?? folder),
+                        items: [
+                          for (final f in folders)
+                            DropdownMenuItem(
+                              value: f.path,
+                              child: Text(f.label),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context)
+                    .pop((name: field.text.trim(), folder: folder)),
+                child: const Text('Create'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _attachFile() async {
@@ -268,6 +559,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         final name = await _promptName(title: 'New note', label: 'Note name');
         if (name != null && name.isNotEmpty) {
           await controller.createNote(name, folderPath: folder.path);
+          _goToPage(1); // on phones, swipe to the editor (no-op on desktop)
         }
       case TreeAction.newSubfolder:
         final name =

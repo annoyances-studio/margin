@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../../content/repository_node.dart';
 import '../color_hex.dart';
 
-/// Contextual actions available from the tree's right-click menus.
+/// Contextual actions available from the tree's per-item menus.
 enum TreeAction {
   newNote,
   newSubfolder,
@@ -20,9 +20,9 @@ enum TreeAction {
 
 /// Renders the repository tree: folders as expandable tiles, notes as leaves.
 ///
-/// Creation and deletion are contextual: right-click a folder to add a note or
-/// subfolder inside it (or delete it), right-click a note to delete it. Adding
-/// a top-level folder is a toolbar action on the screen.
+/// Each folder and note has a ⋮ menu (tap) for its actions — New note, rename,
+/// delete, etc. — so everything is reachable by touch as well as by right-click
+/// on desktop. Adding a top-level folder is a toolbar action on the screen.
 class FolderTreeView extends StatelessWidget {
   final FolderNode root;
   final String? selectedNotePath;
@@ -76,10 +76,18 @@ class FolderTreeView extends StatelessWidget {
       ),
       title: Builder(
         builder: (context) => GestureDetector(
+          // Right-click on desktop opens the same menu.
           onSecondaryTapDown: (details) =>
-              _showFolderMenu(context, folder, details.globalPosition),
+              _showMenuAt(context, details.globalPosition, _folderMenuItems(),
+                  (a) => onFolderAction(folder, a)),
           child: Text(folder.name),
         ),
+      ),
+      trailing: PopupMenuButton<TreeAction>(
+        icon: const Icon(Icons.more_vert),
+        tooltip: 'Folder actions',
+        itemBuilder: (_) => _folderMenuItems(),
+        onSelected: (a) => onFolderAction(folder, a),
       ),
       childrenPadding: const EdgeInsets.only(left: 12),
       children: _childrenOf(folder),
@@ -90,7 +98,8 @@ class FolderTreeView extends StatelessWidget {
     return Builder(
       builder: (context) => GestureDetector(
         onSecondaryTapDown: (details) =>
-            _showNoteMenu(context, note, details.globalPosition),
+            _showMenuAt(context, details.globalPosition, _noteMenuItems(),
+                (a) => onNoteAction(note, a)),
         child: ListTile(
           dense: true,
           leading: const Icon(Icons.description_outlined),
@@ -98,25 +107,25 @@ class FolderTreeView extends StatelessWidget {
           selected: note.path == selectedNotePath,
           selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
           selectedColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          trailing: PopupMenuButton<TreeAction>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Note actions',
+            itemBuilder: (_) => _noteMenuItems(),
+            onSelected: (a) => onNoteAction(note, a),
+          ),
           onTap: () => onNoteTap(note),
         ),
       ),
     );
   }
 
-  Future<void> _showFolderMenu(
-      BuildContext context, FolderNode folder, Offset position) async {
-    final action = await showMenu<TreeAction>(
-      context: context,
-      position: _menuPosition(position),
-      items: [
+  List<PopupMenuEntry<TreeAction>> _folderMenuItems() => [
         const PopupMenuItem(value: TreeAction.newNote, child: Text('New note')),
         const PopupMenuItem(
             value: TreeAction.newSubfolder, child: Text('New subfolder')),
         const PopupMenuItem(
             value: TreeAction.renameFolder, child: Text('Rename…')),
-        const PopupMenuItem(
-            value: TreeAction.setColor, child: Text('Set color…')),
+        const PopupMenuItem(value: TreeAction.setColor, child: Text('Set color…')),
         if (canRevealInFileManager)
           const PopupMenuItem(
             value: TreeAction.openInFileManager,
@@ -125,23 +134,24 @@ class FolderTreeView extends StatelessWidget {
         const PopupMenuDivider(),
         const PopupMenuItem(
             value: TreeAction.deleteFolder, child: Text('Delete folder')),
-      ],
-    );
-    if (action != null) onFolderAction(folder, action);
-  }
+      ];
 
-  Future<void> _showNoteMenu(
-      BuildContext context, NoteNode note, Offset position) async {
+  List<PopupMenuEntry<TreeAction>> _noteMenuItems() => const [
+        PopupMenuItem(value: TreeAction.deleteNote, child: Text('Delete note')),
+      ];
+
+  Future<void> _showMenuAt(
+    BuildContext context,
+    Offset position,
+    List<PopupMenuEntry<TreeAction>> items,
+    void Function(TreeAction) onSelected,
+  ) async {
     final action = await showMenu<TreeAction>(
       context: context,
-      position: _menuPosition(position),
-      items: const [
-        PopupMenuItem(value: TreeAction.deleteNote, child: Text('Delete note')),
-      ],
+      position: RelativeRect.fromLTRB(
+          position.dx, position.dy, position.dx, position.dy),
+      items: items,
     );
-    if (action != null) onNoteAction(note, action);
+    if (action != null) onSelected(action);
   }
-
-  RelativeRect _menuPosition(Offset global) =>
-      RelativeRect.fromLTRB(global.dx, global.dy, global.dx, global.dy);
 }
