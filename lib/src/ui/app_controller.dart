@@ -3,8 +3,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../content/content_service.dart';
 import '../content/repository_node.dart';
@@ -125,6 +128,21 @@ class AppController extends ChangeNotifier {
     await open(LocalFolderBackend(path));
     if (hasRepository) {
       await _settings.setLastRepositoryPath(path);
+    }
+  }
+
+  /// Opens (or creates) a repository in this device's app documents directory —
+  /// the portable, no-picker option that works on mobile, where arbitrary
+  /// folders aren't reachable via `dart:io`.
+  Future<void> openDeviceRepository({String name = 'My Notes'}) async {
+    final docs = await getApplicationDocumentsDirectory();
+    final repoPath = p.join(docs.path, 'Margin');
+    await Directory(repoPath).create(recursive: true);
+    final backend = LocalFolderBackend(repoPath);
+    if (await backend.exists('properties.yaml')) {
+      await openPath(repoPath);
+    } else {
+      await createPath(repoPath, name);
     }
   }
 
