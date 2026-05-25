@@ -6,16 +6,19 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../content/content_service.dart';
 import '../content/tree_node.dart';
+import '../credentials/credential_store.dart';
 import '../folio/note.dart';
 import '../folio/folio.dart';
 import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
 import '../storage/storage_backend.dart';
+import '../storage/webdav_backend.dart';
 import 'editor_view_mode.dart';
 
 /// Drives the UI: owns the open repository, the folder tree, the selected note
@@ -26,9 +29,23 @@ import 'editor_view_mode.dart';
 /// note flushes a dirty buffer to disk first.
 class AppController extends ChangeNotifier {
   final SettingsStore _settings;
+  final CredentialStore _credentials;
 
-  AppController({SettingsStore? settings})
-      : _settings = settings ?? InMemorySettingsStore();
+  /// Builds HTTP clients for WebDAV. Injectable so tests can supply a mock.
+  final http.Client Function() _httpClientFactory;
+
+  AppController({
+    SettingsStore? settings,
+    CredentialStore? credentials,
+    http.Client Function()? httpClientFactory,
+  })  : _settings = settings ?? InMemorySettingsStore(),
+        _credentials = credentials ?? InMemoryCredentialStore(),
+        _httpClientFactory = httpClientFactory ?? (() => http.Client());
+
+  /// Keystore key for a WebDAV password, derived from its (non-secret) URL and
+  /// username — both known before we can connect.
+  static String _webDavCredKey(String url, String username) =>
+      'webdav|$url|$username';
 
   Folio? _folio;
   ContentService? _content;
@@ -121,26 +138,57 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Attempts to reopen the last-used repository, if any. Silently falls back
-  /// to the landing screen if it is missing or invalid (and forgets it).
+  /// Attempts to reopen the last-used Folio, if any — local or WebDAV. Silently
+  /// falls back to the landing screen if it is missing or invalid (and forgets
+  /// it).
   Future<void> restoreLastFolio() async {
-    String? path;
+    String? type;
+    String? location;
     try {
-      path = await _settings.getLastFolioPath();
+      type = await _settings.getLastFolioType();
+      location = await _settings.getLastFolioPath();
     } catch (_) {
       return; // settings unavailable (e.g. in tests) -> show landing
     }
-    if (path == null) return;
-    await openPath(path);
-    if (!hasFolio) {
-      await _settings.setLastFolioPath(null);
+    if (location == null) return;
+
+    if (type == 'webdav') {
+      final username = await _settings.getLastWebDavUser() ?? '';
+      final password =
+          await _credentials.read(_webDavCredKey(location, username));
+      if (password == null) return; // can't reconnect without the secret
+      await openWebDav(location, username, password);
+      if (!hasFolio) await _settings.setLastFolioType(null);
+    } else {
+      await openPath(location);
+      if (!hasFolio) await _settings.setLastFolioPath(null);
     }
   }
 
   Future<void> openPath(String path) async {
     await open(LocalFolderBackend(path));
     if (hasFolio) {
+      await _settings.setLastFolioType('local');
       await _settings.setLastFolioPath(path);
+    }
+  }
+
+  /// Connects to a WebDAV Folio at [url] with [username]/[password]. On success
+  /// records it as the last Folio and stores the password in the OS keystore
+  /// (the URL and username are non-secret and kept in settings).
+  Future<void> openWebDav(String url, String username, String password) async {
+    final backend = WebDavBackend(
+      baseUrl: Uri.parse(url),
+      username: username,
+      password: password,
+      client: _httpClientFactory(),
+    );
+    await open(backend);
+    if (hasFolio) {
+      await _settings.setLastFolioType('webdav');
+      await _settings.setLastFolioPath(url);
+      await _settings.setLastWebDavUser(username);
+      await _credentials.write(_webDavCredKey(url, username), password);
     }
   }
 
@@ -162,6 +210,7 @@ class AppController extends ChangeNotifier {
   Future<void> createPath(String path, String name) async {
     await create(LocalFolderBackend(path), name);
     if (hasFolio) {
+      await _settings.setLastFolioType('local');
       await _settings.setLastFolioPath(path);
     }
   }
@@ -193,9 +242,12 @@ class AppController extends ChangeNotifier {
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
-    // Explicit close: forget the repository (and note) so the next launch shows
-    // the landing screen rather than reopening it.
+    // Explicit close: forget the Folio (and note) so the next launch shows
+    // the landing screen rather than reopening it. (Any WebDAV password stays
+    // in the keystore; re-adding the same URL reuses it.)
+    unawaited(_settings.setLastFolioType(null));
     unawaited(_settings.setLastFolioPath(null));
+    unawaited(_settings.setLastWebDavUser(null));
     unawaited(_settings.setLastNotePath(null));
     notifyListeners();
   }

@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'src/credentials/credential_store.dart';
 import 'src/desktop/desktop_integration.dart';
 import 'src/desktop/startup_service.dart';
 import 'src/settings/settings_store.dart';
@@ -18,6 +19,7 @@ Future<void> main() async {
 
   runApp(MarginApp(
     settings: SharedPreferencesSettingsStore(),
+    credentials: SecureCredentialStore(),
     startupService: startupService,
   ));
 }

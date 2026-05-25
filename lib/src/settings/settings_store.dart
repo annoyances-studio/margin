@@ -9,8 +9,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Abstracted so the UI controller can be unit-tested with an in-memory store
 /// instead of the platform plugin.
 abstract interface class SettingsStore {
+  /// The last Folio's location: a local filesystem path, or (for WebDAV) the
+  /// collection base URL. Paired with [getLastFolioType].
   Future<String?> getLastFolioPath();
   Future<void> setLastFolioPath(String? path);
+
+  /// The last Folio's backend type id — `local` or `webdav`. Null/absent is
+  /// treated as `local` (the historical default).
+  Future<String?> getLastFolioType();
+  Future<void> setLastFolioType(String? type);
+
+  /// The username for the last WebDAV Folio (non-secret; the password lives in
+  /// the OS keystore). Null when the last Folio is local.
+  Future<String?> getLastWebDavUser();
+  Future<void> setLastWebDavUser(String? user);
 
   /// Repository-relative path of the last opened note (or null).
   Future<String?> getLastNotePath();
@@ -32,6 +44,8 @@ abstract interface class SettingsStore {
 /// A non-persistent [SettingsStore] for tests and as a safe default.
 class InMemorySettingsStore implements SettingsStore {
   String? _lastRepositoryPath;
+  String? _lastFolioType;
+  String? _lastWebDavUser;
   String? _lastNotePath;
 
   @override
@@ -40,6 +54,22 @@ class InMemorySettingsStore implements SettingsStore {
   @override
   Future<void> setLastFolioPath(String? path) async {
     _lastRepositoryPath = path;
+  }
+
+  @override
+  Future<String?> getLastFolioType() async => _lastFolioType;
+
+  @override
+  Future<void> setLastFolioType(String? type) async {
+    _lastFolioType = type;
+  }
+
+  @override
+  Future<String?> getLastWebDavUser() async => _lastWebDavUser;
+
+  @override
+  Future<void> setLastWebDavUser(String? user) async {
+    _lastWebDavUser = user;
   }
 
   @override
@@ -77,10 +107,26 @@ class InMemorySettingsStore implements SettingsStore {
 /// A [SettingsStore] backed by `shared_preferences`.
 class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _lastRepoKey = 'lastRepositoryPath';
+  static const String _lastFolioTypeKey = 'lastFolioType';
+  static const String _lastWebDavUserKey = 'lastWebDavUser';
   static const String _lastNoteKey = 'lastNotePath';
   static const String _viewPolicyKey = 'viewPolicy';
   static const String _defaultNoteViewKey = 'defaultNoteView';
   static const String _alwaysOnTopKey = 'alwaysOnTop';
+
+  Future<String?> _getString(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(key);
+  }
+
+  Future<void> _setString(String key, String? value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value == null) {
+      await prefs.remove(key);
+    } else {
+      await prefs.setString(key, value);
+    }
+  }
 
   @override
   Future<String?> getLastFolioPath() async {
@@ -89,14 +135,21 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   }
 
   @override
-  Future<void> setLastFolioPath(String? path) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (path == null) {
-      await prefs.remove(_lastRepoKey);
-    } else {
-      await prefs.setString(_lastRepoKey, path);
-    }
-  }
+  Future<void> setLastFolioPath(String? path) => _setString(_lastRepoKey, path);
+
+  @override
+  Future<String?> getLastFolioType() => _getString(_lastFolioTypeKey);
+
+  @override
+  Future<void> setLastFolioType(String? type) =>
+      _setString(_lastFolioTypeKey, type);
+
+  @override
+  Future<String?> getLastWebDavUser() => _getString(_lastWebDavUserKey);
+
+  @override
+  Future<void> setLastWebDavUser(String? user) =>
+      _setString(_lastWebDavUserKey, user);
 
   @override
   Future<String?> getLastNotePath() async {

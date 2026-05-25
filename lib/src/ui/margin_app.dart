@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../credentials/credential_store.dart';
 import '../desktop/startup_service.dart';
 import '../settings/settings_store.dart';
 import 'app_controller.dart';
@@ -18,12 +19,17 @@ class MarginApp extends StatefulWidget {
   /// by widget tests). The real app injects a shared_preferences store.
   final SettingsStore? settings;
 
+  /// Optional secret store; defaults to in-memory (tests). The real app injects
+  /// the OS keystore.
+  final CredentialStore? credentials;
+
   /// Run-at-login control; defaults to a no-op (used by widget tests).
   final StartupService startupService;
 
   const MarginApp({
     super.key,
     this.settings,
+    this.credentials,
     this.startupService = const NoopStartupService(),
   });
 
@@ -32,8 +38,10 @@ class MarginApp extends StatefulWidget {
 }
 
 class _MarginAppState extends State<MarginApp> {
-  late final AppController _controller =
-      AppController(settings: widget.settings);
+  late final AppController _controller = AppController(
+    settings: widget.settings,
+    credentials: widget.credentials,
+  );
 
   @override
   void initState() {
