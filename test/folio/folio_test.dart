@@ -25,9 +25,9 @@ void main() {
     }
   });
 
-  group('Repository.create', () {
+  group('Folio.create', () {
     test('writes properties.yaml and returns a repository', () async {
-      final repo = await Repository.create(
+      final repo = await Folio.create(
         backend,
         name: 'My Notes',
         now: DateTime.utc(2026, 5, 22),
@@ -40,57 +40,57 @@ void main() {
     });
 
     test('a created repository can be re-opened with matching identity', () async {
-      final created = await Repository.create(backend, name: 'Reopen me');
-      final opened = await Repository.open(backend);
+      final created = await Folio.create(backend, name: 'Reopen me');
+      final opened = await Folio.open(backend);
 
       expect(opened.id, created.id);
       expect(opened.name, 'Reopen me');
       expect(opened.properties.schemaVersion,
-          RepositoryProperties.currentSchemaVersion);
+          FolioProperties.currentSchemaVersion);
     });
 
     test('persists endpoints', () async {
-      await Repository.create(
+      await Folio.create(
         backend,
         name: 'With routes',
         endpoints: const [
           Endpoint(type: 'webdav', properties: {'url': 'https://nas.local/dav'}),
         ],
       );
-      final opened = await Repository.open(backend);
+      final opened = await Folio.open(backend);
       expect(opened.endpoints.single.type, 'webdav');
       expect(opened.endpoints.single.properties['url'], 'https://nas.local/dav');
     });
 
     test('throws if a repository already exists', () async {
-      await Repository.create(backend, name: 'First');
+      await Folio.create(backend, name: 'First');
       expect(
-        () => Repository.create(backend, name: 'Second'),
-        throwsA(isA<RepositoryExistsException>()),
+        () => Folio.create(backend, name: 'Second'),
+        throwsA(isA<FolioExistsException>()),
       );
     });
   });
 
-  group('Repository.open', () {
-    test('throws NotAMarginRepositoryException on an empty folder', () {
+  group('Folio.open', () {
+    test('throws NotAMarginFolioException on an empty folder', () {
       expect(
-        () => Repository.open(backend),
-        throwsA(isA<NotAMarginRepositoryException>()),
+        () => Folio.open(backend),
+        throwsA(isA<NotAMarginFolioException>()),
       );
     });
 
-    test('throws NotAMarginRepositoryException on malformed properties', () async {
+    test('throws NotAMarginFolioException on malformed properties', () async {
       await backend.write('properties.yaml',
           Uint8List.fromList(utf8.encode('this: is: not valid: yaml: at all')));
       expect(
-        () => Repository.open(backend),
-        throwsA(isA<NotAMarginRepositoryException>()),
+        () => Folio.open(backend),
+        throwsA(isA<NotAMarginFolioException>()),
       );
     });
 
     test('throws IncompatibleSchemaException on a newer schema', () async {
-      final future = RepositoryProperties(
-        schemaVersion: RepositoryProperties.currentSchemaVersion + 1,
+      final future = FolioProperties(
+        schemaVersion: FolioProperties.currentSchemaVersion + 1,
         id: 'future-id',
         name: 'From the future',
         created: DateTime.utc(2030),
@@ -101,7 +101,7 @@ void main() {
           Uint8List.fromList(utf8.encode(future.toYaml())));
 
       expect(
-        () => Repository.open(backend),
+        () => Folio.open(backend),
         throwsA(isA<IncompatibleSchemaException>()),
       );
     });

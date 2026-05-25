@@ -2,23 +2,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-/// A node in the repository's navigable tree (DESIGN.md). The UI binds to this.
+/// A node in the Folio's navigable tree (DESIGN.md). The UI binds to this.
 ///
 /// Nodes describe structure only; note bodies and folder metadata are loaded on
 /// demand through the content service. Display names here are derived from path
 /// segments so building the tree does not require reading every file.
-sealed class RepositoryNode {
-  /// Repository-relative path using forward slashes. The root folder is `''`.
+sealed class TreeNode {
+  /// Folio-relative path using forward slashes. The root folder is `''`.
   final String path;
 
   /// The final path segment.
   final String name;
 
-  const RepositoryNode({required this.path, required this.name});
+  const TreeNode({required this.path, required this.name});
 }
 
 /// A directory: zero or more child folders and notes.
-class FolderNode extends RepositoryNode {
+class FolderNode extends TreeNode {
   final List<FolderNode> folders;
   final List<NoteNode> notes;
 
@@ -39,7 +39,7 @@ class FolderNode extends RepositoryNode {
 }
 
 /// A note file (`*.md`).
-class NoteNode extends RepositoryNode {
+class NoteNode extends TreeNode {
   const NoteNode({required super.path, required super.name});
 
   /// The file name without its `.md` extension, for display.

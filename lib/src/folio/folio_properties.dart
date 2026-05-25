@@ -13,7 +13,7 @@ import 'yaml_format.dart';
 /// This file is the marker that tells Margin it is dealing with the same
 /// repository, regardless of which access route reached it. It never contains
 /// credentials.
-class RepositoryProperties {
+class FolioProperties {
   /// Highest schema version this build understands.
   static const int currentSchemaVersion = 1;
 
@@ -33,7 +33,7 @@ class RepositoryProperties {
   final String appVersion;
   final List<Endpoint> endpoints;
 
-  const RepositoryProperties({
+  const FolioProperties({
     required this.schemaVersion,
     required this.id,
     required this.name,
@@ -47,7 +47,7 @@ class RepositoryProperties {
   ///
   /// Throws [FormatException] if the document is malformed or missing required
   /// fields (`schemaVersion`, `id`).
-  factory RepositoryProperties.parse(String yamlText) {
+  factory FolioProperties.parse(String yamlText) {
     final dynamic doc = loadYaml(yamlText);
     if (doc is! YamlMap) {
       throw const FormatException('Root properties must be a YAML map');
@@ -72,7 +72,7 @@ class RepositoryProperties {
       }
     }
 
-    return RepositoryProperties(
+    return FolioProperties(
       schemaVersion: schemaVersion,
       id: id,
       name: doc['name']?.toString() ?? '',
@@ -106,7 +106,7 @@ class RepositoryProperties {
     return buf.toString();
   }
 
-  RepositoryProperties copyWith({
+  FolioProperties copyWith({
     int? schemaVersion,
     String? id,
     String? name,
@@ -115,7 +115,7 @@ class RepositoryProperties {
     String? appVersion,
     List<Endpoint>? endpoints,
   }) {
-    return RepositoryProperties(
+    return FolioProperties(
       schemaVersion: schemaVersion ?? this.schemaVersion,
       id: id ?? this.id,
       name: name ?? this.name,

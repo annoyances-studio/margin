@@ -10,9 +10,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../content/content_service.dart';
-import '../content/repository_node.dart';
-import '../repository/note.dart';
-import '../repository/repository.dart';
+import '../content/tree_node.dart';
+import '../folio/note.dart';
+import '../folio/folio.dart';
 import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
 import '../storage/storage_backend.dart';
@@ -30,7 +30,7 @@ class AppController extends ChangeNotifier {
   AppController({SettingsStore? settings})
       : _settings = settings ?? InMemorySettingsStore();
 
-  Repository? _repository;
+  Folio? _folio;
   ContentService? _content;
   FolderNode? _tree;
 
@@ -55,19 +55,19 @@ class AppController extends ChangeNotifier {
   String? _error;
 
   // --- read-only state ---
-  bool get hasRepository => _repository != null;
-  String get repositoryName => _repository?.name ?? 'Margin';
+  bool get hasFolio => _folio != null;
+  String get folioName => _folio?.name ?? 'Margin';
   FolderNode? get tree => _tree;
   String? get selectedNotePath => _selectedNotePath;
 
   /// Whether the open repository lives on the local filesystem (so its files
   /// can be revealed in the OS file manager).
-  bool get isLocalRepository => _repository?.backend is LocalFolderBackend;
+  bool get isLocalFolio => _folio?.backend is LocalFolderBackend;
 
   /// The absolute on-disk path for a repository-relative [path], or null if the
   /// repository is not on the local filesystem.
   String? localAbsolutePath(String path) {
-    final backend = _repository?.backend;
+    final backend = _folio?.backend;
     return backend is LocalFolderBackend ? backend.absolutePathOf(path) : null;
   }
 
@@ -98,7 +98,7 @@ class AppController extends ChangeNotifier {
   /// App startup: load view settings, then restore the last repository.
   Future<void> start() async {
     await _loadViewSettings();
-    await restoreLastRepository();
+    await restoreLastFolio();
   }
 
   Future<void> _loadViewSettings() async {
@@ -123,31 +123,31 @@ class AppController extends ChangeNotifier {
 
   /// Attempts to reopen the last-used repository, if any. Silently falls back
   /// to the landing screen if it is missing or invalid (and forgets it).
-  Future<void> restoreLastRepository() async {
+  Future<void> restoreLastFolio() async {
     String? path;
     try {
-      path = await _settings.getLastRepositoryPath();
+      path = await _settings.getLastFolioPath();
     } catch (_) {
       return; // settings unavailable (e.g. in tests) -> show landing
     }
     if (path == null) return;
     await openPath(path);
-    if (!hasRepository) {
-      await _settings.setLastRepositoryPath(null);
+    if (!hasFolio) {
+      await _settings.setLastFolioPath(null);
     }
   }
 
   Future<void> openPath(String path) async {
     await open(LocalFolderBackend(path));
-    if (hasRepository) {
-      await _settings.setLastRepositoryPath(path);
+    if (hasFolio) {
+      await _settings.setLastFolioPath(path);
     }
   }
 
   /// Opens (or creates) a repository in this device's app documents directory —
   /// the portable, no-picker option that works on mobile, where arbitrary
   /// folders aren't reachable via `dart:io`.
-  Future<void> openDeviceRepository({String name = 'My Notes'}) async {
+  Future<void> openDeviceFolio({String name = 'My Notes'}) async {
     final docs = await getApplicationDocumentsDirectory();
     final repoPath = p.join(docs.path, 'Margin');
     await Directory(repoPath).create(recursive: true);
@@ -161,15 +161,15 @@ class AppController extends ChangeNotifier {
 
   Future<void> createPath(String path, String name) async {
     await create(LocalFolderBackend(path), name);
-    if (hasRepository) {
-      await _settings.setLastRepositoryPath(path);
+    if (hasFolio) {
+      await _settings.setLastFolioPath(path);
     }
   }
 
   /// Opens an existing repository on [backend]. Exposed for tests.
   Future<void> open(StorageBackend backend) async {
     await _run(() async {
-      final repo = await Repository.open(backend);
+      final repo = await Folio.open(backend);
       _adopt(repo, ContentService(backend));
       await _reloadTree();
       await _restoreLastNote();
@@ -179,14 +179,14 @@ class AppController extends ChangeNotifier {
   /// Creates a new repository on [backend]. Exposed for tests.
   Future<void> create(StorageBackend backend, String name) async {
     await _run(() async {
-      final repo = await Repository.create(backend, name: name);
+      final repo = await Folio.create(backend, name: name);
       _adopt(repo, ContentService(backend));
       await _reloadTree();
     });
   }
 
-  void closeRepository() {
-    _repository = null;
+  void closeFolio() {
+    _folio = null;
     _content = null;
     _tree = null;
     _selectedNotePath = null;
@@ -195,7 +195,7 @@ class AppController extends ChangeNotifier {
     _dirty = false;
     // Explicit close: forget the repository (and note) so the next launch shows
     // the landing screen rather than reopening it.
-    unawaited(_settings.setLastRepositoryPath(null));
+    unawaited(_settings.setLastFolioPath(null));
     unawaited(_settings.setLastNotePath(null));
     notifyListeners();
   }
@@ -380,8 +380,8 @@ class AppController extends ChangeNotifier {
 
   // --- internals ---
 
-  void _adopt(Repository repo, ContentService content) {
-    _repository = repo;
+  void _adopt(Folio repo, ContentService content) {
+    _folio = repo;
     _content = content;
     _selectedNotePath = null;
     _currentNote = null;

@@ -6,12 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 
 void main() {
-  group('RepositoryProperties', () {
+  group('FolioProperties', () {
     final created = DateTime.utc(2026, 5, 22, 10);
     final updated = DateTime.utc(2026, 5, 22, 14, 30);
 
-    RepositoryProperties sample({List<Endpoint> endpoints = const []}) {
-      return RepositoryProperties(
+    FolioProperties sample({List<Endpoint> endpoints = const []}) {
+      return FolioProperties(
         schemaVersion: 1,
         id: '7f3c9a1e-0000-4000-8000-000000000000',
         name: 'My Notes',
@@ -24,7 +24,7 @@ void main() {
 
     test('round-trips through YAML (no endpoints)', () {
       final props = sample();
-      final parsed = RepositoryProperties.parse(props.toYaml());
+      final parsed = FolioProperties.parse(props.toYaml());
 
       expect(parsed.schemaVersion, 1);
       expect(parsed.id, props.id);
@@ -40,7 +40,7 @@ void main() {
         Endpoint(type: 'webdav', properties: {'url': 'https://nas.local/dav'}),
         Endpoint(type: 'smb', properties: {'path': r'\\nas\notes'}),
       ]);
-      final parsed = RepositoryProperties.parse(props.toYaml());
+      final parsed = FolioProperties.parse(props.toYaml());
 
       expect(parsed.endpoints, hasLength(2));
       expect(parsed.endpoints[0],
@@ -53,20 +53,20 @@ void main() {
       final tricky = sample().copyWith(
         name: 'Quotes "x", colon: y, backslash \\ and emoji 🗒️',
       );
-      final parsed = RepositoryProperties.parse(tricky.toYaml());
+      final parsed = FolioProperties.parse(tricky.toYaml());
       expect(parsed.name, tricky.name);
     });
 
     test('parse rejects a missing id', () {
       expect(
-        () => RepositoryProperties.parse('schemaVersion: 1\nname: "x"\n'),
+        () => FolioProperties.parse('schemaVersion: 1\nname: "x"\n'),
         throwsA(isA<FormatException>()),
       );
     });
 
     test('parse rejects a non-integer schemaVersion', () {
       expect(
-        () => RepositoryProperties.parse('schemaVersion: "one"\nid: "abc"\n'),
+        () => FolioProperties.parse('schemaVersion: "one"\nid: "abc"\n'),
         throwsA(isA<FormatException>()),
       );
     });

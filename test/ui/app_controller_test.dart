@@ -34,8 +34,8 @@ void main() {
 
   test('create opens a repository and loads an (empty) tree', () async {
     await controller.create(backend, 'My Notes');
-    expect(controller.hasRepository, isTrue);
-    expect(controller.repositoryName, 'My Notes');
+    expect(controller.hasFolio, isTrue);
+    expect(controller.folioName, 'My Notes');
     expect(controller.tree, isNotNull);
     expect(controller.tree!.isEmpty, isTrue);
   });
@@ -104,7 +104,7 @@ void main() {
   test('memory-backed repository is not local and has no absolute path',
       () async {
     await controller.create(backend, 'My Notes');
-    expect(controller.isLocalRepository, isFalse);
+    expect(controller.isLocalFolio, isFalse);
     expect(controller.localAbsolutePath('Work'), isNull);
   });
 

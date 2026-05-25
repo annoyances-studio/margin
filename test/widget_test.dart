@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/margin_app.dart';
-import 'package:margin/src/ui/repository_screen.dart';
+import 'package:margin/src/ui/folio_screen.dart';
 
 import 'support/test_app.dart';
 
@@ -30,7 +30,7 @@ void main() {
     await controller.createNote('meeting', folderPath: 'Work');
 
     await tester.pumpWidget(
-      localizedApp(RepositoryScreen(controller: controller)),
+      localizedApp(FolioScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 

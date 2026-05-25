@@ -3,7 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 /// Margin: a multiplatform Markdown note-taking app. Plain files in a folder
-/// you control. This library exposes the storage and repository layers; see
+/// you control. This library exposes the storage and Folio layers; see
 /// DESIGN.md for the architecture.
 library;
 
@@ -17,18 +17,18 @@ export 'src/storage/storage_backend.dart';
 export 'src/storage/storage_entry.dart';
 export 'src/storage/storage_exception.dart';
 
-// Repository layer.
-export 'src/repository/endpoint.dart';
-export 'src/repository/folder_properties.dart';
-export 'src/repository/note.dart';
-export 'src/repository/repository.dart';
-export 'src/repository/repository_exception.dart';
-export 'src/repository/repository_properties.dart';
+// Folio layer.
+export 'src/folio/endpoint.dart';
+export 'src/folio/folder_properties.dart';
+export 'src/folio/note.dart';
+export 'src/folio/folio.dart';
+export 'src/folio/folio_exception.dart';
+export 'src/folio/folio_properties.dart';
 
 // Content layer.
 export 'src/content/content_exception.dart';
 export 'src/content/content_service.dart';
-export 'src/content/repository_node.dart';
+export 'src/content/tree_node.dart';
 
 // Sync layer.
 export 'src/sync/content_hash.dart';

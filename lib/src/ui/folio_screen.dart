@@ -6,7 +6,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../content/repository_node.dart';
+import '../content/tree_node.dart';
 import '../desktop/desktop_integration.dart';
 import '../desktop/file_reveal.dart';
 import '../desktop/startup_service.dart';
@@ -19,21 +19,21 @@ import 'widgets/note_editor_pane.dart';
 
 /// The two-panel desktop layout (DESIGN.md): a collapsible folder tree on the
 /// left, the note editor on the right.
-class RepositoryScreen extends StatefulWidget {
+class FolioScreen extends StatefulWidget {
   final AppController controller;
   final StartupService startupService;
 
-  const RepositoryScreen({
+  const FolioScreen({
     super.key,
     required this.controller,
     this.startupService = const NoopStartupService(),
   });
 
   @override
-  State<RepositoryScreen> createState() => _RepositoryScreenState();
+  State<FolioScreen> createState() => _FolioScreenState();
 }
 
-class _RepositoryScreenState extends State<RepositoryScreen> {
+class _FolioScreenState extends State<FolioScreen> {
   /// Breakpoint below which the phone (drawer) layout is used.
   static const double _wideBreakpoint = 720;
 
@@ -273,7 +273,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       case 'settings':
         _openSettings();
       case 'close':
-        controller.closeRepository();
+        controller.closeFolio();
     }
   }
 
@@ -292,7 +292,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
 
   /// Wide title: repository name, plus the note path when the tree is hidden.
   String _wideTitle() {
-    final repo = controller.repositoryName;
+    final repo = controller.folioName;
     final notePath = controller.selectedNotePath;
     if (!_showTree && notePath != null) {
       return '$repo / ${notePath.replaceAll('/', ' / ')}';
@@ -303,7 +303,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   /// Narrow title: the open note's name, or the repository name.
   String _mobileTitle() {
     final notePath = controller.selectedNotePath;
-    if (notePath == null) return controller.repositoryName;
+    if (notePath == null) return controller.folioName;
     final name = notePath.split('/').last;
     return name.endsWith('.md') ? name.substring(0, name.length - 3) : name;
   }
@@ -383,7 +383,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             root: tree,
             selectedNotePath: controller.selectedNotePath,
             canRevealInFileManager:
-                canRevealInFileManager && controller.isLocalRepository,
+                canRevealInFileManager && controller.isLocalFolio,
             onNoteTap: (note) {
               controller.selectNote(note);
               onNoteSelected?.call();
@@ -523,7 +523,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   }
 
   Widget _treeHeader() {
-    final canReveal = canRevealInFileManager && controller.isLocalRepository;
+    final canReveal = canRevealInFileManager && controller.isLocalFolio;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
       child: Row(

@@ -8,8 +8,8 @@ import '../../l10n/app_localizations.dart';
 import '../desktop/startup_service.dart';
 import '../settings/settings_store.dart';
 import 'app_controller.dart';
-import 'open_repository_screen.dart';
-import 'repository_screen.dart';
+import 'folio_screen.dart';
+import 'open_folio_screen.dart';
 
 /// Root widget: themes the app and shows either the open/create screen or the
 /// repository screen depending on whether a repository is open.
@@ -69,12 +69,12 @@ class _MarginAppState extends State<MarginApp> {
       home: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {
-          return _controller.hasRepository
-              ? RepositoryScreen(
+          return _controller.hasFolio
+              ? FolioScreen(
                   controller: _controller,
                   startupService: widget.startupService,
                 )
-              : OpenRepositoryScreen(controller: _controller);
+              : OpenFolioScreen(controller: _controller);
         },
       ),
     );

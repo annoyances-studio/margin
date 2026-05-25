@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../content/repository_node.dart';
+import '../../content/tree_node.dart';
 import '../color_hex.dart';
 
 /// Contextual actions available from the tree's per-item menus.

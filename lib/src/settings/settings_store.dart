@@ -9,8 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Abstracted so the UI controller can be unit-tested with an in-memory store
 /// instead of the platform plugin.
 abstract interface class SettingsStore {
-  Future<String?> getLastRepositoryPath();
-  Future<void> setLastRepositoryPath(String? path);
+  Future<String?> getLastFolioPath();
+  Future<void> setLastFolioPath(String? path);
 
   /// Repository-relative path of the last opened note (or null).
   Future<String?> getLastNotePath();
@@ -35,10 +35,10 @@ class InMemorySettingsStore implements SettingsStore {
   String? _lastNotePath;
 
   @override
-  Future<String?> getLastRepositoryPath() async => _lastRepositoryPath;
+  Future<String?> getLastFolioPath() async => _lastRepositoryPath;
 
   @override
-  Future<void> setLastRepositoryPath(String? path) async {
+  Future<void> setLastFolioPath(String? path) async {
     _lastRepositoryPath = path;
   }
 
@@ -83,13 +83,13 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _alwaysOnTopKey = 'alwaysOnTop';
 
   @override
-  Future<String?> getLastRepositoryPath() async {
+  Future<String?> getLastFolioPath() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_lastRepoKey);
   }
 
   @override
-  Future<void> setLastRepositoryPath(String? path) async {
+  Future<void> setLastFolioPath(String? path) async {
     final prefs = await SharedPreferences.getInstance();
     if (path == null) {
       await prefs.remove(_lastRepoKey);

@@ -26,20 +26,20 @@ void main() {
     addTearDown(controller.dispose);
 
     await controller.createPath(tempDir.path, 'My Notes');
-    expect(await settings.getLastRepositoryPath(), tempDir.path);
+    expect(await settings.getLastFolioPath(), tempDir.path);
   });
 
-  test('restoreLastRepository reopens the remembered repository', () async {
+  test('restoreLastFolio reopens the remembered repository', () async {
     final first = AppController(settings: settings);
     await first.createPath(tempDir.path, 'My Notes');
     first.dispose();
 
     final restored = AppController(settings: settings);
     addTearDown(restored.dispose);
-    await restored.restoreLastRepository();
+    await restored.restoreLastFolio();
 
-    expect(restored.hasRepository, isTrue);
-    expect(restored.repositoryName, 'My Notes');
+    expect(restored.hasFolio, isTrue);
+    expect(restored.folioName, 'My Notes');
   });
 
   test('closing a repository forgets it', () async {
@@ -47,22 +47,22 @@ void main() {
     addTearDown(controller.dispose);
 
     await controller.createPath(tempDir.path, 'My Notes');
-    controller.closeRepository();
-    // closeRepository persists asynchronously; allow the microtask to run.
+    controller.closeFolio();
+    // closeFolio persists asynchronously; allow the microtask to run.
     await Future<void>.delayed(Duration.zero);
 
-    expect(await settings.getLastRepositoryPath(), isNull);
+    expect(await settings.getLastFolioPath(), isNull);
   });
 
   test('restore forgets a path that is no longer a valid repository', () async {
-    await settings.setLastRepositoryPath(tempDir.path); // empty dir, no repo
+    await settings.setLastFolioPath(tempDir.path); // empty dir, no repo
     final controller = AppController(settings: settings);
     addTearDown(controller.dispose);
 
-    await controller.restoreLastRepository();
+    await controller.restoreLastFolio();
 
-    expect(controller.hasRepository, isFalse);
-    expect(await settings.getLastRepositoryPath(), isNull);
+    expect(controller.hasFolio, isFalse);
+    expect(await settings.getLastFolioPath(), isNull);
   });
 
   test('reopens the last note when it still exists', () async {
@@ -75,7 +75,7 @@ void main() {
 
     final restored = AppController(settings: settings);
     addTearDown(restored.dispose);
-    await restored.restoreLastRepository();
+    await restored.restoreLastFolio();
 
     expect(restored.selectedNotePath, 'Work/meeting.md');
   });
@@ -105,9 +105,9 @@ void main() {
 
     final restored = AppController(settings: settings);
     addTearDown(restored.dispose);
-    await restored.restoreLastRepository();
+    await restored.restoreLastFolio();
 
-    expect(restored.hasRepository, isTrue);
+    expect(restored.hasFolio, isTrue);
     expect(restored.selectedNotePath, isNull);
   });
 }

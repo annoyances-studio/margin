@@ -13,10 +13,10 @@ import 'app_controller.dart';
 
 /// The landing screen: open this device's notes folder, or (on desktop) open or
 /// create a notes folder anywhere.
-class OpenRepositoryScreen extends StatelessWidget {
+class OpenFolioScreen extends StatelessWidget {
   final AppController controller;
 
-  const OpenRepositoryScreen({super.key, required this.controller});
+  const OpenFolioScreen({super.key, required this.controller});
 
   /// Folder picking via a real filesystem path only makes sense on desktop;
   /// mobile uses scoped storage (content URIs), so we offer the device folder.
@@ -48,7 +48,7 @@ class OpenRepositoryScreen extends StatelessWidget {
               FilledButton.icon(
                 icon: const Icon(Icons.sticky_note_2_outlined),
                 label: Text(l10n.openDeviceNotes),
-                onPressed: () => controller.openDeviceRepository(),
+                onPressed: () => controller.openDeviceFolio(),
               ),
               if (_supportsFolderPicker) ...[
                 const SizedBox(height: 12),

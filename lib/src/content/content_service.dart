@@ -5,21 +5,21 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../repository/folder_properties.dart';
-import '../repository/note.dart';
-import '../repository/note_properties.dart';
+import '../folio/folder_properties.dart';
+import '../folio/note.dart';
+import '../folio/note_properties.dart';
 import '../storage/content_codec.dart';
 import '../storage/storage_backend.dart';
 import 'content_exception.dart';
-import 'repository_node.dart';
+import 'tree_node.dart';
 
-/// Reads and edits the contents of a repository: the folder tree, notes, and
+/// Reads and edits the contents of a Folio: the folder tree, notes, and
 /// folder metadata. This is the layer the UI binds to (DESIGN.md).
 ///
 /// Note bodies and folder properties are routed through the [ContentCodec]
 /// seam, so encryption can later apply to them transparently. The root
 /// `properties.yaml` is intentionally NOT handled here — it must stay plaintext
-/// (it holds the encryption recipe) and is managed by [Repository].
+/// (it holds the encryption recipe) and is managed by [Folio].
 class ContentService {
   final StorageBackend backend;
   final ContentCodec codec;
@@ -60,7 +60,7 @@ class ContentService {
       }
     }
 
-    int byName(RepositoryNode a, RepositoryNode b) =>
+    int byName(TreeNode a, TreeNode b) =>
         a.name.toLowerCase().compareTo(b.name.toLowerCase());
     folders.sort(byName);
     notes.sort(byName);

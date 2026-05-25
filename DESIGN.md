@@ -323,9 +323,12 @@ future option if a compatible engine becomes available.
 
 ### Terminology
 
-User-facing term for a whole collection of notes is **Folio** (the folder the
-user owns). Internal code still uses `repository`/`Repository`; a rename is a
-later mechanical pass.
+A whole collection of notes is a **Folio** (the folder the user owns) — both in
+the UI and in the code: the `Folio` type, `FolioProperties`, `lib/src/folio/`,
+and the `AppController` API (`hasFolio`, `folioName`, `closeFolio`, …). Some
+low-level storage/sync comments still say "repository-relative path"; the
+persisted settings key and `properties.yaml` field names are kept as-is for
+backward compatibility.
 
 ### Internationalization
 
