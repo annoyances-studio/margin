@@ -16,6 +16,7 @@ export 'src/storage/memory_backend.dart';
 export 'src/storage/storage_backend.dart';
 export 'src/storage/storage_entry.dart';
 export 'src/storage/storage_exception.dart';
+export 'src/storage/webdav_backend.dart';
 
 // Folio layer.
 export 'src/folio/endpoint.dart';

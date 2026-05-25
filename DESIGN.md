@@ -396,6 +396,11 @@ encryption:
 - Mobile layout (slide-over tree) and the Android/iOS builds.
 - Decide v1 backend set (likely local folder + WebDAV); WebDAV not yet built.
 - Attachments (`_attachments/` per folder) and the later "clean up unused" scan.
+- Mobile cloud providers (OneDrive, Google Drive, …): desktop gets these for
+  free via OS-synced local folders, but mobile sandboxing means no synced
+  folder to point at, so they would need direct provider APIs with **OAuth**.
+  A later, per-provider effort — still built-in (no plugins), behind the same
+  `StorageBackend` interface.
 
 ## Backlog
 
