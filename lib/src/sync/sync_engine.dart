@@ -10,6 +10,28 @@ import 'sync_action.dart';
 import 'sync_planner.dart';
 import 'sync_state.dart';
 
+/// Progress of a sync run, reported once per applied action so the UI can
+/// show caching/sync status (a determinate bar, or at least "syncing N of M").
+class SyncProgress {
+  /// Actions applied so far (1-based as each completes).
+  final int completed;
+
+  /// Total actions planned for this run.
+  final int total;
+
+  /// The action just applied.
+  final SyncAction action;
+
+  const SyncProgress({
+    required this.completed,
+    required this.total,
+    required this.action,
+  });
+
+  /// Fraction complete in `[0, 1]` (1 when there is nothing to do).
+  double get fraction => total == 0 ? 1 : completed / total;
+}
+
 /// The outcome of a sync run.
 class SyncResult {
   final SyncPlan plan;
@@ -49,7 +71,14 @@ class SyncEngine {
 
   /// Runs one synchronization against the last-synced [base] state and returns
   /// the actions taken plus the new state to persist.
-  Future<SyncResult> sync(SyncState base) async {
+  ///
+  /// [onProgress] is invoked after each action is applied — useful for showing
+  /// caching/sync status (the initial download of a remote Folio is just a sync
+  /// from an empty [base], so this reports download progress too).
+  Future<SyncResult> sync(
+    SyncState base, {
+    void Function(SyncProgress)? onProgress,
+  }) async {
     final localSnapshot = await _snapshot(local);
     final remoteSnapshot = await _snapshot(remote);
 
@@ -60,8 +89,14 @@ class SyncEngine {
       conflictLabel: _conflictLabel(),
     );
 
-    for (final action in plan.actions) {
-      await _apply(action);
+    final total = plan.actions.length;
+    for (var i = 0; i < total; i++) {
+      await _apply(plan.actions[i]);
+      onProgress?.call(SyncProgress(
+        completed: i + 1,
+        total: total,
+        action: plan.actions[i],
+      ));
     }
 
     return SyncResult(plan, SyncState(plan.resultingState));

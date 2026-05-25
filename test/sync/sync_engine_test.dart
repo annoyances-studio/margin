@@ -110,4 +110,25 @@ void main() {
       expect(after.madeChanges, isFalse);
     });
   });
+
+  test('reports progress per applied action (e.g. initial download)', () async {
+    await remote.write('a.md', bytes('1'));
+    await remote.write('b.md', bytes('2'));
+    await remote.write('Work/c.md', bytes('3'));
+
+    final updates = <SyncProgress>[];
+    // Empty base + populated remote = the initial clone/download.
+    await engine.sync(const SyncState.empty(), onProgress: updates.add);
+
+    expect(updates.length, 3);
+    expect(updates.map((p) => p.completed), [1, 2, 3]);
+    expect(updates.every((p) => p.total == 3), isTrue);
+    expect(updates.last.fraction, 1.0);
+  });
+
+  test('no progress callbacks when there is nothing to sync', () async {
+    final updates = <SyncProgress>[];
+    await engine.sync(const SyncState.empty(), onProgress: updates.add);
+    expect(updates, isEmpty);
+  });
 }
