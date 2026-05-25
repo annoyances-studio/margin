@@ -391,6 +391,41 @@ encryption:
 
 ---
 
+## Local cache and offline (next epic: clone-then-sync)
+
+Non-local Folios (WebDAV, future backends) are **not** operated on live. The
+app keeps a local cache and syncs in the background, so notes and attachments
+have real on-disk paths (images render, edits work offline on flaky mobile
+data), and the existing `SyncEngine`/`SyncPlanner` finally drives sync.
+
+Local layout under the app documents dir:
+
+- `Margin/DeviceNotes/` — the on-device Folio (was `Margin/`; no migration —
+  pre-epic local data is disposable).
+- `Margin/<UUID>/` — the cache for a remote Folio, keyed by its
+  `properties.yaml` id (e.g. `Margin/418f6fbc-…/`).
+
+Open flow (clone-then-sync): on first open, download the remote Folio into its
+cache; thereafter the app runs against a `LocalFolderBackend` over the cache,
+with the remote (`WebDavBackend`) as the sync peer. A sync indicator shows
+state; conflicts surface as conflict copies (already modelled).
+
+This is why per-note sidecars and `properties.yaml` matter: they are the
+metadata the sync reasons about.
+
+Decisions to settle when starting the epic:
+
+- Sidecar hygiene: a note's `<note>.md.yaml` must track the note — move on
+  rename, delete with the note, never orphan (real bug seen in testing: a
+  `test2.md` note with a stale `Test 2.md.yaml` sidecar).
+- Should the per-note `view` sync at all? It is arguably device-local; consider
+  moving it from the synced sidecar into `SettingsStore` keyed by Folio UUID +
+  note path, leaving sidecars for genuinely shared metadata.
+
+Slice breakdown (rough): cache layout + `DeviceNotes` move → download-on-open
+into the UUID cache → run on the cache backend → wire `SyncEngine` (cache ⇄
+remote) + sync indicator → conflict UI → sidecar hygiene.
+
 ## Open items
 
 - Mobile layout (slide-over tree) and the Android/iOS builds.
