@@ -63,6 +63,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get more => 'More';
 
   @override
+  String get alwaysOnTop => 'Always on top';
+
+  @override
   String get hideFolders => 'Hide folders';
 
   @override

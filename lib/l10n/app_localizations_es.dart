@@ -64,6 +64,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get more => 'Más';
 
   @override
+  String get alwaysOnTop => 'Siempre visible';
+
+  @override
   String get hideFolders => 'Ocultar carpetas';
 
   @override

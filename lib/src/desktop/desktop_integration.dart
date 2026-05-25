@@ -32,6 +32,17 @@ Future<void> initDesktopWindow() async {
   await windowManager.setPreventClose(true);
 }
 
+/// Sets whether the window floats above other windows. No-op off desktop;
+/// failures are swallowed so a missing window manager can't crash the UI.
+Future<void> setWindowAlwaysOnTop(bool value) async {
+  if (!isDesktop) return;
+  try {
+    await windowManager.setAlwaysOnTop(value);
+  } catch (e) {
+    debugPrint('setAlwaysOnTop failed: $e');
+  }
+}
+
 /// Installs the system tray icon and menu, and routes the window-close event to
 /// "hide to tray". Quit is available from the tray menu. No-op off desktop.
 class DesktopTray with TrayListener, WindowListener {

@@ -206,6 +206,12 @@ abstract class AppLocalizations {
   /// **'More'**
   String get more;
 
+  /// No description provided for @alwaysOnTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Always on top'**
+  String get alwaysOnTop;
+
   /// No description provided for @hideFolders.
   ///
   /// In en, this message translates to:

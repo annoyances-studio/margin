@@ -70,4 +70,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
   });
+
+  testWidgets('overflow menu offers always-on-top, settings, and close',
+      (tester) async {
+    final controller = await openWithNote(tester);
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+
+    // On the desktop test host, the always-on-top toggle is offered.
+    expect(find.text('Always on top'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Close Folio'), findsOneWidget);
+  });
 }

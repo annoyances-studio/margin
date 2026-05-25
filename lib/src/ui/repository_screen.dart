@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../content/repository_node.dart';
+import '../desktop/desktop_integration.dart';
 import '../desktop/file_reveal.dart';
 import '../desktop/startup_service.dart';
 import 'app_controller.dart';
@@ -37,6 +38,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   static const double _wideBreakpoint = 720;
 
   bool _showTree = true;
+
+  /// Desktop-only: whether the window floats above others (session preference).
+  bool _alwaysOnTop = false;
 
   // Phone layout: three swipeable pages (0 folders, 1 editor, 2 preview).
   final PageController _pageController = PageController(initialPage: 1);
@@ -108,8 +112,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
               onPressed: _attachFile,
             ),
           _saveAction(),
-          _settingsAction(),
-          _closeAction(),
+          _overflowMenu(),
         ],
         bottom: _busyBar(),
       ),
@@ -215,18 +218,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
                 onPressed: _attachFile,
               ),
             if (hasNote) _saveAction(),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              tooltip: _l10n.more,
-              onSelected: (value) {
-                if (value == 'settings') _openSettings();
-                if (value == 'close') controller.closeRepository();
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
-                PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
-              ],
-            ),
+            _overflowMenu(),
           ],
         ),
       ),
@@ -252,21 +244,40 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         onPressed: controller.isDirty ? () => controller.save() : null,
       );
 
-  Widget _settingsAction() => IconButton(
-        tooltip: _l10n.settings,
-        icon: const Icon(Icons.settings_outlined),
-        onPressed: () => SettingsDialog.show(
-          context,
-          startupService: widget.startupService,
-          controller: controller,
-        ),
+  /// The 3-dot overflow menu, shared by the desktop app bar and the phone
+  /// bottom bar: Settings, Close, and (desktop only) an Always-on-top toggle.
+  Widget _overflowMenu() => PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        tooltip: _l10n.more,
+        onSelected: _handleOverflow,
+        itemBuilder: (_) => [
+          if (isDesktop)
+            CheckedPopupMenuItem(
+              value: 'alwaysOnTop',
+              checked: _alwaysOnTop,
+              child: Text(_l10n.alwaysOnTop),
+            ),
+          PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
+          PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
+        ],
       );
 
-  Widget _closeAction() => IconButton(
-        tooltip: _l10n.closeFolio,
-        icon: const Icon(Icons.close),
-        onPressed: controller.closeRepository,
-      );
+  void _handleOverflow(String value) {
+    switch (value) {
+      case 'alwaysOnTop':
+        _toggleAlwaysOnTop();
+      case 'settings':
+        _openSettings();
+      case 'close':
+        controller.closeRepository();
+    }
+  }
+
+  Future<void> _toggleAlwaysOnTop() async {
+    final value = !_alwaysOnTop;
+    setState(() => _alwaysOnTop = value);
+    await setWindowAlwaysOnTop(value);
+  }
 
   PreferredSizeWidget? _busyBar() => controller.isBusy
       ? const PreferredSize(
