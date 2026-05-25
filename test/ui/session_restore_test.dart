@@ -80,6 +80,19 @@ void main() {
     expect(restored.selectedNotePath, 'Work/meeting.md');
   });
 
+  test('always-on-top preference persists and reloads on start', () async {
+    final first = AppController(settings: settings);
+    await first.setAlwaysOnTop(true);
+    expect(await settings.getAlwaysOnTop(), isTrue);
+    first.dispose();
+
+    final restored = AppController(settings: settings);
+    addTearDown(restored.dispose);
+    await restored.start();
+
+    expect(restored.alwaysOnTop, isTrue);
+  });
+
   test('shows no note when the last note is missing', () async {
     final first = AppController(settings: settings);
     await first.createPath(tempDir.path, 'My Notes');

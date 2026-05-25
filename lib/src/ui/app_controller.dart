@@ -48,6 +48,9 @@ class AppController extends ChangeNotifier {
   EditorViewMode _defaultNoteView = EditorViewMode.edit;
   EditorViewMode _viewMode = EditorViewMode.edit;
 
+  /// Whether the desktop window floats above others (device-local).
+  bool _alwaysOnTop = false;
+
   bool _busy = false;
   String? _error;
 
@@ -86,6 +89,7 @@ class AppController extends ChangeNotifier {
   DefaultViewPolicy get viewPolicy => _viewPolicy;
   EditorViewMode get defaultNoteView => _defaultNoteView;
   EditorViewMode get viewMode => _viewMode;
+  bool get alwaysOnTop => _alwaysOnTop;
   bool get isBusy => _busy;
   String? get error => _error;
 
@@ -103,9 +107,18 @@ class AppController extends ChangeNotifier {
       _defaultNoteView =
           editorViewModeFromId(await _settings.getDefaultNoteView()) ??
               EditorViewMode.edit;
+      _alwaysOnTop = await _settings.getAlwaysOnTop();
     } catch (_) {
       // Settings unavailable (e.g. tests): keep defaults.
     }
+  }
+
+  /// Persists and updates the always-on-top preference. Applying it to the OS
+  /// window is the UI layer's job (desktop-only).
+  Future<void> setAlwaysOnTop(bool value) async {
+    _alwaysOnTop = value;
+    await _settings.setAlwaysOnTop(value);
+    notifyListeners();
   }
 
   /// Attempts to reopen the last-used repository, if any. Silently falls back

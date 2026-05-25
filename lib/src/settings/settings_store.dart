@@ -23,6 +23,10 @@ abstract interface class SettingsStore {
   /// The default view id for notes without their own setting.
   Future<String?> getDefaultNoteView();
   Future<void> setDefaultNoteView(String id);
+
+  /// Whether the desktop window should float above others.
+  Future<bool> getAlwaysOnTop();
+  Future<void> setAlwaysOnTop(bool value);
 }
 
 /// A non-persistent [SettingsStore] for tests and as a safe default.
@@ -60,6 +64,14 @@ class InMemorySettingsStore implements SettingsStore {
 
   @override
   Future<void> setDefaultNoteView(String id) async => _defaultNoteView = id;
+
+  bool _alwaysOnTop = false;
+
+  @override
+  Future<bool> getAlwaysOnTop() async => _alwaysOnTop;
+
+  @override
+  Future<void> setAlwaysOnTop(bool value) async => _alwaysOnTop = value;
 }
 
 /// A [SettingsStore] backed by `shared_preferences`.
@@ -68,6 +80,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _lastNoteKey = 'lastNotePath';
   static const String _viewPolicyKey = 'viewPolicy';
   static const String _defaultNoteViewKey = 'defaultNoteView';
+  static const String _alwaysOnTopKey = 'alwaysOnTop';
 
   @override
   Future<String?> getLastRepositoryPath() async {
@@ -123,5 +136,17 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   Future<void> setDefaultNoteView(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_defaultNoteViewKey, id);
+  }
+
+  @override
+  Future<bool> getAlwaysOnTop() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_alwaysOnTopKey) ?? false;
+  }
+
+  @override
+  Future<void> setAlwaysOnTop(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_alwaysOnTopKey, value);
   }
 }

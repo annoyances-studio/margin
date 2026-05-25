@@ -39,9 +39,6 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
 
   bool _showTree = true;
 
-  /// Desktop-only: whether the window floats above others (session preference).
-  bool _alwaysOnTop = false;
-
   // Phone layout: three swipeable pages (0 folders, 1 editor, 2 preview).
   final PageController _pageController = PageController(initialPage: 1);
   int _currentPage = 1;
@@ -50,6 +47,13 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
 
   /// Localized strings for the current context.
   AppLocalizations get _l10n => AppLocalizations.of(context);
+
+  @override
+  void initState() {
+    super.initState();
+    // Reapply the persisted always-on-top preference to the window on launch.
+    if (controller.alwaysOnTop) setWindowAlwaysOnTop(true);
+  }
 
   @override
   void dispose() {
@@ -254,7 +258,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           if (isDesktop)
             CheckedPopupMenuItem(
               value: 'alwaysOnTop',
-              checked: _alwaysOnTop,
+              checked: controller.alwaysOnTop,
               child: Text(_l10n.alwaysOnTop),
             ),
           PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
@@ -274,8 +278,8 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   }
 
   Future<void> _toggleAlwaysOnTop() async {
-    final value = !_alwaysOnTop;
-    setState(() => _alwaysOnTop = value);
+    final value = !controller.alwaysOnTop;
+    await controller.setAlwaysOnTop(value); // persists + notifies (updates check)
     await setWindowAlwaysOnTop(value);
   }
 
