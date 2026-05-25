@@ -5,6 +5,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../content/repository_node.dart';
 import '../desktop/file_reveal.dart';
 import '../desktop/startup_service.dart';
@@ -42,6 +43,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   int _currentPage = 1;
 
   AppController get controller => widget.controller;
+
+  /// Localized strings for the current context.
+  AppLocalizations get _l10n => AppLocalizations.of(context);
 
   @override
   void dispose() {
@@ -87,7 +91,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: _showTree ? 'Hide folders' : 'Show folders',
+          tooltip: _showTree ? _l10n.hideFolders : _l10n.showFolders,
           icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
           onPressed: () => setState(() => _showTree = !_showTree),
         ),
@@ -99,7 +103,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           ),
           if (controller.selectedNotePath != null)
             IconButton(
-              tooltip: 'Attach file',
+              tooltip: _l10n.attachFile,
               icon: const Icon(Icons.attach_file),
               onPressed: _attachFile,
             ),
@@ -176,7 +180,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           imageBaseDir: _imageBaseDir(),
         ),
         notePath == null
-            ? const Center(child: Text('Select a note to preview.'))
+            ? Center(child: Text(_l10n.selectNoteToPreview))
             : MarkdownPreview(
                 data: controller.workingBody,
                 imageBaseDir: _imageBaseDir(),
@@ -194,33 +198,33 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
           children: [
-            _pageNavButton(0, Icons.folder_outlined, 'Folders'),
-            _pageNavButton(1, Icons.edit_note, 'Editor'),
-            _pageNavButton(2, Icons.visibility_outlined, 'Preview'),
+            _pageNavButton(0, Icons.folder_outlined, _l10n.folders),
+            _pageNavButton(1, Icons.edit_note, _l10n.editor),
+            _pageNavButton(2, Icons.visibility_outlined, _l10n.preview),
             const Spacer(),
             IconButton.filled(
-              tooltip: 'New note',
+              tooltip: _l10n.newNote,
               icon: const Icon(Icons.add),
               onPressed: _promptNewNote,
             ),
             const Spacer(),
             if (hasNote)
               IconButton(
-                tooltip: 'Attach file',
+                tooltip: _l10n.attachFile,
                 icon: const Icon(Icons.attach_file),
                 onPressed: _attachFile,
               ),
             if (hasNote) _saveAction(),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
-              tooltip: 'More',
+              tooltip: _l10n.more,
               onSelected: (value) {
                 if (value == 'settings') _openSettings();
                 if (value == 'close') controller.closeRepository();
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'settings', child: Text('Settings')),
-                PopupMenuItem(value: 'close', child: Text('Close repository')),
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
+                PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
               ],
             ),
           ],
@@ -243,13 +247,13 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   // --- shared app-bar actions ---
 
   Widget _saveAction() => IconButton(
-        tooltip: 'Save',
+        tooltip: _l10n.save,
         icon: const Icon(Icons.save_outlined),
         onPressed: controller.isDirty ? () => controller.save() : null,
       );
 
   Widget _settingsAction() => IconButton(
-        tooltip: 'Settings',
+        tooltip: _l10n.settings,
         icon: const Icon(Icons.settings_outlined),
         onPressed: () => SettingsDialog.show(
           context,
@@ -259,7 +263,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       );
 
   Widget _closeAction() => IconButton(
-        tooltip: 'Close repository',
+        tooltip: _l10n.closeFolio,
         icon: const Icon(Icons.close),
         onPressed: controller.closeRepository,
       );
@@ -293,21 +297,21 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     return SegmentedButton<EditorViewMode>(
       showSelectedIcon: false,
       style: const ButtonStyle(visualDensity: VisualDensity.compact),
-      segments: const [
+      segments: [
         ButtonSegment(
           value: EditorViewMode.edit,
-          icon: Icon(Icons.edit_note),
-          tooltip: 'Editor',
+          icon: const Icon(Icons.edit_note),
+          tooltip: _l10n.editor,
         ),
         ButtonSegment(
           value: EditorViewMode.split,
-          icon: Icon(Icons.vertical_split_outlined),
-          tooltip: 'Split (editor + preview)',
+          icon: const Icon(Icons.vertical_split_outlined),
+          tooltip: _l10n.splitEditorPreview,
         ),
         ButtonSegment(
           value: EditorViewMode.preview,
-          icon: Icon(Icons.visibility_outlined),
-          tooltip: 'Preview',
+          icon: const Icon(Icons.visibility_outlined),
+          tooltip: _l10n.preview,
         ),
       ],
       selected: {controller.viewMode},
@@ -404,7 +408,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     walk(tree, 0);
     if (folders.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Create a folder first (Folders page).')),
+        SnackBar(content: Text(_l10n.createFolderFirst)),
       );
       _goToPage(0);
       return;
@@ -435,21 +439,22 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     return showDialog<({String name, String folder})>(
       context: context,
       builder: (context) {
+        final l10n = AppLocalizations.of(context);
         return StatefulBuilder(
           builder: (context, setLocal) => AlertDialog(
-            title: const Text('New note'),
+            title: Text(l10n.newNote),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: field,
                   autofocus: true,
-                  decoration: const InputDecoration(labelText: 'Note name'),
+                  decoration: InputDecoration(labelText: l10n.noteName),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text('Folder:'),
+                    Text(l10n.folderColon),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButton<String>(
@@ -472,12 +477,12 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context)
                     .pop((name: field.text.trim(), folder: folder)),
-                child: const Text('Create'),
+                child: Text(l10n.create),
               ),
             ],
           ),
@@ -509,13 +514,13 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
       child: Row(
         children: [
           Text(
-            'Folders',
+            _l10n.folders,
             style: Theme.of(context).textTheme.labelLarge,
           ),
           const Spacer(),
           if (canReveal)
             IconButton(
-              tooltip: 'Open repository in file manager',
+              tooltip: _l10n.openFolioInFileManager,
               icon: const Icon(Icons.folder_open_outlined),
               visualDensity: VisualDensity.compact,
               onPressed: () {
@@ -524,7 +529,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
               },
             ),
           IconButton(
-            tooltip: 'New top-level folder',
+            tooltip: _l10n.newTopLevelFolder,
             icon: const Icon(Icons.create_new_folder_outlined),
             visualDensity: VisualDensity.compact,
             onPressed: _promptNewRootFolder,
@@ -544,9 +549,10 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   }
 
   Future<void> _promptNewRootFolder() async {
+    final l10n = _l10n;
     final name = await _promptName(
-      title: 'New top-level folder',
-      label: 'Folder name',
+      title: l10n.newTopLevelFolder,
+      label: l10n.folderName,
     );
     if (name != null && name.isNotEmpty) {
       await controller.createFolder(name);
@@ -554,25 +560,26 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   }
 
   Future<void> _handleFolderAction(FolderNode folder, TreeAction action) async {
+    final l10n = _l10n;
     switch (action) {
       case TreeAction.newNote:
-        final name = await _promptName(title: 'New note', label: 'Note name');
+        final name = await _promptName(title: l10n.newNote, label: l10n.noteName);
         if (name != null && name.isNotEmpty) {
           await controller.createNote(name, folderPath: folder.path);
           _goToPage(1); // on phones, swipe to the editor (no-op on desktop)
         }
       case TreeAction.newSubfolder:
         final name =
-            await _promptName(title: 'New subfolder', label: 'Folder name');
+            await _promptName(title: l10n.newSubfolder, label: l10n.folderName);
         if (name != null && name.isNotEmpty) {
           await controller.createFolder(name, parentPath: folder.path);
         }
       case TreeAction.renameFolder:
         final name = await _promptName(
-          title: 'Rename folder',
-          label: 'Folder name',
+          title: l10n.renameFolder,
+          label: l10n.folderName,
           initialValue: folder.name,
-          confirmLabel: 'Rename',
+          confirmLabel: l10n.rename,
         );
         if (name != null && name.isNotEmpty && name != folder.name) {
           await controller.renameFolder(folder.path, name);
@@ -590,8 +597,8 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
         if (abs != null) await revealInFileManager(abs);
       case TreeAction.deleteFolder:
         final confirmed = await _confirmDelete(
-          'Delete folder "${folder.name}"?',
-          'This deletes the folder and all notes inside it.',
+          l10n.deleteFolderTitle(folder.name),
+          l10n.deleteFolderBody,
         );
         if (confirmed) await controller.deleteFolder(folder.path);
       case TreeAction.deleteNote:
@@ -601,9 +608,10 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
 
   Future<void> _handleNoteAction(NoteNode note, TreeAction action) async {
     if (action == TreeAction.deleteNote) {
+      final l10n = _l10n;
       final confirmed = await _confirmDelete(
-        'Delete note "${note.title}"?',
-        'This permanently removes the note file.',
+        l10n.deleteNoteTitle(note.title),
+        l10n.deleteNoteBody,
       );
       if (confirmed) await controller.deleteNote(note.path);
     }
@@ -614,8 +622,9 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     return showDialog<String>(
       context: context,
       builder: (context) {
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
-          title: const Text('Folder color'),
+          title: Text(l10n.folderColor),
           content: Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -632,11 +641,11 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(''),
-              child: const Text('No color'),
+              child: Text(l10n.noColor),
             ),
           ],
         );
@@ -647,20 +656,23 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
   Future<bool> _confirmDelete(String title, String message) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.delete),
+            ),
+          ],
+        );
+      },
     );
     return result ?? false;
   }
@@ -669,7 +681,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     required String title,
     required String label,
     String initialValue = '',
-    String confirmLabel = 'Create',
+    String? confirmLabel,
   }) async {
     final field = TextEditingController(text: initialValue);
     field.selection =
@@ -677,6 +689,7 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
     return showDialog<String>(
       context: context,
       builder: (context) {
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
           title: Text(title),
           content: TextField(
@@ -688,12 +701,12 @@ class _RepositoryScreenState extends State<RepositoryScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () =>
                   Navigator.of(context).pop(field.text.trim()),
-              child: Text(confirmLabel),
+              child: Text(confirmLabel ?? l10n.create),
             ),
           ],
         );

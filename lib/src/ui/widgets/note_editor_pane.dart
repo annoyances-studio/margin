@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../editor_view_mode.dart';
 import 'markdown_preview.dart';
 import 'note_editor.dart';
@@ -39,7 +40,7 @@ class NoteEditorPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (notePath == null) {
-      return const Center(child: Text('Select a note to edit.'));
+      return Center(child: Text(AppLocalizations.of(context).selectNoteToEdit));
     }
 
     final editor = NoteEditor(

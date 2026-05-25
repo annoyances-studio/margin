@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../desktop/startup_service.dart';
 import 'app_controller.dart';
 import 'editor_view_mode.dart';
@@ -69,8 +70,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Settings'),
+      title: Text(l10n.settings),
       content: SizedBox(
         width: 380,
         child: Column(
@@ -78,13 +80,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _dropdownRow<DefaultViewPolicy>(
-              label: 'Default view',
+              label: l10n.defaultView,
               value: controller.viewPolicy,
-              items: const {
-                DefaultViewPolicy.noteSpecified: 'Note specified',
-                DefaultViewPolicy.editor: 'Editor',
-                DefaultViewPolicy.split: 'Split',
-                DefaultViewPolicy.preview: 'Preview',
+              items: {
+                DefaultViewPolicy.noteSpecified: l10n.viewNoteSpecified,
+                DefaultViewPolicy.editor: l10n.editor,
+                DefaultViewPolicy.split: l10n.split,
+                DefaultViewPolicy.preview: l10n.preview,
               },
               onChanged: (v) async {
                 await controller.setViewPolicy(v);
@@ -93,12 +95,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
             const SizedBox(height: 12),
             _dropdownRow<EditorViewMode>(
-              label: 'Default view for notes',
+              label: l10n.defaultViewForNotes,
               value: controller.defaultNoteView,
-              items: const {
-                EditorViewMode.edit: 'Editor',
-                EditorViewMode.split: 'Split',
-                EditorViewMode.preview: 'Preview',
+              items: {
+                EditorViewMode.edit: l10n.editor,
+                EditorViewMode.split: l10n.split,
+                EditorViewMode.preview: l10n.preview,
               },
               onChanged: (v) async {
                 await controller.setDefaultNoteView(v);
@@ -109,7 +111,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             if (widget.startupService.isSupported)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Start Margin when I log in'),
+                title: Text(l10n.startAtLogin),
                 value: _launchAtLogin,
                 onChanged: _loadingStartup ? null : _toggleStartup,
               ),
@@ -119,7 +121,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(l10n.close),
         ),
       ],
     );

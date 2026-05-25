@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../desktop/file_reveal.dart';
 import '../link_target.dart';
 import 'markdown_editing_controller.dart';
@@ -137,8 +138,9 @@ class _NoteEditorState extends State<NoteEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (widget.notePath == null) {
-      return const Center(child: Text('Select a note to edit.'));
+      return Center(child: Text(l10n.selectNoteToEdit));
     }
     final link = _activeLink;
     return Stack(
@@ -159,9 +161,9 @@ class _NoteEditorState extends State<NoteEditor> {
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
                 style: const TextStyle(fontSize: 15, height: 1.45),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   border: InputBorder.none,
-                  hintText: 'Write in Markdown...',
+                  hintText: l10n.writeInMarkdown,
                 ),
               ),
             ),
@@ -196,6 +198,7 @@ class _LinkAffordance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final external = isExternalUrl(link.target);
     final resolved = resolveLinkTarget(link.target, baseDir);
     final isImage = link.isImage || isImageTarget(link.target);
@@ -207,7 +210,7 @@ class _LinkAffordance extends StatelessWidget {
     final label = link.label.trim();
     final display = label.isNotEmpty
         ? label
-        : (link.target.isEmpty ? '(no target)' : link.target);
+        : (link.target.isEmpty ? l10n.noTarget : link.target);
 
     return Card(
       key: const Key('linkAffordance'),
@@ -239,7 +242,7 @@ class _LinkAffordance extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => openWithDefaultApp(resolved),
                   icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Text('Open'),
+                  label: Text(l10n.open),
                 ),
             ],
           ),

@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/src/ui/widgets/note_editor.dart';
 
+import '../support/test_app.dart';
+
 void main() {
   Future<TextEditingController> pumpEditor(
     WidgetTester tester, {
@@ -13,8 +15,8 @@ void main() {
     String? imageBaseDir,
   }) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      localizedApp(
+        Scaffold(
           body: SizedBox(
             width: 420,
             height: 600,

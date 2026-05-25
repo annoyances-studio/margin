@@ -2,12 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/margin_app.dart';
 import 'package:margin/src/ui/repository_screen.dart';
+
+import 'support/test_app.dart';
 
 void main() {
   testWidgets('landing screen offers open and create', (tester) async {
@@ -15,8 +16,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Margin'), findsOneWidget);
-    expect(find.text('Open a notes folder'), findsOneWidget);
-    expect(find.text('Create a new notes folder'), findsOneWidget);
+    expect(find.text('Open a Folio'), findsOneWidget);
+    expect(find.text('Create a Folio'), findsOneWidget);
   });
 
   testWidgets('repository screen renders the tree and a note', (tester) async {
@@ -29,7 +30,7 @@ void main() {
     await controller.createNote('meeting', folderPath: 'Work');
 
     await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
+      localizedApp(RepositoryScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 

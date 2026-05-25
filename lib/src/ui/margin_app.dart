@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../desktop/startup_service.dart';
 import '../settings/settings_store.dart';
 import 'app_controller.dart';
@@ -50,7 +51,9 @@ class _MarginAppState extends State<MarginApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Margin',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       // Follow the OS light/dark setting.
       themeMode: ThemeMode.system,
       theme: ThemeData(

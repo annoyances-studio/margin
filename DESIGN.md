@@ -321,6 +321,20 @@ future option if a compatible engine becomes available.
 - Settings cover backends/endpoints, sync defaults (on-open, after-edit, all
   toggleable), credentials, and attachment cleanup.
 
+### Terminology
+
+User-facing term for a whole collection of notes is **Folio** (the folder the
+user owns). Internal code still uses `repository`/`Repository`; a rename is a
+later mechanical pass.
+
+### Internationalization
+
+UI strings live in ARB files under `lib/l10n/` and are exposed through the
+gen_l10n-generated `AppLocalizations` (configured in `l10n.yaml`). Adding a
+language is one file: copy `app_en.arb` to `app_<locale>.arb`, translate the
+values, and rebuild. The app follows the OS locale. Model-layer exception
+messages are not yet localized.
+
 ---
 
 ## Encryption (future, post-v1)

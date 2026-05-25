@@ -1,0 +1,93 @@
+{
+  "@@locale": "en",
+
+  "appName": "Margin",
+  "@appName": { "description": "The application name." },
+
+  "tagline": "Plain Markdown notes in a folder you control.",
+  "@tagline": { "description": "Landing-screen subtitle." },
+
+  "openDeviceNotes": "Open this device's notes",
+  "@openDeviceNotes": { "description": "Landing button: open the on-device notes folder." },
+
+  "openFolio": "Open a Folio",
+  "@openFolio": { "description": "Landing button: open an existing Folio (notes folder)." },
+
+  "createFolio": "Create a Folio",
+  "@createFolio": { "description": "Landing button: create a new Folio." },
+
+  "nameFolioTitle": "Name this Folio",
+  "@nameFolioTitle": { "description": "Dialog title when naming a new Folio." },
+
+  "folioNameLabel": "Folio name",
+  "@folioNameLabel": { "description": "Text field label for a Folio's name." },
+
+  "closeFolio": "Close Folio",
+  "@closeFolio": { "description": "Action that closes the open Folio." },
+
+  "openFolioInFileManager": "Open Folio in file manager",
+  "@openFolioInFileManager": { "description": "Tooltip: reveal the Folio's folder in the OS file manager." },
+
+  "cancel": "Cancel",
+  "create": "Create",
+  "rename": "Rename",
+  "delete": "Delete",
+  "close": "Close",
+  "save": "Save",
+  "open": "Open",
+  "settings": "Settings",
+  "more": "More",
+
+  "hideFolders": "Hide folders",
+  "showFolders": "Show folders",
+  "folders": "Folders",
+  "editor": "Editor",
+  "preview": "Preview",
+  "split": "Split",
+  "splitEditorPreview": "Split (editor + preview)",
+
+  "attachFile": "Attach file",
+  "newNote": "New note",
+  "noteName": "Note name",
+  "folderColon": "Folder:",
+  "createFolderFirst": "Create a folder first (Folders page).",
+
+  "selectNoteToEdit": "Select a note to edit.",
+  "selectNoteToPreview": "Select a note to preview.",
+  "writeInMarkdown": "Write in Markdown...",
+  "noTarget": "(no target)",
+
+  "newTopLevelFolder": "New top-level folder",
+  "newSubfolder": "New subfolder",
+  "renameFolder": "Rename folder",
+  "renameEllipsis": "Rename…",
+  "setColorEllipsis": "Set color…",
+  "openInFileManager": "Open in file manager",
+  "folderName": "Folder name",
+  "folderActions": "Folder actions",
+  "noteActions": "Note actions",
+  "deleteFolder": "Delete folder",
+  "deleteNote": "Delete note",
+  "emptyFolders": "No folders yet.\nUse \"New folder\" to start.",
+
+  "folderColor": "Folder color",
+  "noColor": "No color",
+
+  "deleteFolderTitle": "Delete folder \"{name}\"?",
+  "@deleteFolderTitle": {
+    "description": "Confirm-delete dialog title for a folder.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "deleteFolderBody": "This deletes the folder and all notes inside it.",
+  "deleteNoteTitle": "Delete note \"{name}\"?",
+  "@deleteNoteTitle": {
+    "description": "Confirm-delete dialog title for a note.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "deleteNoteBody": "This permanently removes the note file.",
+
+  "defaultView": "Default view",
+  "defaultViewForNotes": "Default view for notes",
+  "viewNoteSpecified": "Note specified",
+  "startAtLogin": "Start Margin when I log in"
+}

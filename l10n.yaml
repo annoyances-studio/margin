@@ -1,0 +1,7 @@
+# Configuration for Flutter's gen_l10n. Adding a language = drop a new
+# app_<locale>.arb next to app_en.arb (the template) and rebuild.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

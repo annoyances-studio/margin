@@ -8,6 +8,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import 'app_controller.dart';
 
 /// The landing screen: open this device's notes folder, or (on desktop) open or
@@ -24,6 +25,7 @@ class OpenRepositoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -33,32 +35,32 @@ class OpenRepositoryScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Margin',
+                l10n.appName,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Plain Markdown notes in a folder you control.',
+              Text(
+                l10n.tagline,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
               FilledButton.icon(
                 icon: const Icon(Icons.sticky_note_2_outlined),
-                label: const Text("Open this device's notes"),
+                label: Text(l10n.openDeviceNotes),
                 onPressed: () => controller.openDeviceRepository(),
               ),
               if (_supportsFolderPicker) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.folder_open),
-                  label: const Text('Open a notes folder'),
+                  label: Text(l10n.openFolio),
                   onPressed: () => _openExisting(context),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.create_new_folder),
-                  label: const Text('Create a new notes folder'),
+                  label: Text(l10n.createFolio),
                   onPressed: () => _createNew(context),
                 ),
               ],
@@ -100,22 +102,23 @@ class OpenRepositoryScreen extends StatelessWidget {
     return showDialog<String>(
       context: context,
       builder: (context) {
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
-          title: const Text('Name this repository'),
+          title: Text(l10n.nameFolioTitle),
           content: TextField(
             controller: field,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Repository name'),
+            decoration: InputDecoration(labelText: l10n.folioNameLabel),
             onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(field.text.trim()),
-              child: const Text('Create'),
+              child: Text(l10n.create),
             ),
           ],
         );

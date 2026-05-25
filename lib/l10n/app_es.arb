@@ -1,0 +1,68 @@
+{
+  "@@locale": "es",
+
+  "appName": "Margin",
+  "tagline": "Notas Markdown en una carpeta que tú controlas.",
+  "openDeviceNotes": "Abrir las notas de este dispositivo",
+  "openFolio": "Abrir un Folio",
+  "createFolio": "Crear un Folio",
+  "nameFolioTitle": "Nombra este Folio",
+  "folioNameLabel": "Nombre del Folio",
+  "closeFolio": "Cerrar Folio",
+  "openFolioInFileManager": "Abrir el Folio en el explorador de archivos",
+
+  "cancel": "Cancelar",
+  "create": "Crear",
+  "rename": "Renombrar",
+  "delete": "Eliminar",
+  "close": "Cerrar",
+  "save": "Guardar",
+  "open": "Abrir",
+  "settings": "Ajustes",
+  "more": "Más",
+
+  "hideFolders": "Ocultar carpetas",
+  "showFolders": "Mostrar carpetas",
+  "folders": "Carpetas",
+  "editor": "Editor",
+  "preview": "Vista previa",
+  "split": "Dividido",
+  "splitEditorPreview": "Dividido (editor + vista previa)",
+
+  "attachFile": "Adjuntar archivo",
+  "newNote": "Nueva nota",
+  "noteName": "Nombre de la nota",
+  "folderColon": "Carpeta:",
+  "createFolderFirst": "Crea primero una carpeta (página Carpetas).",
+
+  "selectNoteToEdit": "Selecciona una nota para editar.",
+  "selectNoteToPreview": "Selecciona una nota para previsualizar.",
+  "writeInMarkdown": "Escribe en Markdown...",
+  "noTarget": "(sin destino)",
+
+  "newTopLevelFolder": "Nueva carpeta de nivel superior",
+  "newSubfolder": "Nueva subcarpeta",
+  "renameFolder": "Renombrar carpeta",
+  "renameEllipsis": "Renombrar…",
+  "setColorEllipsis": "Establecer color…",
+  "openInFileManager": "Abrir en el explorador de archivos",
+  "folderName": "Nombre de la carpeta",
+  "folderActions": "Acciones de carpeta",
+  "noteActions": "Acciones de nota",
+  "deleteFolder": "Eliminar carpeta",
+  "deleteNote": "Eliminar nota",
+  "emptyFolders": "Aún no hay carpetas.\nUsa \"Nueva carpeta\" para empezar.",
+
+  "folderColor": "Color de la carpeta",
+  "noColor": "Sin color",
+
+  "deleteFolderTitle": "¿Eliminar la carpeta \"{name}\"?",
+  "deleteFolderBody": "Esto elimina la carpeta y todas las notas que contiene.",
+  "deleteNoteTitle": "¿Eliminar la nota \"{name}\"?",
+  "deleteNoteBody": "Esto elimina permanentemente el archivo de la nota.",
+
+  "defaultView": "Vista predeterminada",
+  "defaultViewForNotes": "Vista predeterminada para notas",
+  "viewNoteSpecified": "Según la nota",
+  "startAtLogin": "Iniciar Margin al iniciar sesión"
+}

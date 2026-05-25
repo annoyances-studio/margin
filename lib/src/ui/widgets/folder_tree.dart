@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../content/repository_node.dart';
 import '../color_hex.dart';
 
@@ -45,13 +46,14 @@ class FolderTreeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = _childrenOf(root);
+    final l10n = AppLocalizations.of(context);
+    final children = _childrenOf(root, l10n);
     if (children.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Text(
-            'No folders yet.\nUse "New folder" to start.',
+            l10n.emptyFolders,
             textAlign: TextAlign.center,
           ),
         ),
@@ -60,12 +62,12 @@ class FolderTreeView extends StatelessWidget {
     return ListView(children: children);
   }
 
-  List<Widget> _childrenOf(FolderNode folder) => [
-        for (final child in folder.folders) _folderTile(child),
-        for (final note in folder.notes) _noteTile(note),
+  List<Widget> _childrenOf(FolderNode folder, AppLocalizations l10n) => [
+        for (final child in folder.folders) _folderTile(child, l10n),
+        for (final note in folder.notes) _noteTile(note, l10n),
       ];
 
-  Widget _folderTile(FolderNode folder) {
+  Widget _folderTile(FolderNode folder, AppLocalizations l10n) {
     final color = colorFromHex(folder.color);
     return ExpansionTile(
       key: PageStorageKey(folder.path),
@@ -77,29 +79,33 @@ class FolderTreeView extends StatelessWidget {
       title: Builder(
         builder: (context) => GestureDetector(
           // Right-click on desktop opens the same menu.
-          onSecondaryTapDown: (details) =>
-              _showMenuAt(context, details.globalPosition, _folderMenuItems(),
-                  (a) => onFolderAction(folder, a)),
+          onSecondaryTapDown: (details) => _showMenuAt(
+              context,
+              details.globalPosition,
+              _folderMenuItems(l10n),
+              (a) => onFolderAction(folder, a)),
           child: Text(folder.name),
         ),
       ),
       trailing: PopupMenuButton<TreeAction>(
         icon: const Icon(Icons.more_vert),
-        tooltip: 'Folder actions',
-        itemBuilder: (_) => _folderMenuItems(),
+        tooltip: l10n.folderActions,
+        itemBuilder: (_) => _folderMenuItems(l10n),
         onSelected: (a) => onFolderAction(folder, a),
       ),
       childrenPadding: const EdgeInsets.only(left: 12),
-      children: _childrenOf(folder),
+      children: _childrenOf(folder, l10n),
     );
   }
 
-  Widget _noteTile(NoteNode note) {
+  Widget _noteTile(NoteNode note, AppLocalizations l10n) {
     return Builder(
       builder: (context) => GestureDetector(
-        onSecondaryTapDown: (details) =>
-            _showMenuAt(context, details.globalPosition, _noteMenuItems(),
-                (a) => onNoteAction(note, a)),
+        onSecondaryTapDown: (details) => _showMenuAt(
+            context,
+            details.globalPosition,
+            _noteMenuItems(l10n),
+            (a) => onNoteAction(note, a)),
         child: ListTile(
           dense: true,
           leading: const Icon(Icons.description_outlined),
@@ -109,8 +115,8 @@ class FolderTreeView extends StatelessWidget {
           selectedColor: Theme.of(context).colorScheme.onPrimaryContainer,
           trailing: PopupMenuButton<TreeAction>(
             icon: const Icon(Icons.more_vert),
-            tooltip: 'Note actions',
-            itemBuilder: (_) => _noteMenuItems(),
+            tooltip: l10n.noteActions,
+            itemBuilder: (_) => _noteMenuItems(l10n),
             onSelected: (a) => onNoteAction(note, a),
           ),
           onTap: () => onNoteTap(note),
@@ -119,25 +125,26 @@ class FolderTreeView extends StatelessWidget {
     );
   }
 
-  List<PopupMenuEntry<TreeAction>> _folderMenuItems() => [
-        const PopupMenuItem(value: TreeAction.newNote, child: Text('New note')),
-        const PopupMenuItem(
-            value: TreeAction.newSubfolder, child: Text('New subfolder')),
-        const PopupMenuItem(
-            value: TreeAction.renameFolder, child: Text('Rename…')),
-        const PopupMenuItem(value: TreeAction.setColor, child: Text('Set color…')),
+  List<PopupMenuEntry<TreeAction>> _folderMenuItems(AppLocalizations l10n) => [
+        PopupMenuItem(value: TreeAction.newNote, child: Text(l10n.newNote)),
+        PopupMenuItem(
+            value: TreeAction.newSubfolder, child: Text(l10n.newSubfolder)),
+        PopupMenuItem(
+            value: TreeAction.renameFolder, child: Text(l10n.renameEllipsis)),
+        PopupMenuItem(
+            value: TreeAction.setColor, child: Text(l10n.setColorEllipsis)),
         if (canRevealInFileManager)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: TreeAction.openInFileManager,
-            child: Text('Open in file manager'),
+            child: Text(l10n.openInFileManager),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem(
-            value: TreeAction.deleteFolder, child: Text('Delete folder')),
+        PopupMenuItem(
+            value: TreeAction.deleteFolder, child: Text(l10n.deleteFolder)),
       ];
 
-  List<PopupMenuEntry<TreeAction>> _noteMenuItems() => const [
-        PopupMenuItem(value: TreeAction.deleteNote, child: Text('Delete note')),
+  List<PopupMenuEntry<TreeAction>> _noteMenuItems(AppLocalizations l10n) => [
+        PopupMenuItem(value: TreeAction.deleteNote, child: Text(l10n.deleteNote)),
       ];
 
   Future<void> _showMenuAt(

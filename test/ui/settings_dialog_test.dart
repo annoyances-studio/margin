@@ -8,6 +8,8 @@ import 'package:margin/src/desktop/startup_service.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/settings_dialog.dart';
 
+import '../support/test_app.dart';
+
 class _FakeStartupService implements StartupService {
   @override
   final bool isSupported;
@@ -28,8 +30,8 @@ void main() {
   setUp(() => controller = AppController());
   tearDown(() => controller.dispose());
 
-  Widget host(StartupService service) => MaterialApp(
-        home: SettingsDialog(startupService: service, controller: controller),
+  Widget host(StartupService service) => localizedApp(
+        SettingsDialog(startupService: service, controller: controller),
       );
 
   testWidgets('shows the two view dropdowns and the login switch', (tester) async {

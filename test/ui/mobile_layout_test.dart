@@ -10,6 +10,8 @@ import 'package:margin/src/ui/editor_view_mode.dart';
 import 'package:margin/src/ui/repository_screen.dart';
 import 'package:margin/src/ui/widgets/markdown_preview.dart';
 
+import '../support/test_app.dart';
+
 void main() {
   Future<AppController> openWithNote() async {
     final controller = AppController();
@@ -31,7 +33,7 @@ void main() {
     useNarrowScreen(tester);
     final controller = await openWithNote();
     await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
+      localizedApp(RepositoryScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 
@@ -50,7 +52,7 @@ void main() {
     useNarrowScreen(tester);
     final controller = await openWithNote();
     await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
+      localizedApp(RepositoryScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 
@@ -64,7 +66,7 @@ void main() {
     useNarrowScreen(tester);
     final controller = await openWithNote(); // selects Work/meeting.md
     await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
+      localizedApp(RepositoryScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 
@@ -84,7 +86,7 @@ void main() {
     final controller = await openWithNote();
     controller.updateBody('# Hello world');
     await tester.pumpWidget(
-      MaterialApp(home: RepositoryScreen(controller: controller)),
+      localizedApp(RepositoryScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 

@@ -9,6 +9,8 @@ import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/repository_screen.dart';
 import 'package:margin/src/ui/widgets/markdown_preview.dart';
 
+import '../support/test_app.dart';
+
 void main() {
   Future<AppController> openWithNote(WidgetTester tester) async {
     final controller = AppController();
@@ -21,7 +23,7 @@ void main() {
   }
 
   Widget app(AppController controller) =>
-      MaterialApp(home: RepositoryScreen(controller: controller));
+      localizedApp(RepositoryScreen(controller: controller));
 
   testWidgets('defaults to the inline editor (no preview)', (tester) async {
     final controller = await openWithNote(tester);
