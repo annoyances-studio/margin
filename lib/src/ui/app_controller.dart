@@ -206,7 +206,9 @@ class AppController extends ChangeNotifier {
   /// folders aren't reachable via `dart:io`.
   Future<void> openDeviceFolio({String name = 'My Notes'}) async {
     final docs = await getApplicationDocumentsDirectory();
-    final repoPath = p.join(docs.path, 'Margin');
+    // The on-device Folio lives under Margin/DeviceNotes/, leaving Margin/ as
+    // the parent for per-Folio remote caches (Margin/<UUID>/) added later.
+    final repoPath = p.join(docs.path, 'Margin', 'DeviceNotes');
     await Directory(repoPath).create(recursive: true);
     final backend = LocalFolderBackend(repoPath);
     if (await backend.exists('properties.yaml')) {
