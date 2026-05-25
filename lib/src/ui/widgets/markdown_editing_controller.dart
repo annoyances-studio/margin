@@ -20,16 +20,74 @@ class MarkdownEditingController extends TextEditingController {
     required bool withComposing,
   }) {
     final base = style ?? DefaultTextStyle.of(context).style;
-    return buildMarkdownTextSpan(text, base);
+    return buildMarkdownTextSpan(
+      text,
+      base,
+      linkColor: Theme.of(context).colorScheme.primary,
+    );
   }
 }
+
+/// A Markdown link or image found in the text, with its character range and
+/// target. Used both for inline styling and for the editor's "open link under
+/// the cursor" affordance.
+class MarkdownLink {
+  /// Offset of the first character of the link (the `!` for images, else `[`).
+  final int start;
+
+  /// Offset just past the closing `)`.
+  final int end;
+
+  /// The text inside `[ ]` (may be empty).
+  final String label;
+
+  /// The destination inside `( )` — a URL or a relative attachment path.
+  final String target;
+
+  /// Whether this is an image embed (`![alt](path)`) rather than a plain link.
+  final bool isImage;
+
+  const MarkdownLink({
+    required this.start,
+    required this.end,
+    required this.label,
+    required this.target,
+    required this.isImage,
+  });
+
+  /// Whether the caret at [offset] sits within this link (inclusive of edges).
+  bool containsOffset(int offset) => offset >= start && offset <= end;
+}
+
+/// The destination inside a link's `( )`. Allows balanced (one level of
+/// nesting) parentheses, as CommonMark does — so attachment names like
+/// `(本中)(AVOPVR-042)….jpg` are captured whole instead of stopping at the
+/// first `)`.
+const String _destination = r'(?:[^()\n]|\([^()\n]*\))*';
+
+/// Matches `[label](target)` and `![alt](path)`: group 1 the optional `!`,
+/// group 2 the label, group 3 the target.
+final RegExp _linkPattern = RegExp('(!?)\\[([^\\]\\n]*)\\]\\(($_destination)\\)');
+
+/// Finds every Markdown link/image in [text], in document order.
+List<MarkdownLink> findMarkdownLinks(String text) => [
+      for (final m in _linkPattern.allMatches(text))
+        MarkdownLink(
+          start: m.start,
+          end: m.end,
+          label: m.group(2)!,
+          target: m.group(3)!,
+          isImage: m.group(1) == '!',
+        ),
+    ];
 
 /// Builds a styled [TextSpan] for [text] using [base] as the baseline style.
 ///
 /// Invariant: the concatenation of every child span's text equals [text]
 /// exactly (markers included), so the [TextField]'s cursor and selection stay
 /// correct. Marker characters are dimmed; the content they wrap is styled.
-TextSpan buildMarkdownTextSpan(String text, TextStyle base) {
+TextSpan buildMarkdownTextSpan(String text, TextStyle base, {Color? linkColor}) {
+  final link = linkColor ?? const Color(0xFF1565C0);
   final children = <InlineSpan>[];
   final lines = text.split('\n');
   var fenced = false;
@@ -49,7 +107,7 @@ TextSpan buildMarkdownTextSpan(String text, TextStyle base) {
     }
 
     final lineStyle = _blockStyle(line, base);
-    _appendInlineSpans(children, line, lineStyle, base);
+    _appendInlineSpans(children, line, lineStyle, link);
     if (suffix.isNotEmpty) {
       children.add(TextSpan(text: suffix, style: lineStyle));
     }
@@ -95,9 +153,11 @@ TextStyle _codeStyle(TextStyle base) => base.copyWith(
 TextStyle _markerStyle(TextStyle base) =>
     base.copyWith(color: base.color?.withValues(alpha: 0.4));
 
-/// Matches inline spans. Order matters: code, bold, strikethrough, italic.
+/// Matches inline spans. Order matters: links first (so their `[]()` is not
+/// mistaken for other markers), then code, bold, strikethrough, italic.
 final RegExp _inlinePattern = RegExp(
-  r'(`[^`\n]+`)'
+  '(!?\\[[^\\]\\n]*\\]\\($_destination\\))'
+  r'|(`[^`\n]+`)'
   r'|(\*\*[^*\n]+\*\*)'
   r'|(__[^_\n]+__)'
   r'|(~~[^~\n]+~~)'
@@ -109,7 +169,7 @@ void _appendInlineSpans(
   List<InlineSpan> out,
   String line,
   TextStyle lineStyle,
-  TextStyle base,
+  Color linkColor,
 ) {
   var index = 0;
   for (final match in _inlinePattern.allMatches(line)) {
@@ -121,6 +181,12 @@ void _appendInlineSpans(
     }
 
     final token = match.group(0)!;
+    if (match.group(1) != null) {
+      _appendLinkSpans(out, token, lineStyle, linkColor);
+      index = match.end;
+      continue;
+    }
+
     final (markerLength, contentStyle) = _tokenStyle(match, lineStyle);
     final content = token.substring(markerLength, token.length - markerLength);
 
@@ -143,17 +209,44 @@ void _appendInlineSpans(
   }
 }
 
+/// Splits a `[label](target)` / `![alt](path)` token into spans: the label is
+/// styled as a link (coloured + underlined), the brackets and target dimmed.
+/// The concatenation of the emitted spans equals [token] exactly.
+void _appendLinkSpans(
+  List<InlineSpan> out,
+  String token,
+  TextStyle lineStyle,
+  Color linkColor,
+) {
+  final m = _linkPattern.firstMatch(token);
+  if (m == null) {
+    out.add(TextSpan(text: token, style: lineStyle));
+    return;
+  }
+  final marker = _markerStyle(lineStyle);
+  final labelStyle = lineStyle.copyWith(
+    color: linkColor,
+    decoration: TextDecoration.underline,
+  );
+  out
+    ..add(TextSpan(text: '${m.group(1)}[', style: marker))
+    ..add(TextSpan(text: m.group(2), style: labelStyle))
+    ..add(TextSpan(text: '](${m.group(3)})', style: marker));
+}
+
 /// Returns (markerLength, contentStyle) for the matched inline token.
+/// Group 1 is links (handled separately); here groups 2+ are the styled
+/// runs: code, bold, strikethrough, italic.
 (int, TextStyle) _tokenStyle(RegExpMatch match, TextStyle lineStyle) {
-  if (match.group(1) != null) {
+  if (match.group(2) != null) {
     return (1, lineStyle.copyWith(fontFamily: 'monospace'));
   }
-  if (match.group(2) != null || match.group(3) != null) {
+  if (match.group(3) != null || match.group(4) != null) {
     return (2, lineStyle.copyWith(fontWeight: FontWeight.bold));
   }
-  if (match.group(4) != null) {
+  if (match.group(5) != null) {
     return (2, lineStyle.copyWith(decoration: TextDecoration.lineThrough));
   }
-  // group(5) '*...*' or group(6) '_..._'
+  // group(6) '*...*' or group(7) '_..._'
   return (1, lineStyle.copyWith(fontStyle: FontStyle.italic));
 }

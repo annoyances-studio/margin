@@ -7,9 +7,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
-import 'package:path/path.dart' as p;
 
 import '../../desktop/file_reveal.dart';
+import '../link_target.dart';
 
 /// Renders GitHub-Flavored Markdown for the preview pane (tables, task lists,
 /// strikethrough, fenced code). Read-only; editing happens in the raw pane.
@@ -36,18 +36,9 @@ class MarkdownPreview extends StatelessWidget {
   }
 
   void _openLink(String? href) {
-    if (href == null || href.isEmpty) return;
-    final uri = Uri.tryParse(href);
-    // External URL (http, mailto, ...): hand off to the OS.
-    if (uri != null && uri.hasScheme && uri.scheme != 'file') {
-      openWithDefaultApp(href);
-      return;
-    }
-    // Relative link (e.g. an attachment): resolve against the note's folder.
-    final base = imageBaseDir;
-    if (base == null) return;
-    final path = p.normalize(p.join(base, Uri.decodeFull(href)));
-    openWithDefaultApp(path);
+    if (href == null) return;
+    final target = resolveLinkTarget(href, imageBaseDir);
+    if (target != null) openWithDefaultApp(target);
   }
 
   Widget _buildImage(MarkdownImageConfig config) {
@@ -56,11 +47,10 @@ class MarkdownPreview extends StatelessWidget {
       return Image.network(uri.toString(), width: config.width, height: config.height);
     }
 
-    final base = imageBaseDir;
-    if (base == null) {
+    final path = resolveLinkTarget(uri.path, imageBaseDir);
+    if (path == null) {
       return const Icon(Icons.image_not_supported_outlined);
     }
-    final path = p.normalize(p.join(base, Uri.decodeFull(uri.path)));
     return Image.file(
       File(path),
       width: config.width,

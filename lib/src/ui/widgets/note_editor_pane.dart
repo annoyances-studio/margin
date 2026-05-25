@@ -47,6 +47,7 @@ class NoteEditorPane extends StatelessWidget {
       notePath: notePath,
       body: body,
       onChanged: onChanged,
+      imageBaseDir: imageBaseDir,
     );
     final preview = MarkdownPreview(data: body, imageBaseDir: imageBaseDir);
 
