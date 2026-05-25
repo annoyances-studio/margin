@@ -69,6 +69,23 @@ class AppController extends ChangeNotifier {
   /// Whether the open Folio has a remote peer it can sync with.
   bool get canSync => _syncPeer != null;
 
+  /// Local changes saved to the cache but not yet pushed to the remote.
+  bool _hasUnsyncedChanges = false;
+  bool get hasUnsyncedChanges => _hasUnsyncedChanges;
+
+  /// The last background-sync error (non-blocking; cleared on a successful
+  /// sync). Manual sync reports failures through [error] instead.
+  String? _syncError;
+  String? get syncError => _syncError;
+
+  bool _autoSyncing = false;
+  bool _pendingSync = false;
+
+  bool _disposed = false;
+
+  /// Tail of the serialized operation chain (see [_serialize]).
+  Future<void> _opChain = Future<void>.value();
+
   /// A label for conflict copies. Best-effort; falls back to a constant.
   String get _deviceName {
     try {
@@ -263,7 +280,7 @@ class AppController extends ChangeNotifier {
         await _syncStates.load(id),
         onProgress: (p) {
           _syncProgress = (completed: p.completed, total: p.total);
-          notifyListeners();
+          _notify();
         },
       );
       await _syncStates.save(id, result.newState);
@@ -278,32 +295,85 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  /// Syncs the open cached Folio with its remote peer: flushes pending edits to
-  /// the cache, reconciles cache ⇄ remote, and refreshes the tree. No-op for a
-  /// purely local Folio.
-  Future<void> syncNow() async {
+  /// Reconciles the cache with the remote peer: flushes pending edits, syncs
+  /// both ways, and refreshes the tree. The shared body of manual and auto
+  /// sync. Assumes a remote peer exists.
+  Future<void> _syncWithPeer() async {
     final peer = _syncPeer;
     final id = _folioId;
     final folio = _folio;
     if (peer == null || id == null || folio == null) return;
-    await _run(() async {
-      await _flushIfDirty();
-      final engine = SyncEngine(
-        local: folio.backend,
-        remote: peer,
-        deviceName: _deviceName,
-      );
-      final result = await engine.sync(
-        await _syncStates.load(id),
-        onProgress: (p) {
-          _syncProgress = (completed: p.completed, total: p.total);
-          notifyListeners();
-        },
-      );
-      await _syncStates.save(id, result.newState);
-      _syncProgress = null;
-      await _reloadTree();
-    });
+    await _flushIfDirty();
+    final engine = SyncEngine(
+      local: folio.backend,
+      remote: peer,
+      deviceName: _deviceName,
+    );
+    final result = await engine.sync(
+      await _syncStates.load(id),
+      onProgress: (p) {
+        _syncProgress = (completed: p.completed, total: p.total);
+        notifyListeners();
+      },
+    );
+    await _syncStates.save(id, result.newState);
+    _syncProgress = null;
+    _hasUnsyncedChanges = false;
+    await _reloadTree();
+  }
+
+  /// Manual sync (the always-available "Sync now"): shows the busy/progress UI
+  /// and reports failures via [error]. No-op for a purely local Folio.
+  Future<void> syncNow() async {
+    if (!canSync) return;
+    await _run(_syncWithPeer);
+    if (_error == null) _syncError = null;
+  }
+
+  /// Marks the Folio unsynced and kicks off a best-effort background sync after
+  /// a local change. Never throws into the caller.
+  void _scheduleSync() {
+    if (!canSync) return;
+    _hasUnsyncedChanges = true;
+    _notify();
+    // If a sync loop is already running, it will pick up this change via
+    // _pendingSync; don't overwrite the tracked future with a no-op.
+    if (_autoSyncing) {
+      _pendingSync = true;
+    } else {
+      _autoSyncFuture = _autoSync();
+    }
+  }
+
+  /// The in-flight background sync, if any (exposed for deterministic tests).
+  @visibleForTesting
+  Future<void> get pendingSync => _autoSyncFuture ?? Future<void>.value();
+  Future<void>? _autoSyncFuture;
+
+  /// Background sync: single-flight, failure-tolerant (offline/server-down keeps
+  /// the unsynced flag and records [syncError] without blocking editing). Picks
+  /// up changes that arrive mid-sync via [_pendingSync].
+  Future<void> _autoSync() async {
+    if (!canSync || _autoSyncing) {
+      if (_autoSyncing) _pendingSync = true;
+      return;
+    }
+    _autoSyncing = true;
+    try {
+      do {
+        _pendingSync = false;
+        try {
+          await _serialize(_syncWithPeer); // serialized: never overlaps a edit
+          _syncError = null;
+        } catch (e) {
+          _syncError = e.toString(); // keep _hasUnsyncedChanges; retry later
+          break;
+        }
+      } while (_pendingSync && canSync);
+    } finally {
+      _autoSyncing = false;
+      _notify();
+    }
   }
 
   /// Opens (or creates) a repository in this device's app documents directory —
@@ -361,6 +431,8 @@ class AppController extends ChangeNotifier {
     _syncPeer = null;
     _folioId = null;
     _syncProgress = null;
+    _hasUnsyncedChanges = false;
+    _syncError = null;
     // Explicit close: forget the Folio (and note) so the next launch shows
     // the landing screen rather than reopening it. (Any WebDAV password stays
     // in the keystore; re-adding the same URL reuses it.)
@@ -375,16 +447,25 @@ class AppController extends ChangeNotifier {
 
   Future<void> selectNote(NoteNode note) async {
     if (note.path == _selectedNotePath) return;
+    final hadUnsavedEdits = _dirty;
     await _run(() async {
       await _flushIfDirty();
-      final loaded = await _content!.readNote(note.path);
-      _selectedNotePath = note.path;
-      _currentNote = loaded;
-      _workingBody = loaded.body;
-      _dirty = false;
-      _viewMode = await _resolveViewMode();
-      unawaited(_settings.setLastNotePath(note.path));
+      await _openNote(note);
     });
+    if (hadUnsavedEdits) _scheduleSync();
+  }
+
+  /// Loads [note] as the current note. No save-before-switch and no [_run], so
+  /// it can be reused inside another operation (e.g. createNote) without
+  /// nesting the serialized queue.
+  Future<void> _openNote(NoteNode note) async {
+    final loaded = await _content!.readNote(note.path);
+    _selectedNotePath = note.path;
+    _currentNote = loaded;
+    _workingBody = loaded.body;
+    _dirty = false;
+    _viewMode = await _resolveViewMode();
+    unawaited(_settings.setLastNotePath(note.path));
   }
 
   // --- editing ---
@@ -399,6 +480,7 @@ class AppController extends ChangeNotifier {
   Future<void> save() async {
     if (!_dirty || _currentNote == null || _selectedNotePath == null) return;
     await _run(_flushIfDirty);
+    _scheduleSync();
   }
 
   /// Stores [bytes] as an attachment of the open note, inserts a Markdown link
@@ -420,6 +502,7 @@ class AppController extends ChangeNotifier {
       _editorRevision++;
       await _flushIfDirty();
     });
+    _scheduleSync();
   }
 
   bool _looksLikeImage(String fileName) {
@@ -477,6 +560,7 @@ class AppController extends ChangeNotifier {
       await _content!.createFolder(parentPath, name);
       await _reloadTree();
     });
+    _scheduleSync();
   }
 
   /// Creates a note named [name] inside [folderPath] and selects it.
@@ -492,8 +576,9 @@ class AppController extends ChangeNotifier {
         ),
       );
       await _reloadTree();
-      await selectNote(node);
+      await _openNote(node);
     });
+    _scheduleSync();
   }
 
   /// Sets (or clears, with null) a folder's accent color.
@@ -502,6 +587,7 @@ class AppController extends ChangeNotifier {
       await _content!.setFolderColor(path, colorHex);
       await _reloadTree();
     });
+    _scheduleSync();
   }
 
   /// Renames the folder at [path] to [newName], keeping the open note selected
@@ -518,6 +604,7 @@ class AppController extends ChangeNotifier {
       }
       await _reloadTree();
     });
+    _scheduleSync();
   }
 
   Future<void> deleteNote(String path) async {
@@ -531,6 +618,7 @@ class AppController extends ChangeNotifier {
       }
       await _reloadTree();
     });
+    _scheduleSync();
   }
 
   Future<void> deleteFolder(String path) async {
@@ -547,6 +635,7 @@ class AppController extends ChangeNotifier {
       }
       await _reloadTree();
     });
+    _scheduleSync();
   }
 
   // --- internals ---
@@ -561,6 +650,8 @@ class AppController extends ChangeNotifier {
     // Cleared here; openThroughCache sets them after adopting the cache.
     _syncPeer = null;
     _folioId = null;
+    _hasUnsyncedChanges = false;
+    _syncError = null;
   }
 
   Future<void> _reloadTree() async {
@@ -624,18 +715,41 @@ class AppController extends ChangeNotifier {
   }
 
   /// Runs [action] with busy/error bookkeeping and a single notification.
-  Future<void> _run(Future<void> Function() action) async {
-    _busy = true;
-    _error = null;
-    notifyListeners();
-    try {
-      await action();
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _busy = false;
-      _syncProgress = null;
-      notifyListeners();
-    }
+  /// Serializes async operations so a background sync never overlaps a mutation
+  /// (which would race on the cache and the tree). Errors are swallowed for the
+  /// chain only; the caller still sees them.
+  Future<void> _serialize(Future<void> Function() action) {
+    final result = _opChain.then((_) => action());
+    _opChain = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
+  /// Notifies listeners unless the controller has been disposed (a background
+  /// sync may complete after disposal).
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  Future<void> _run(Future<void> Function() action) {
+    return _serialize(() async {
+      _busy = true;
+      _error = null;
+      _notify();
+      try {
+        await action();
+      } catch (e) {
+        _error = e.toString();
+      } finally {
+        _busy = false;
+        _syncProgress = null;
+        _notify();
+      }
+    });
   }
 }

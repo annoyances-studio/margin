@@ -116,6 +116,7 @@ class _FolioScreenState extends State<FolioScreen> {
               onPressed: _attachFile,
             ),
           _saveAction(),
+          if (controller.syncError != null) _syncRetryAction(),
           _overflowMenu(),
         ],
         bottom: _busyBar(),
@@ -222,6 +223,7 @@ class _FolioScreenState extends State<FolioScreen> {
                 onPressed: _attachFile,
               ),
             if (hasNote) _saveAction(),
+            if (controller.syncError != null) _syncRetryAction(),
             _overflowMenu(),
           ],
         ),
@@ -268,6 +270,16 @@ class _FolioScreenState extends State<FolioScreen> {
         ],
       );
 
+  /// Shown when a background sync failed: a tap retries. Non-blocking.
+  Widget _syncRetryAction() => IconButton(
+        tooltip: controller.syncError,
+        icon: Icon(
+          Icons.cloud_off_outlined,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        onPressed: () => controller.syncNow(),
+      );
+
   void _handleOverflow(String value) {
     switch (value) {
       case 'sync':
@@ -294,22 +306,27 @@ class _FolioScreenState extends State<FolioScreen> {
         )
       : null;
 
-  /// Wide title: repository name, plus the note path when the tree is hidden.
+  /// A trailing "*" when there are local changes not yet synced to the remote.
+  String get _unsyncedMark => controller.hasUnsyncedChanges ? ' *' : '';
+
+  /// Wide title: Folio name, plus the note path when the tree is hidden.
   String _wideTitle() {
     final repo = controller.folioName;
     final notePath = controller.selectedNotePath;
     if (!_showTree && notePath != null) {
-      return '$repo / ${notePath.replaceAll('/', ' / ')}';
+      return '$repo / ${notePath.replaceAll('/', ' / ')}$_unsyncedMark';
     }
-    return repo;
+    return '$repo$_unsyncedMark';
   }
 
-  /// Narrow title: the open note's name, or the repository name.
+  /// Narrow title: the open note's name, or the Folio name.
   String _mobileTitle() {
     final notePath = controller.selectedNotePath;
-    if (notePath == null) return controller.folioName;
+    if (notePath == null) return '${controller.folioName}$_unsyncedMark';
     final name = notePath.split('/').last;
-    return name.endsWith('.md') ? name.substring(0, name.length - 3) : name;
+    final title =
+        name.endsWith('.md') ? name.substring(0, name.length - 3) : name;
+    return '$title$_unsyncedMark';
   }
 
   Widget _viewModeControl() {
