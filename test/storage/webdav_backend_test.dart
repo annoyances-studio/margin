@@ -147,6 +147,29 @@ void main() {
       expect(() => backend.list('Missing'),
           throwsA(isA<NotFoundException>()));
     });
+
+    test('listing a subdirectory excludes the directory itself', () async {
+      // PROPFIND Depth:1 on a subfolder includes the folder's own entry first;
+      // it must not be returned as a child (that caused infinite recursion).
+      const subBody = '''
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>/dav/Notes/Work/</D:href>
+    <D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/dav/Notes/Work/note.md</D:href>
+    <D:propstat><D:prop><D:resourcetype/><D:getcontentlength>5</D:getcontentlength></D:prop></D:propstat>
+  </D:response>
+</D:multistatus>''';
+      final backend =
+          backendWith([], (_) async => http.Response(subBody, 207));
+
+      final entries = await backend.list('Work');
+      expect(entries.map((e) => e.path), ['Work/note.md']);
+      expect(entries.single.isDirectory, isFalse);
+    });
   });
 
   group('paths and auth', () {
@@ -163,6 +186,19 @@ void main() {
       final backend = backendWith([], (_) async => http.Response('', 200));
       expect(() => backend.read('../secret'),
           throwsA(isA<InvalidPathException>()));
+    });
+
+    test('times out a stalled request instead of hanging', () async {
+      final backend = WebDavBackend(
+        baseUrl: base,
+        timeout: const Duration(milliseconds: 50),
+        client: MockClient((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          return http.Response('x', 200);
+        }),
+      );
+      expect(() => backend.read('note.md'),
+          throwsA(isA<StorageException>()));
     });
 
     test('sends Basic auth when credentials are given', () async {

@@ -24,6 +24,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get createFolio => 'Crear un Folio';
 
   @override
+  String get connectWebDav => 'Conectar a WebDAV';
+
+  @override
+  String get serverUrl => 'URL del servidor';
+
+  @override
+  String get username => 'Usuario';
+
+  @override
+  String get password => 'Contraseña';
+
+  @override
+  String get connect => 'Conectar';
+
+  @override
   String get nameFolioTitle => 'Nombra este Folio';
 
   @override

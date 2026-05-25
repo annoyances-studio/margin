@@ -20,6 +20,21 @@ void main() {
     expect(find.text('Create a Folio'), findsOneWidget);
   });
 
+  testWidgets('landing screen opens the WebDAV connect form', (tester) async {
+    await tester.pumpWidget(const MarginApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Connect to WebDAV'), findsOneWidget);
+    await tester.tap(find.text('Connect to WebDAV'));
+    await tester.pumpAndSettle();
+
+    // The form prompts for the three connection fields.
+    expect(find.text('Server URL'), findsOneWidget);
+    expect(find.text('Username'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Connect'), findsOneWidget);
+  });
+
   testWidgets('repository screen renders the tree and a note', (tester) async {
     final backend = MemoryBackend();
     final controller = AppController();

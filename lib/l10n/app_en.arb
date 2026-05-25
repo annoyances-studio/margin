@@ -16,6 +16,14 @@
   "createFolio": "Create a Folio",
   "@createFolio": { "description": "Landing button: create a new Folio." },
 
+  "connectWebDav": "Connect to WebDAV",
+  "@connectWebDav": { "description": "Landing button / dialog title for adding a WebDAV Folio." },
+
+  "serverUrl": "Server URL",
+  "username": "Username",
+  "password": "Password",
+  "connect": "Connect",
+
   "nameFolioTitle": "Name this Folio",
   "@nameFolioTitle": { "description": "Dialog title when naming a new Folio." },
 

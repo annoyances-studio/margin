@@ -84,6 +84,22 @@ void main() {
     expect(controller.folioName, 'Remote Notes');
   });
 
+  test('a bad URL surfaces an error instead of failing silently', () async {
+    final controller = AppController(
+      settings: InMemorySettingsStore(),
+      credentials: InMemoryCredentialStore(),
+      // Any reachable handler 404s; combined with a malformed URL this must
+      // still end in a visible error, never a silent hang.
+      httpClientFactory: () => MockClient((_) async => http.Response('', 404)),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.openWebDav('http://exa mple/bad', 'me', 'pw');
+
+    expect(controller.hasFolio, isFalse);
+    expect(controller.error, isNotNull);
+  });
+
   test('restore does not reconnect when the password is missing', () async {
     final settings = InMemorySettingsStore();
     await settings.setLastFolioType('webdav');

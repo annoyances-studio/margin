@@ -50,6 +50,13 @@ class OpenFolioScreen extends StatelessWidget {
                 label: Text(l10n.openDeviceNotes),
                 onPressed: () => controller.openDeviceFolio(),
               ),
+              // WebDAV works on every platform (the app speaks the protocol).
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.cloud_outlined),
+                label: Text(l10n.connectWebDav),
+                onPressed: () => _connectWebDav(context),
+              ),
               if (_supportsFolderPicker) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -94,6 +101,62 @@ class OpenFolioScreen extends StatelessWidget {
     final name = await _promptName(context);
     if (name != null && name.isNotEmpty) {
       await controller.createPath(path, name);
+    }
+  }
+
+  /// Prompts for WebDAV connection details and connects. The password is held
+  /// only long enough to hand to the controller, which stores it in the OS
+  /// keystore — never in the Folio.
+  Future<void> _connectWebDav(BuildContext context) async {
+    final url = TextEditingController();
+    final user = TextEditingController();
+    final pass = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.connectWebDav),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: url,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(labelText: l10n.serverUrl),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: user,
+                decoration: InputDecoration(labelText: l10n.username),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: pass,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.password),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.connect),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && url.text.trim().isNotEmpty) {
+      // Password intentionally not trimmed (it may contain spaces).
+      await controller.openWebDav(url.text.trim(), user.text.trim(), pass.text);
     }
   }
 

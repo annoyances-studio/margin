@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show HttpDate;
 import 'dart:typed_data';
@@ -29,11 +30,16 @@ class WebDavBackend implements StorageBackend {
   final http.Client _client;
   final Map<String, String> _authHeaders;
 
+  /// Per-request timeout, so a stalled server surfaces an error instead of
+  /// hanging the UI forever.
+  final Duration timeout;
+
   WebDavBackend({
     required Uri baseUrl,
     String? username,
     String? password,
     http.Client? client,
+    this.timeout = const Duration(seconds: 30),
   })  : baseUrl = _withTrailingSlash(baseUrl),
         _client = client ?? http.Client(),
         _authHeaders = _basicAuth(username, password);
@@ -83,7 +89,15 @@ class WebDavBackend implements StorageBackend {
       ..headers.addAll(_authHeaders)
       ..headers.addAll(headers);
     if (body != null) request.bodyBytes = body;
-    return http.Response.fromStream(await _client.send(request));
+    try {
+      final streamed = await _client.send(request).timeout(timeout);
+      return await http.Response.fromStream(streamed).timeout(timeout);
+    } on TimeoutException {
+      throw StorageException(
+        '$method timed out after ${timeout.inSeconds}s',
+        path: uri.toString(),
+      );
+    }
   }
 
   bool _ok(int status) => status >= 200 && status < 300;
@@ -148,7 +162,7 @@ class WebDavBackend implements StorageBackend {
     if (res.statusCode != 207) {
       throw StorageException('PROPFIND failed (${res.statusCode})', path: path);
     }
-    return _parseMultistatus(res.body);
+    return _parseMultistatus(res.body, _segments(path).length);
   }
 
   static const String _propfindBody =
@@ -168,9 +182,12 @@ class WebDavBackend implements StorageBackend {
       );
 
   /// Parses a WebDAV multistatus body into entries, relative to the repo root.
-  /// The collection's own entry (which PROPFIND Depth:1 includes first) is
-  /// skipped. Element lookups ignore namespace prefixes (servers vary).
-  List<StorageEntry> _parseMultistatus(String body) {
+  /// [requestDepth] is the segment count of the listed directory; entries at or
+  /// above that depth (the collection itself and its ancestors, which PROPFIND
+  /// Depth:1 includes) are skipped, leaving only the immediate children — this
+  /// also prevents a directory from being listed as its own child (infinite
+  /// recursion). Element lookups ignore namespace prefixes (servers vary).
+  List<StorageEntry> _parseMultistatus(String body, int requestDepth) {
     final baseSegments =
         baseUrl.pathSegments.where((s) => s.isNotEmpty).toList();
     final entries = <StorageEntry>[];
@@ -181,8 +198,9 @@ class WebDavBackend implements StorageBackend {
 
       final hrefSegments =
           Uri.parse(href).pathSegments.where((s) => s.isNotEmpty).toList();
-      if (hrefSegments.length <= baseSegments.length) continue; // the root
+      if (hrefSegments.length <= baseSegments.length) continue; // backend root
       final relSegments = hrefSegments.sublist(baseSegments.length);
+      if (relSegments.length <= requestDepth) continue; // the dir itself
       final relPath = relSegments.join('/');
 
       final isDirectory = _local(response, 'collection').isNotEmpty;

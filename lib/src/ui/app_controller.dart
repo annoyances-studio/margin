@@ -177,12 +177,21 @@ class AppController extends ChangeNotifier {
   /// records it as the last Folio and stores the password in the OS keystore
   /// (the URL and username are non-secret and kept in settings).
   Future<void> openWebDav(String url, String username, String password) async {
-    final backend = WebDavBackend(
-      baseUrl: Uri.parse(url),
-      username: username,
-      password: password,
-      client: _httpClientFactory(),
-    );
+    final StorageBackend backend;
+    try {
+      backend = WebDavBackend(
+        baseUrl: Uri.parse(url),
+        username: username,
+        password: password,
+        client: _httpClientFactory(),
+      );
+    } catch (e) {
+      // A malformed URL throws synchronously, before open()'s error handling;
+      // surface it so the landing screen can show it.
+      _error = 'Invalid server URL: $e';
+      notifyListeners();
+      return;
+    }
     await open(backend);
     if (hasFolio) {
       await _settings.setLastFolioType('webdav');
