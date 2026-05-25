@@ -105,6 +105,44 @@ both desktop and mobile, because the app speaks the protocol directly rather
 than relying on the OS to mount anything. The UI should present only the
 backends the current platform actually supports.
 
+### Backend feasibility (which are realistic)
+
+Three connection mechanisms decide feasibility more than the provider does:
+
+1. **OS-mounted/synced folder → `LocalFolderBackend`** (no app code). Covers
+   almost everything on desktop.
+2. **In-app protocol/REST backend** (a `StorageBackend`, sometimes + OAuth).
+   Needed on mobile, and for self-hosted protocols.
+3. **OS-native / entitlement-heavy** (kernel mounts, Apple frameworks) —
+   generally not worth building.
+
+Desktop (Windows/macOS/Linux — all first-class Flutter targets) can mount or
+sync nearly anything to a folder, so the genuinely hard problem is **mobile**.
+
+- **WebDAV** — shipped; in-app REST; all platforms; no OAuth.
+- **SFTP** — best next backend; pure Dart (`dartssh2`); all platforms; no
+  OAuth. Needs **two auth modes: password and SSH key** (key file + optional
+  passphrase), both supported by `dartssh2`.
+- **Git** — not a dumb folder but a *sync strategy* over a local clone: clone
+  into a `LocalFolderBackend`, the app commits/pushes to sync. Desktop only,
+  via the system `git` CLI (if installed) or the folder approach (an external
+  client keeps a synced clone). Mobile: poor (no git binary, no mature Dart
+  lib, auth complexity).
+- **SMB/CIFS** — desktop via OS mount/UNC path; mobile not realistic (sandbox;
+  only immature Dart libs). No in-app backend.
+- **NFS** — desktop via OS mount only; no Dart client. No backend.
+- **OneDrive / Google Drive / Dropbox** — desktop free via the provider's sync
+  folder; mobile needs OAuth + the provider REST API (token in
+  `CredentialStore`; auth via `flutter_web_auth_2` or a provider SDK). Build on
+  demand: Dropbox simplest, then OneDrive (Graph), Google Drive last
+  (restricted-scope verification / CASA audit is costly).
+- **iCloud** — synced folder on macOS and Windows (iCloud app); iOS-direct is
+  app-container / document-picker only (entitlements, Apple Developer account);
+  Android/Linux: none.
+
+Roadmap: WebDAV (done) → SFTP (password + key) → mobile OAuth cloud (on
+demand). Everything else is handled by a mounted/synced folder on desktop.
+
 ### Self-hosting story
 
 Rather than "install a notes server," a power user can run a small Docker
