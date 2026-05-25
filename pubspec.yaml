@@ -54,6 +54,7 @@ dependencies:
   open_filex: ^4.7.0
   http: ^1.6.0
   xml: ^7.0.1
+  flutter_secure_storage: ^10.3.0
 
 dev_dependencies:
   flutter_test:
