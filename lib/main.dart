@@ -8,6 +8,7 @@ import 'src/credentials/credential_store.dart';
 import 'src/desktop/desktop_integration.dart';
 import 'src/desktop/startup_service.dart';
 import 'src/settings/settings_store.dart';
+import 'src/sync/sync_state_store.dart';
 import 'src/ui/margin_app.dart';
 
 Future<void> main() async {
@@ -20,6 +21,7 @@ Future<void> main() async {
   runApp(MarginApp(
     settings: SharedPreferencesSettingsStore(),
     credentials: SecureCredentialStore(),
+    syncStates: FileSyncStateStore(),
     startupService: startupService,
   ));
 }

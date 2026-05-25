@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'Connect'**
   String get connect;
 
+  /// Progress shown while caching/syncing a remote Folio.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing {completed} of {total}…'**
+  String syncing(int completed, int total);
+
   /// Dialog title when naming a new Folio.
   ///
   /// In en, this message translates to:
@@ -241,6 +247,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Always on top'**
   String get alwaysOnTop;
+
+  /// No description provided for @syncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get syncNow;
 
   /// No description provided for @hideFolders.
   ///

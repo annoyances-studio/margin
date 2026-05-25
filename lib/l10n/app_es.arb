@@ -11,6 +11,7 @@
   "username": "Usuario",
   "password": "Contraseña",
   "connect": "Conectar",
+  "syncing": "Sincronizando {completed} de {total}…",
   "nameFolioTitle": "Nombra este Folio",
   "folioNameLabel": "Nombre del Folio",
   "closeFolio": "Cerrar Folio",
@@ -26,6 +27,7 @@
   "settings": "Ajustes",
   "more": "Más",
   "alwaysOnTop": "Siempre visible",
+  "syncNow": "Sincronizar ahora",
 
   "hideFolders": "Ocultar carpetas",
   "showFolders": "Mostrar carpetas",

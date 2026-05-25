@@ -255,6 +255,8 @@ class _FolioScreenState extends State<FolioScreen> {
         tooltip: _l10n.more,
         onSelected: _handleOverflow,
         itemBuilder: (_) => [
+          if (controller.canSync)
+            PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
           if (isDesktop)
             CheckedPopupMenuItem(
               value: 'alwaysOnTop',
@@ -268,6 +270,8 @@ class _FolioScreenState extends State<FolioScreen> {
 
   void _handleOverflow(String value) {
     switch (value) {
+      case 'sync':
+        controller.syncNow();
       case 'alwaysOnTop':
         _toggleAlwaysOnTop();
       case 'settings':

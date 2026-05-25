@@ -24,6 +24,15 @@
   "password": "Password",
   "connect": "Connect",
 
+  "syncing": "Syncing {completed} of {total}…",
+  "@syncing": {
+    "description": "Progress shown while caching/syncing a remote Folio.",
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
   "nameFolioTitle": "Name this Folio",
   "@nameFolioTitle": { "description": "Dialog title when naming a new Folio." },
 
@@ -46,6 +55,7 @@
   "settings": "Settings",
   "more": "More",
   "alwaysOnTop": "Always on top",
+  "syncNow": "Sync now",
 
   "hideFolders": "Hide folders",
   "showFolders": "Show folders",

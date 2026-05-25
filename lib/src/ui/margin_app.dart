@@ -8,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../credentials/credential_store.dart';
 import '../desktop/startup_service.dart';
 import '../settings/settings_store.dart';
+import '../sync/sync_state_store.dart';
 import 'app_controller.dart';
 import 'folio_screen.dart';
 import 'open_folio_screen.dart';
@@ -23,6 +24,10 @@ class MarginApp extends StatefulWidget {
   /// the OS keystore.
   final CredentialStore? credentials;
 
+  /// Optional sync-state store; defaults to in-memory (tests). The real app
+  /// injects the file-backed store.
+  final SyncStateStore? syncStates;
+
   /// Run-at-login control; defaults to a no-op (used by widget tests).
   final StartupService startupService;
 
@@ -30,6 +35,7 @@ class MarginApp extends StatefulWidget {
     super.key,
     this.settings,
     this.credentials,
+    this.syncStates,
     this.startupService = const NoopStartupService(),
   });
 
@@ -41,6 +47,7 @@ class _MarginAppState extends State<MarginApp> {
   late final AppController _controller = AppController(
     settings: widget.settings,
     credentials: widget.credentials,
+    syncStates: widget.syncStates,
   );
 
   @override

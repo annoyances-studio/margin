@@ -39,6 +39,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connect => 'Connect';
 
   @override
+  String syncing(int completed, int total) {
+    return 'Syncing $completed of $total…';
+  }
+
+  @override
   String get nameFolioTitle => 'Name this Folio';
 
   @override
@@ -79,6 +84,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alwaysOnTop => 'Always on top';
+
+  @override
+  String get syncNow => 'Sync now';
 
   @override
   String get hideFolders => 'Hide folders';

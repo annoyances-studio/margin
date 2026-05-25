@@ -71,6 +71,26 @@ class OpenFolioScreen extends StatelessWidget {
                   onPressed: () => _createNew(context),
                 ),
               ],
+              if (controller.syncProgress != null) ...[
+                const SizedBox(height: 24),
+                LinearProgressIndicator(
+                  value: controller.syncProgress!.total == 0
+                      ? null
+                      : controller.syncProgress!.completed /
+                          controller.syncProgress!.total,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.syncing(
+                    controller.syncProgress!.completed,
+                    controller.syncProgress!.total,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ] else if (controller.isBusy) ...[
+                const SizedBox(height: 24),
+                const LinearProgressIndicator(),
+              ],
               if (controller.error != null) ...[
                 const SizedBox(height: 24),
                 Text(

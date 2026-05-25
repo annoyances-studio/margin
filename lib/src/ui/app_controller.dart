@@ -19,6 +19,8 @@ import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
 import '../storage/storage_backend.dart';
 import '../storage/webdav_backend.dart';
+import '../sync/sync_engine.dart';
+import '../sync/sync_state_store.dart';
 import 'editor_view_mode.dart';
 
 /// Drives the UI: owns the open repository, the folder tree, the selected note
@@ -30,17 +32,51 @@ import 'editor_view_mode.dart';
 class AppController extends ChangeNotifier {
   final SettingsStore _settings;
   final CredentialStore _credentials;
+  final SyncStateStore _syncStates;
 
   /// Builds HTTP clients for WebDAV. Injectable so tests can supply a mock.
   final http.Client Function() _httpClientFactory;
 
+  /// Resolves the parent directory for per-Folio caches (`<root>/<UUID>/`).
+  /// Injectable so tests can use a temp dir instead of the OS documents dir.
+  final Future<Directory> Function() _cacheRoot;
+
   AppController({
     SettingsStore? settings,
     CredentialStore? credentials,
+    SyncStateStore? syncStates,
     http.Client Function()? httpClientFactory,
+    Future<Directory> Function()? cacheRoot,
   })  : _settings = settings ?? InMemorySettingsStore(),
         _credentials = credentials ?? InMemoryCredentialStore(),
-        _httpClientFactory = httpClientFactory ?? (() => http.Client());
+        _syncStates = syncStates ?? InMemorySyncStateStore(),
+        _httpClientFactory = httpClientFactory ?? (() => http.Client()),
+        _cacheRoot = cacheRoot ??
+            (() async {
+              final docs = await getApplicationDocumentsDirectory();
+              return Directory(p.join(docs.path, 'Margin'));
+            });
+
+  /// The remote sync peer for the open cached Folio (null for purely local
+  /// Folios), and that Folio's id — kept for later background/manual sync.
+  StorageBackend? _syncPeer;
+  String? _folioId;
+
+  /// Progress of an in-flight cache/sync, or null when idle.
+  ({int completed, int total})? _syncProgress;
+  ({int completed, int total})? get syncProgress => _syncProgress;
+
+  /// Whether the open Folio has a remote peer it can sync with.
+  bool get canSync => _syncPeer != null;
+
+  /// A label for conflict copies. Best-effort; falls back to a constant.
+  String get _deviceName {
+    try {
+      return Platform.localHostname;
+    } catch (_) {
+      return 'Margin';
+    }
+  }
 
   /// Keystore key for a WebDAV password, derived from its (non-secret) URL and
   /// username — both known before we can connect.
@@ -186,19 +222,88 @@ class AppController extends ChangeNotifier {
         client: _httpClientFactory(),
       );
     } catch (e) {
-      // A malformed URL throws synchronously, before open()'s error handling;
+      // A malformed URL throws synchronously, before the error handling below;
       // surface it so the landing screen can show it.
       _error = 'Invalid server URL: $e';
       notifyListeners();
       return;
     }
-    await open(backend);
+    await openThroughCache(backend);
     if (hasFolio) {
       await _settings.setLastFolioType('webdav');
       await _settings.setLastFolioPath(url);
       await _settings.setLastWebDavUser(username);
       await _credentials.write(_webDavCredKey(url, username), password);
     }
+  }
+
+  /// Opens a [remote] Folio through a local cache (clone-then-sync): identifies
+  /// the remote Folio, syncs it into `<cacheRoot>/<id>/`, then adopts that local
+  /// cache as the working backend with [remote] kept as the sync peer. This is
+  /// what makes a remote Folio's notes and attachments work offline with real
+  /// on-disk paths. Exposed for tests; [openWebDav] builds the WebDAV remote.
+  Future<void> openThroughCache(StorageBackend remote) async {
+    await _run(() async {
+      // 1. Identify the remote Folio (its id keys the cache and sync state).
+      final id = (await Folio.open(remote)).id;
+
+      // 2. Prepare the local cache directory.
+      final root = await _cacheRoot();
+      final cacheDir = Directory(p.join(root.path, id));
+      await cacheDir.create(recursive: true);
+      final local = LocalFolderBackend(cacheDir.path);
+
+      // 3. Clone/sync remote -> local cache, reporting progress.
+      final engine = SyncEngine(
+        local: local,
+        remote: remote,
+        deviceName: _deviceName,
+      );
+      final result = await engine.sync(
+        await _syncStates.load(id),
+        onProgress: (p) {
+          _syncProgress = (completed: p.completed, total: p.total);
+          notifyListeners();
+        },
+      );
+      await _syncStates.save(id, result.newState);
+      _syncProgress = null;
+
+      // 4. Adopt the local cache as the working backend; keep the remote peer.
+      _adopt(await Folio.open(local), ContentService(local));
+      _syncPeer = remote;
+      _folioId = id;
+      await _reloadTree();
+      await _restoreLastNote();
+    });
+  }
+
+  /// Syncs the open cached Folio with its remote peer: flushes pending edits to
+  /// the cache, reconciles cache ⇄ remote, and refreshes the tree. No-op for a
+  /// purely local Folio.
+  Future<void> syncNow() async {
+    final peer = _syncPeer;
+    final id = _folioId;
+    final folio = _folio;
+    if (peer == null || id == null || folio == null) return;
+    await _run(() async {
+      await _flushIfDirty();
+      final engine = SyncEngine(
+        local: folio.backend,
+        remote: peer,
+        deviceName: _deviceName,
+      );
+      final result = await engine.sync(
+        await _syncStates.load(id),
+        onProgress: (p) {
+          _syncProgress = (completed: p.completed, total: p.total);
+          notifyListeners();
+        },
+      );
+      await _syncStates.save(id, result.newState);
+      _syncProgress = null;
+      await _reloadTree();
+    });
   }
 
   /// Opens (or creates) a repository in this device's app documents directory —
@@ -253,6 +358,9 @@ class AppController extends ChangeNotifier {
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
+    _syncPeer = null;
+    _folioId = null;
+    _syncProgress = null;
     // Explicit close: forget the Folio (and note) so the next launch shows
     // the landing screen rather than reopening it. (Any WebDAV password stays
     // in the keystore; re-adding the same URL reuses it.)
@@ -450,6 +558,9 @@ class AppController extends ChangeNotifier {
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
+    // Cleared here; openThroughCache sets them after adopting the cache.
+    _syncPeer = null;
+    _folioId = null;
   }
 
   Future<void> _reloadTree() async {
@@ -523,6 +634,7 @@ class AppController extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _busy = false;
+      _syncProgress = null;
       notifyListeners();
     }
   }
