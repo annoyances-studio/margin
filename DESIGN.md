@@ -464,6 +464,23 @@ Slice breakdown (rough): cache layout + `DeviceNotes` move → download-on-open
 into the UUID cache → run on the cache backend → wire `SyncEngine` (cache ⇄
 remote) + sync indicator → conflict UI → sidecar hygiene.
 
+### Sync UX (next)
+
+Clone-then-sync now works (download-on-open into the cache, run on the cache,
+manual "Sync now", auto-reopen). Remaining UX so users don't lose track of what
+has reached the server:
+
+- **Auto-sync after save** on a synced Folio — a background sync triggered after
+  a successful save/mutation. Must be failure-tolerant: offline / server-down
+  must never block editing or lose data (the local cache is the source of
+  truth; sync is best-effort and retried later).
+- **Unsynced indicator** — track `hasUnsyncedChanges` (set on mutation when
+  `canSync`, cleared on a successful sync) and show a "saved but not synced"
+  marker (e.g. `*` by the note title).
+- Keep manual **Sync now** as the always-available escape hatch.
+- Surface sync errors non-blockingly (a dismissible banner/indicator, not a
+  hard failure).
+
 ## Open items
 
 - Mobile layout (slide-over tree) and the Android/iOS builds.
