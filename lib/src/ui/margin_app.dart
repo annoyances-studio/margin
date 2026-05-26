@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../credentials/credential_store.dart';
 import '../desktop/startup_service.dart';
+import '../mobile/app_background.dart';
 import '../settings/settings_store.dart';
 import '../sync/sync_state_store.dart';
 import 'app_controller.dart';
@@ -84,16 +85,31 @@ class _MarginAppState extends State<MarginApp> {
       home: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {
+          final Widget screen;
           if (_controller.hasFolio) {
-            return FolioScreen(
+            screen = FolioScreen(
               controller: _controller,
               startupService: widget.startupService,
             );
+          } else if (_controller.isRestoring) {
+            // While reconnecting a remembered Folio, show a splash rather than
+            // the landing screen so a cold restart doesn't flash "open a Folio".
+            screen = const _RestoringSplash();
+          } else {
+            screen = OpenFolioScreen(controller: _controller);
           }
-          // While reconnecting a remembered Folio, show a splash rather than the
-          // landing screen so a cold restart doesn't flash "open a Folio".
-          if (_controller.isRestoring) return const _RestoringSplash();
-          return OpenFolioScreen(controller: _controller);
+          // On Android, intercept the root Back so it hides the app (like Home)
+          // instead of finishing the activity — keeping state alive so resume
+          // is instant. Elsewhere there's no system Back to intercept.
+          if (!backMinimizesApp) return screen;
+          return PopScope(
+            key: const Key('rootBackGuard'),
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) moveAppToBackground();
+            },
+            child: screen,
+          );
         },
       ),
     );
