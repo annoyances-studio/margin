@@ -124,6 +124,13 @@ class AppController extends ChangeNotifier {
   bool _busy = false;
   String? _error;
 
+  /// True only while reconnecting a remembered Folio at startup. Lets the UI
+  /// show a splash instead of the open/landing screen during the reconnect, so
+  /// a cold restart (e.g. Android reclaimed the process) doesn't flash the
+  /// landing screen before the Folio reappears.
+  bool _restoring = false;
+  bool get isRestoring => _restoring;
+
   // --- read-only state ---
   bool get hasFolio => _folio != null;
   String get folioName => _folio?.name ?? 'Margin';
@@ -205,16 +212,25 @@ class AppController extends ChangeNotifier {
     }
     if (location == null) return;
 
-    if (type == 'webdav') {
-      final username = await _settings.getLastWebDavUser() ?? '';
-      final password =
-          await _credentials.read(_webDavCredKey(location, username));
-      if (password == null) return; // can't reconnect without the secret
-      await openWebDav(location, username, password);
-      if (!hasFolio) await _settings.setLastFolioType(null);
-    } else {
-      await openPath(location);
-      if (!hasFolio) await _settings.setLastFolioPath(null);
+    // We have a Folio to reconnect: signal the UI to show a splash instead of
+    // the landing screen while we do (the reconnect can hit the network).
+    _restoring = true;
+    _notify();
+    try {
+      if (type == 'webdav') {
+        final username = await _settings.getLastWebDavUser() ?? '';
+        final password =
+            await _credentials.read(_webDavCredKey(location, username));
+        if (password == null) return; // can't reconnect without the secret
+        await openWebDav(location, username, password);
+        if (!hasFolio) await _settings.setLastFolioType(null);
+      } else {
+        await openPath(location);
+        if (!hasFolio) await _settings.setLastFolioPath(null);
+      }
+    } finally {
+      _restoring = false;
+      _notify();
     }
   }
 

@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
@@ -19,6 +21,23 @@ void main() {
     await controller.create(MemoryBackend(), 'My Notes');
     await controller.createFolder('Work');
     await controller.createNote('meeting', folderPath: 'Work');
+    return controller;
+  }
+
+  /// A controller backed by a remote peer (clone-then-sync), so it [canSync].
+  Future<AppController> openSyncedWithNote() async {
+    final cacheDir = await Directory.systemTemp.createTemp('margin_mobsync_');
+    addTearDown(() async {
+      if (await cacheDir.exists()) await cacheDir.delete(recursive: true);
+    });
+    final remote = MemoryBackend();
+    await Folio.create(remote, name: 'Remote');
+    final controller = AppController(cacheRoot: () async => cacheDir);
+    addTearDown(controller.dispose);
+    await controller.openThroughCache(remote);
+    await controller.createFolder('Work');
+    await controller.createNote('meeting', folderPath: 'Work');
+    await controller.pendingSync;
     return controller;
   }
 
@@ -94,5 +113,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MarkdownPreview), findsOneWidget);
+  });
+
+  testWidgets('phone: a remote-backed Folio offers pull-to-refresh',
+      (tester) async {
+    useNarrowScreen(tester);
+    // The clone-then-sync setup does real filesystem IO (temp-dir cache), which
+    // only progresses under the test binding inside runAsync.
+    late AppController controller;
+    await tester.runAsync(() async {
+      controller = await openSyncedWithNote();
+    });
+
+    await tester.pumpWidget(
+      localizedApp(FolioScreen(controller: controller)),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Folders'));
+    await tester.pump(const Duration(milliseconds: 300)); // page transition
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The Folders page is wrapped in a RefreshIndicator (pull down = Sync).
+    // The pull actually triggering syncNow is covered at the controller level
+    // in sync_ux_test; here we only assert the gesture surface is wired up.
+    expect(find.byType(RefreshIndicator), findsWidgets);
+  });
+
+  testWidgets('phone: no pull-to-refresh for a local-only Folio',
+      (tester) async {
+    useNarrowScreen(tester);
+    final controller = await openWithNote(); // local, cannot sync
+    await tester.pumpWidget(
+      localizedApp(FolioScreen(controller: controller)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Folders'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RefreshIndicator), findsNothing);
   });
 }

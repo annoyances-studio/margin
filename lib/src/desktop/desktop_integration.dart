@@ -32,6 +32,13 @@ Future<void> initDesktopWindow() async {
   await windowManager.setPreventClose(true);
 }
 
+/// Quits the desktop app for real: drops the hide-to-tray guard and destroys
+/// the window (the same path as the tray's "Quit"). No-op off desktop.
+Future<void> quitDesktopApp() async {
+  if (!isDesktop) return;
+  await DesktopTray.instance._quit();
+}
+
 /// Sets whether the window floats above other windows. No-op off desktop;
 /// failures are swallowed so a missing window manager can't crash the UI.
 Future<void> setWindowAlwaysOnTop(bool value) async {

@@ -93,6 +93,38 @@ void main() {
     expect(restored.alwaysOnTop, isTrue);
   });
 
+  test('signals isRestoring while reconnecting, then clears it', () async {
+    final first = AppController(settings: settings);
+    await first.createPath(tempDir.path, 'My Notes');
+    first.dispose();
+
+    final restored = AppController(settings: settings);
+    addTearDown(restored.dispose);
+
+    final seen = <bool>[];
+    restored.addListener(() => seen.add(restored.isRestoring));
+
+    expect(restored.isRestoring, isFalse); // idle before restore
+    await restored.restoreLastFolio();
+
+    expect(seen, contains(true)); // splash was signalled mid-restore
+    expect(restored.isRestoring, isFalse); // cleared once done
+    expect(restored.hasFolio, isTrue);
+  });
+
+  test('does not signal isRestoring when there is nothing to restore',
+      () async {
+    final controller = AppController(settings: settings); // no last Folio
+    addTearDown(controller.dispose);
+
+    final seen = <bool>[];
+    controller.addListener(() => seen.add(controller.isRestoring));
+    await controller.restoreLastFolio();
+
+    expect(seen, isNot(contains(true)));
+    expect(controller.isRestoring, isFalse);
+  });
+
   test('shows no note when the last note is missing', () async {
     final first = AppController(settings: settings);
     await first.createPath(tempDir.path, 'My Notes');

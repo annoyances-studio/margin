@@ -182,6 +182,12 @@ abstract class AppLocalizations {
   /// **'Close Folio'**
   String get closeFolio;
 
+  /// Desktop action that quits the app entirely (rather than hiding to the tray).
+  ///
+  /// In en, this message translates to:
+  /// **'Close Margin'**
+  String get closeMargin;
+
   /// Tooltip: reveal the Folio's folder in the OS file manager.
   ///
   /// In en, this message translates to:

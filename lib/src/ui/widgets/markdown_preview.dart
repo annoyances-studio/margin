@@ -21,17 +21,32 @@ class MarkdownPreview extends StatelessWidget {
   final String data;
   final String? imageBaseDir;
 
-  const MarkdownPreview({super.key, required this.data, this.imageBaseDir});
+  /// Scroll physics for the rendered content. The mobile preview page passes
+  /// [AlwaysScrollableScrollPhysics] so pull-to-refresh works on short notes.
+  final ScrollPhysics? physics;
+
+  const MarkdownPreview({
+    super.key,
+    required this.data,
+    this.imageBaseDir,
+    this.physics,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Markdown(
-      data: data,
-      selectable: true,
-      extensionSet: md.ExtensionSet.gitHubFlavored,
-      padding: const EdgeInsets.all(16),
-      sizedImageBuilder: _buildImage,
-      onTapLink: (text, href, title) => _openLink(href),
+    // A subtly distinct surface tone tells the rendered preview apart from the
+    // raw editor at a glance (it reads as "rendered", not "editable").
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Markdown(
+        data: data,
+        selectable: true,
+        physics: physics,
+        extensionSet: md.ExtensionSet.gitHubFlavored,
+        padding: const EdgeInsets.all(16),
+        sizedImageBuilder: _buildImage,
+        onTapLink: (text, href, title) => _openLink(href),
+      ),
     );
   }
 

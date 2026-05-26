@@ -53,6 +53,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get closeFolio => 'Close Folio';
 
   @override
+  String get closeMargin => 'Close Margin';
+
+  @override
   String get openFolioInFileManager => 'Open Folio in file manager';
 
   @override

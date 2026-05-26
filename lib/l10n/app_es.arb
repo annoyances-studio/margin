@@ -15,6 +15,7 @@
   "nameFolioTitle": "Nombra este Folio",
   "folioNameLabel": "Nombre del Folio",
   "closeFolio": "Cerrar Folio",
+  "closeMargin": "Cerrar Margin",
   "openFolioInFileManager": "Abrir el Folio en el explorador de archivos",
 
   "cancel": "Cancelar",

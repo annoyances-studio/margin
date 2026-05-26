@@ -175,9 +175,14 @@ class _FolioScreenState extends State<FolioScreen> {
       children: [
         tree == null
             ? const SizedBox.shrink()
-            : Material(
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                child: _treePanelContent(onNoteSelected: () => _goToPage(1)),
+            : _pullToSync(
+                Material(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  child: _treePanelContent(
+                    onNoteSelected: () => _goToPage(1),
+                    scrollable: true,
+                  ),
+                ),
               ),
         NoteEditorPane(
           notePath: notePath,
@@ -189,11 +194,25 @@ class _FolioScreenState extends State<FolioScreen> {
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
-            : MarkdownPreview(
-                data: controller.workingBody,
-                imageBaseDir: _imageBaseDir(),
+            : _pullToSync(
+                MarkdownPreview(
+                  data: controller.workingBody,
+                  imageBaseDir: _imageBaseDir(),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                ),
               ),
       ],
+    );
+  }
+
+  /// Wraps a scrollable mobile page so a pull-down gesture triggers a sync —
+  /// the touch equivalent of "Sync now". Only added when the Folio has a remote
+  /// peer; otherwise the child is returned unchanged.
+  Widget _pullToSync(Widget child) {
+    if (!controller.canSync) return child;
+    return RefreshIndicator(
+      onRefresh: () => controller.syncNow(),
+      child: child,
     );
   }
 
@@ -233,10 +252,14 @@ class _FolioScreenState extends State<FolioScreen> {
 
   Widget _pageNavButton(int index, IconData icon, String tooltip) {
     final selected = _currentPage == index;
+    // The active mode is highlighted; inactive ones are dimmed to grey (the
+    // same affordance as the disabled Save icon) so the current mode is clear.
     return IconButton(
       tooltip: tooltip,
       isSelected: selected,
-      color: selected ? Theme.of(context).colorScheme.primary : null,
+      color: selected
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).disabledColor,
       icon: Icon(icon),
       onPressed: () => _goToPage(index),
     );
@@ -267,6 +290,9 @@ class _FolioScreenState extends State<FolioScreen> {
             ),
           PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
           PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
+          // Desktop hides to the tray on window-close; this quits for real.
+          if (isDesktop)
+            PopupMenuItem(value: 'quit', child: Text(_l10n.closeMargin)),
         ],
       );
 
@@ -290,6 +316,8 @@ class _FolioScreenState extends State<FolioScreen> {
         _openSettings();
       case 'close':
         controller.closeFolio();
+      case 'quit':
+        quitDesktopApp();
     }
   }
 
@@ -392,7 +420,10 @@ class _FolioScreenState extends State<FolioScreen> {
   /// The folder tree with its header, shared by the desktop side panel and the
   /// phone folders page. [onNoteSelected] fires after a note is tapped (used on
   /// phones to swipe to the editor page).
-  Widget _treePanelContent({VoidCallback? onNoteSelected}) {
+  Widget _treePanelContent({
+    VoidCallback? onNoteSelected,
+    bool scrollable = false,
+  }) {
     final tree = controller.tree;
     if (tree == null) return const SizedBox.shrink();
     return Column(
@@ -403,6 +434,9 @@ class _FolioScreenState extends State<FolioScreen> {
           child: FolderTreeView(
             root: tree,
             selectedNotePath: controller.selectedNotePath,
+            // Always-scrollable on phones so pull-to-refresh fires even when
+            // the tree is short.
+            physics: scrollable ? const AlwaysScrollableScrollPhysics() : null,
             canRevealInFileManager:
                 canRevealInFileManager && controller.isLocalFolio,
             onNoteTap: (note) {

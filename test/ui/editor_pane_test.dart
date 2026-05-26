@@ -84,5 +84,7 @@ void main() {
     expect(find.text('Always on top'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Close Folio'), findsOneWidget);
+    // Desktop-only: quit the whole app (vs. just closing the Folio).
+    expect(find.text('Close Margin'), findsOneWidget);
   });
 }

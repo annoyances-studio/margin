@@ -34,6 +34,11 @@ class FolderTreeView extends StatelessWidget {
   final void Function(FolderNode folder, TreeAction action) onFolderAction;
   final void Function(NoteNode note, TreeAction action) onNoteAction;
 
+  /// Scroll physics for the list. The mobile pages pass
+  /// [AlwaysScrollableScrollPhysics] so a pull-to-refresh gesture works even
+  /// when the tree is short enough to fit without scrolling.
+  final ScrollPhysics? physics;
+
   const FolderTreeView({
     super.key,
     required this.root,
@@ -42,6 +47,7 @@ class FolderTreeView extends StatelessWidget {
     required this.onNoteAction,
     this.selectedNotePath,
     this.canRevealInFileManager = false,
+    this.physics,
   });
 
   @override
@@ -59,7 +65,7 @@ class FolderTreeView extends StatelessWidget {
         ),
       );
     }
-    return ListView(children: children);
+    return ListView(physics: physics, children: children);
   }
 
   List<Widget> _childrenOf(FolderNode folder, AppLocalizations l10n) => [

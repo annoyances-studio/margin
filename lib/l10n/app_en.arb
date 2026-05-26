@@ -42,6 +42,9 @@
   "closeFolio": "Close Folio",
   "@closeFolio": { "description": "Action that closes the open Folio." },
 
+  "closeMargin": "Close Margin",
+  "@closeMargin": { "description": "Desktop action that quits the app entirely (rather than hiding to the tray)." },
+
   "openFolioInFileManager": "Open Folio in file manager",
   "@openFolioInFileManager": { "description": "Tooltip: reveal the Folio's folder in the OS file manager." },
 

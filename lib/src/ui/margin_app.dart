@@ -84,13 +84,46 @@ class _MarginAppState extends State<MarginApp> {
       home: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {
-          return _controller.hasFolio
-              ? FolioScreen(
-                  controller: _controller,
-                  startupService: widget.startupService,
-                )
-              : OpenFolioScreen(controller: _controller);
+          if (_controller.hasFolio) {
+            return FolioScreen(
+              controller: _controller,
+              startupService: widget.startupService,
+            );
+          }
+          // While reconnecting a remembered Folio, show a splash rather than the
+          // landing screen so a cold restart doesn't flash "open a Folio".
+          if (_controller.isRestoring) return const _RestoringSplash();
+          return OpenFolioScreen(controller: _controller);
         },
+      ),
+    );
+  }
+}
+
+/// A minimal splash shown while a remembered Folio is being reconnected at
+/// startup (see [AppController.isRestoring]).
+class _RestoringSplash extends StatelessWidget {
+  const _RestoringSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              AppLocalizations.of(context).appName,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 20),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+          ],
+        ),
       ),
     );
   }
