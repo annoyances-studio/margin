@@ -92,6 +92,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncNow => 'Sync now';
 
   @override
+  String get syncAnyway => 'Sync anyway';
+
+  @override
+  String get emptySyncWarning =>
+      'This Folio now looks empty. Syncing will delete its contents on the other side.';
+
+  @override
   String get hideFolders => 'Hide folders';
 
   @override

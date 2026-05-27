@@ -502,6 +502,33 @@ has reached the server:
 - Surface sync errors non-blockingly (a dismissible banner/indicator, not a
   hard failure).
 
+### Emptying guard (data safety)
+
+A flaky or incomplete connection can make a side's listing come back empty.
+Naively, sync would then read that as "everything was deleted" and propagate a
+wipe to the other side — catastrophic for the user's real data. So the engine
+**withholds** any plan whose result would be *empty* (everything gone, reached
+via deletions) when the base had content: nothing is applied, and
+`SyncResult.withheld` is set. The UI shows a non-blocking banner — "This Folio
+now looks empty. Sync anyway?" — and only an explicit confirm
+(`allowEmptying`) lets the wipe through. The first clone (empty base) and
+partial changes (the result still holds files) are never affected. This also
+politely double-checks a *genuine* "delete everything", which is rare and
+high-stakes. Partial-corruption (a listing missing some files) is not yet
+guarded — a possible future "deletes > N%" heuristic.
+
+### Empty-folder hygiene
+
+Deleting a note never removes its containing directory, and sync only moves
+files, so editing a Folio's folder directly (e.g. deleting notes in the OS file
+manager) can leave empty directories behind. Two safeguards: the tree **hides**
+a non-root directory that is neither marked (`properties.yaml`) nor holds a note
+(so intentional empty folders and foreign markdown folders still show), and
+`ContentService.pruneEmptyFolders()` **removes** recursively-empty directories
+from the working backend (run on open and after sync). A directory holding any
+file — including its `properties.yaml` marker — is never pruned, so folders you
+created on purpose survive even when empty.
+
 ## Open items
 
 - Mobile layout (slide-over tree) and the Android/iOS builds.

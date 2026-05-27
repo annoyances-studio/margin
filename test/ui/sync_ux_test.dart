@@ -54,6 +54,45 @@ void main() {
     expect(await remote.exists('Work/note.md'), isTrue);
   });
 
+  test('a remote that comes back empty is withheld, not propagated as a wipe',
+      () async {
+    final c = controller();
+    addTearDown(c.dispose);
+    await c.openThroughCache(remote);
+    await c.createFolder('Work');
+    await c.createNote('note', folderPath: 'Work');
+    await c.pendingSync;
+    expect(await remote.exists('Work/note.md'), isTrue);
+
+    final id = c.folioId!;
+    final cachedNote = File('${cacheDir.path}/$id/Work/note.md');
+    expect(cachedNote.existsSync(), isTrue);
+
+    // Wipe the remote out-of-band (simulating a flaky/empty listing).
+    Future<void> wipe([String path = '']) async {
+      for (final e in await remote.list(path)) {
+        if (e.isDirectory) {
+          await wipe(e.path);
+        } else {
+          await remote.delete(e.path);
+        }
+      }
+    }
+
+    await wipe();
+    await c.syncNow();
+
+    // The local cache is preserved; the user is asked before any deletion.
+    expect(c.syncNeedsEmptyConfirm, isTrue);
+    expect(cachedNote.existsSync(), isTrue);
+    expect(c.syncError, isNull);
+
+    // After confirmation, the wipe is applied.
+    await c.confirmEmptyingSync();
+    expect(c.syncNeedsEmptyConfirm, isFalse);
+    expect(cachedNote.existsSync(), isFalse);
+  });
+
   test('manual syncNow pushes a local edit to the remote', () async {
     final c = controller();
     addTearDown(c.dispose);

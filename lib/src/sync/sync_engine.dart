@@ -39,7 +39,12 @@ class SyncResult {
   /// The new last-synced state to persist for next time.
   final SyncState newState;
 
-  const SyncResult(this.plan, this.newState);
+  /// True when a destructive "one side is now empty" plan was withheld pending
+  /// explicit confirmation (see [SyncEngine.sync]'s emptying guard). Nothing was
+  /// applied; [newState] equals the unchanged base.
+  final bool withheld;
+
+  const SyncResult(this.plan, this.newState, {this.withheld = false});
 
   List<SyncAction> get conflicts => plan.conflicts;
   bool get hadConflicts => conflicts.isNotEmpty;
@@ -75,9 +80,17 @@ class SyncEngine {
   /// [onProgress] is invoked after each action is applied — useful for showing
   /// caching/sync status (the initial download of a remote Folio is just a sync
   /// from an empty [base], so this reports download progress too).
+  ///
+  /// Emptying guard: if a side that held content in [base] now reads as *empty*,
+  /// that is far more likely a failed/incomplete listing than a real "delete
+  /// everything", so the destructive plan is withheld (nothing applied,
+  /// [SyncResult.withheld] = true) unless [allowEmptying] is set — the caller is
+  /// expected to confirm with the user first. The first clone (empty base) is
+  /// never affected.
   Future<SyncResult> sync(
     SyncState base, {
     void Function(SyncProgress)? onProgress,
+    bool allowEmptying = false,
   }) async {
     final localSnapshot = await _snapshot(local);
     final remoteSnapshot = await _snapshot(remote);
@@ -88,6 +101,18 @@ class SyncEngine {
       base: base.hashes,
       conflictLabel: _conflictLabel(),
     );
+
+    // Emptying guard: a plan that would wipe everything we had (the result is
+    // empty, reached via deletions) is far more likely a failed/incomplete
+    // listing than a deliberate "delete all". Withhold it for explicit
+    // confirmation. The first clone (empty base) and partial changes (the
+    // result still holds files) are unaffected.
+    if (base.hashes.isNotEmpty &&
+        plan.actions.isNotEmpty &&
+        plan.resultingState.isEmpty &&
+        !allowEmptying) {
+      return SyncResult(plan, base, withheld: true);
+    }
 
     final total = plan.actions.length;
     for (var i = 0; i < total; i++) {

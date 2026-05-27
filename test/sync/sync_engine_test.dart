@@ -57,14 +57,70 @@ void main() {
   });
 
   test('propagates a local deletion to the remote', () async {
+    // Two files so deleting one is a normal deletion, not a full emptying
+    // (which the guard would withhold — covered separately below).
     await local.write('Work/note.md', bytes('hello'));
+    await local.write('Work/keep.md', bytes('stay'));
     final synced = await engine.sync(const SyncState.empty());
 
     await local.delete('Work/note.md');
     final result = await engine.sync(synced.newState);
 
     expect(await remote.exists('Work/note.md'), isFalse);
+    expect(await remote.exists('Work/keep.md'), isTrue);
     expect(result.newState.hashes.containsKey('Work/note.md'), isFalse);
+  });
+
+  group('emptying guard', () {
+    test('withholds a plan that would wipe everything (e.g. empty listing)',
+        () async {
+      await remote.write('a.md', bytes('1'));
+      await remote.write('b.md', bytes('2'));
+      final synced = await engine.sync(const SyncState.empty()); // clone both
+
+      // Simulate a flaky/incomplete remote that now lists as empty.
+      await remote.delete('a.md');
+      await remote.delete('b.md');
+      final result = await engine.sync(synced.newState);
+
+      expect(result.withheld, isTrue);
+      // Nothing applied: the local copy is untouched, state unchanged.
+      expect(await local.exists('a.md'), isTrue);
+      expect(await local.exists('b.md'), isTrue);
+      expect(result.newState.hashes, equals(synced.newState.hashes));
+    });
+
+    test('allowEmptying lets the wipe through after confirmation', () async {
+      await local.write('a.md', bytes('1'));
+      final synced = await engine.sync(const SyncState.empty());
+
+      await local.delete('a.md'); // empties the only file
+      final result = await engine.sync(synced.newState, allowEmptying: true);
+
+      expect(result.withheld, isFalse);
+      expect(await remote.exists('a.md'), isFalse);
+      expect(result.newState.hashes, isEmpty);
+    });
+
+    test('the first clone (empty base) is never withheld', () async {
+      await remote.write('a.md', bytes('1'));
+      final result = await engine.sync(const SyncState.empty());
+      expect(result.withheld, isFalse);
+      expect(await local.exists('a.md'), isTrue);
+    });
+
+    test('a delete that leaves content is not withheld', () async {
+      await local.write('a.md', bytes('1'));
+      await local.write('b.md', bytes('2'));
+      final synced = await engine.sync(const SyncState.empty());
+
+      await local.delete('a.md'); // b.md remains
+      final result = await engine.sync(synced.newState);
+
+      expect(result.withheld, isFalse);
+      expect(await remote.exists('a.md'), isFalse);
+      expect(await remote.exists('b.md'), isTrue);
+    });
   });
 
   test('keeps the edit when one side deletes and the other edits', () async {

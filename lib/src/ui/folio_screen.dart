@@ -125,6 +125,7 @@ class _FolioScreenState extends State<FolioScreen> {
         children: [
           _accentDivider(),
           if (controller.error != null) _errorBanner(controller.error!),
+          if (controller.syncNeedsEmptyConfirm) _emptySyncBanner(),
           Expanded(child: _wideContent()),
         ],
       ),
@@ -143,6 +144,7 @@ class _FolioScreenState extends State<FolioScreen> {
             _mobileHeader(),
             _accentDivider(),
             if (controller.error != null) _errorBanner(controller.error!),
+            if (controller.syncNeedsEmptyConfirm) _emptySyncBanner(),
             if (controller.isBusy) const LinearProgressIndicator(minHeight: 2),
             Expanded(child: _mobilePager()),
             _mobileBottomBar(),
@@ -615,6 +617,26 @@ class _FolioScreenState extends State<FolioScreen> {
       content: Text(message),
       leading: const Icon(Icons.error_outline),
       actions: const [SizedBox.shrink()],
+    );
+  }
+
+  /// Shown when a sync was withheld because a side looks empty (likely a flaky
+  /// connection). The user explicitly confirms before any deletion propagates.
+  Widget _emptySyncBanner() {
+    return MaterialBanner(
+      backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+      content: Text(_l10n.emptySyncWarning),
+      leading: const Icon(Icons.warning_amber_outlined),
+      actions: [
+        TextButton(
+          onPressed: () => controller.dismissEmptyingSync(),
+          child: Text(_l10n.cancel),
+        ),
+        TextButton(
+          onPressed: () => controller.confirmEmptyingSync(),
+          child: Text(_l10n.syncAnyway),
+        ),
+      ],
     );
   }
 

@@ -59,6 +59,10 @@
   "more": "More",
   "alwaysOnTop": "Always on top",
   "syncNow": "Sync now",
+  "syncAnyway": "Sync anyway",
+
+  "emptySyncWarning": "This Folio now looks empty. Syncing will delete its contents on the other side.",
+  "@emptySyncWarning": { "description": "Shown when a sync would propagate an apparent 'everything deleted' — guards against a flaky connection." },
 
   "hideFolders": "Hide folders",
   "showFolders": "Show folders",

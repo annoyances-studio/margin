@@ -10,6 +10,7 @@ import '../folio/note.dart';
 import '../folio/note_properties.dart';
 import '../storage/content_codec.dart';
 import '../storage/storage_backend.dart';
+import '../storage/storage_entry.dart';
 import 'content_exception.dart';
 import 'tree_node.dart';
 
@@ -39,25 +40,44 @@ class ContentService {
   ///
   /// Excludes `properties.yaml` files and `_attachments` directories.
   /// Enforces the folder-only-root rule: any stray `.md` at the root is
-  /// ignored rather than shown.
-  Future<FolderNode> tree() => _buildFolder('', '');
+  /// ignored rather than shown. A non-root directory that is neither marked as
+  /// a folder (its `properties.yaml`) nor holds anything (no notes, no kept
+  /// subfolders) is hidden — e.g. an empty directory left after notes were
+  /// deleted outside the app.
+  Future<FolderNode> tree() async =>
+      (await _buildFolder('', '', isRoot: true))!;
 
-  Future<FolderNode> _buildFolder(String path, String name) async {
+  Future<FolderNode?> _buildFolder(
+    String path,
+    String name, {
+    bool isRoot = false,
+  }) async {
     final entries = await backend.list(path);
     final folders = <FolderNode>[];
     final notes = <NoteNode>[];
-    final isRoot = path.isEmpty;
+    var hasProperties = false;
 
     for (final entry in entries) {
       if (entry.isDirectory) {
         if (entry.name == attachmentsDirName) continue;
-        folders.add(await _buildFolder(entry.path, entry.name));
+        final child = await _buildFolder(entry.path, entry.name);
+        if (child != null) folders.add(child);
       } else {
-        if (entry.name == propertiesFileName) continue;
+        if (entry.name == propertiesFileName) {
+          hasProperties = true;
+          continue;
+        }
         if (!entry.name.toLowerCase().endsWith(noteExtension)) continue;
         if (isRoot) continue; // no notes at the root
         notes.add(NoteNode(path: entry.path, name: entry.name));
       }
+    }
+
+    // Hide an empty, unmarked leftover directory (keeps intentional empty
+    // folders, which carry a properties.yaml, and foreign markdown folders,
+    // which carry notes).
+    if (!isRoot && !hasProperties && notes.isEmpty && folders.isEmpty) {
+      return null;
     }
 
     int byName(TreeNode a, TreeNode b) =>
@@ -66,9 +86,9 @@ class ContentService {
     notes.sort(byName);
 
     // Folders are few, so reading per-folder metadata here is cheap (DESIGN.md).
-    // The root has no folder properties (its properties.yaml is the repo root).
+    // Only marked folders can carry a color; the root has no folder properties.
     String? color;
-    if (!isRoot) {
+    if (!isRoot && hasProperties) {
       color = (await _tryReadFolderProperties(path))?.color;
     }
 
@@ -292,6 +312,43 @@ class ContentService {
 
   /// Deletes the folder at [path] and everything in it.
   Future<void> deleteFolder(String path) => backend.delete(path);
+
+  /// Removes directories that contain no files anywhere beneath them — leftover
+  /// empty folders, e.g. after notes were deleted outside the app. A directory
+  /// holding any file (including its `properties.yaml` marker) is not empty and
+  /// is preserved, so intentional empty folders survive. The root is never
+  /// removed. Best-effort; returns the number of directories removed.
+  Future<int> pruneEmptyFolders() async {
+    var removed = 0;
+
+    // Returns true if [path]'s subtree holds no files (after pruning empty
+    // descendants), so the caller can delete it.
+    Future<bool> prune(String path) async {
+      late final List<StorageEntry> entries;
+      try {
+        entries = await backend.list(path);
+      } catch (_) {
+        return false; // can't inspect -> assume non-empty, never delete
+      }
+      var hasFile = false;
+      for (final entry in entries) {
+        if (entry.isDirectory) {
+          if (await prune(entry.path)) {
+            await backend.delete(entry.path);
+            removed++;
+          } else {
+            hasFile = true;
+          }
+        } else {
+          hasFile = true;
+        }
+      }
+      return !hasFile;
+    }
+
+    await prune(''); // never deletes the root itself
+    return removed;
+  }
 
   /// Renames the folder at [folderPath] to [newName] within the same parent,
   /// moving all of its contents. Returns the new folder path.

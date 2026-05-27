@@ -222,6 +222,54 @@ void main() {
     });
   });
 
+  group('empty folders', () {
+    // Creates a real empty directory (write a file, then delete it).
+    Future<void> makeEmptyDir(String name) async {
+      await backend.write('$name/_tmp', bytes('x'));
+      await backend.delete('$name/_tmp');
+    }
+
+    test('tree hides an empty, unmarked leftover directory', () async {
+      await backend.write('Work/properties.yaml', bytes('title: "Work"'));
+      await backend.write('Work/note.md', bytes('n'));
+      await makeEmptyDir('Leftover'); // no properties.yaml, no notes
+
+      final root = await service.tree();
+      expect(root.folders.map((f) => f.name), ['Work']); // Leftover hidden
+    });
+
+    test('tree keeps an empty folder that has properties.yaml', () async {
+      await backend.write('Empty/properties.yaml', bytes('title: "Empty"'));
+      final root = await service.tree();
+      expect(root.folders.map((f) => f.name), ['Empty']);
+    });
+
+    test('tree keeps a foreign markdown folder without properties.yaml',
+        () async {
+      await backend.write('Foreign/note.md', bytes('n'));
+      final root = await service.tree();
+      expect(root.folders.single.name, 'Foreign');
+      expect(root.folders.single.notes.single.name, 'note.md');
+    });
+
+    test('pruneEmptyFolders removes empty dirs, keeps marked and populated',
+        () async {
+      await backend.write('Work/properties.yaml', bytes('title: "Work"'));
+      await backend.write('Work/note.md', bytes('n'));
+      await backend.write('Marked/properties.yaml', bytes('title: "Marked"'));
+      await makeEmptyDir('Leftover');
+      await makeEmptyDir('Nested/Inner');
+
+      final removed = await service.pruneEmptyFolders();
+
+      expect(await backend.exists('Leftover'), isFalse);
+      expect(await backend.exists('Nested'), isFalse); // whole empty subtree
+      expect(await backend.exists('Marked/properties.yaml'), isTrue); // kept
+      expect(await backend.exists('Work/note.md'), isTrue);
+      expect(removed, greaterThanOrEqualTo(2));
+    });
+  });
+
   group('folders', () {
     test('createFolder writes properties and is readable', () async {
       await service.createFolder('', 'Project X');

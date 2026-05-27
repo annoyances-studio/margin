@@ -82,6 +82,13 @@ class AppController extends ChangeNotifier {
   String? _syncError;
   String? get syncError => _syncError;
 
+  /// True when a sync was withheld because a side that previously had content
+  /// now reads as empty (likely a flaky connection, possibly a real delete).
+  /// The UI prompts the user; [confirmEmptyingSync] proceeds, [dismissEmptyingSync]
+  /// leaves everything untouched. Guards against a dropped connection wiping data.
+  bool _syncNeedsEmptyConfirm = false;
+  bool get syncNeedsEmptyConfirm => _syncNeedsEmptyConfirm;
+
   bool _autoSyncing = false;
   bool _pendingSync = false;
 
@@ -306,6 +313,7 @@ class AppController extends ChangeNotifier {
           _adopt(await Folio.open(local), ContentService(local));
           _syncPeer = remote;
           _folioId = knownId;
+          await _pruneEmptyFolders();
           await _reloadTree();
           await _restoreLastNote();
           unawaited(_settings.setLastFolioId(knownId));
@@ -339,6 +347,7 @@ class AppController extends ChangeNotifier {
       _adopt(await Folio.open(local), ContentService(local));
       _syncPeer = remote;
       _folioId = id;
+      await _pruneEmptyFolders();
       await _reloadTree();
       await _restoreLastNote();
       unawaited(_settings.setLastFolioId(id));
@@ -348,7 +357,7 @@ class AppController extends ChangeNotifier {
   /// Reconciles the cache with the remote peer: flushes pending edits, syncs
   /// both ways, and refreshes the tree. The shared body of manual and auto
   /// sync. Assumes a remote peer exists.
-  Future<void> _syncWithPeer() async {
+  Future<void> _syncWithPeer({bool allowEmptying = false}) async {
     final peer = _syncPeer;
     final id = _folioId;
     final folio = _folio;
@@ -361,14 +370,22 @@ class AppController extends ChangeNotifier {
     );
     final result = await engine.sync(
       await _syncStates.load(id),
-      onProgress: (p) {
-        _syncProgress = (completed: p.completed, total: p.total);
+      allowEmptying: allowEmptying,
+      onProgress: (progress) {
+        _syncProgress = (completed: progress.completed, total: progress.total);
         notifyListeners();
       },
     );
-    await _syncStates.save(id, result.newState);
     _syncProgress = null;
+    if (result.withheld) {
+      // A side looks empty — don't touch anything; ask the user to confirm.
+      _syncNeedsEmptyConfirm = true;
+      return;
+    }
+    _syncNeedsEmptyConfirm = false;
+    await _syncStates.save(id, result.newState);
     _hasUnsyncedChanges = false;
+    await _pruneEmptyFolders();
     await _reloadTree();
   }
 
@@ -376,8 +393,34 @@ class AppController extends ChangeNotifier {
   /// and reports failures via [error]. No-op for a purely local Folio.
   Future<void> syncNow() async {
     if (!canSync) return;
-    await _run(_syncWithPeer);
+    await _run(() => _syncWithPeer());
     if (_error == null) _syncError = null;
+  }
+
+  /// Proceeds with a sync the emptying guard withheld (the user confirmed the
+  /// Folio really is empty). Applies the pending deletions.
+  Future<void> confirmEmptyingSync() async {
+    if (!canSync) return;
+    await _run(() => _syncWithPeer(allowEmptying: true));
+    if (_error == null) _syncError = null;
+  }
+
+  /// Dismisses the emptying prompt without syncing — leaves both sides as-is.
+  void dismissEmptyingSync() {
+    _syncNeedsEmptyConfirm = false;
+    notifyListeners();
+  }
+
+  /// Best-effort cleanup of recursively-empty directories in the working
+  /// backend (e.g. folders left behind after notes were deleted outside the
+  /// app). Folders marked by a `properties.yaml` are preserved. Never fails a
+  /// sync.
+  Future<void> _pruneEmptyFolders() async {
+    try {
+      await _content?.pruneEmptyFolders();
+    } catch (_) {
+      // Cleanup is best-effort.
+    }
   }
 
   /// Marks the Folio unsynced and kicks off a best-effort background sync after
@@ -413,7 +456,7 @@ class AppController extends ChangeNotifier {
       do {
         _pendingSync = false;
         try {
-          await _serialize(_syncWithPeer); // serialized: never overlaps a edit
+          await _serialize(() => _syncWithPeer()); // serialized: never overlaps an edit
           _syncError = null;
         } catch (e) {
           _syncError = e.toString(); // keep _hasUnsyncedChanges; retry later

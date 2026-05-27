@@ -29,6 +29,8 @@
   "more": "Más",
   "alwaysOnTop": "Siempre visible",
   "syncNow": "Sincronizar ahora",
+  "syncAnyway": "Sincronizar de todos modos",
+  "emptySyncWarning": "Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.",
 
   "hideFolders": "Ocultar carpetas",
   "showFolders": "Mostrar carpetas",

@@ -93,6 +93,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get syncNow => 'Sincronizar ahora';
 
   @override
+  String get syncAnyway => 'Sincronizar de todos modos';
+
+  @override
+  String get emptySyncWarning =>
+      'Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.';
+
+  @override
   String get hideFolders => 'Ocultar carpetas';
 
   @override

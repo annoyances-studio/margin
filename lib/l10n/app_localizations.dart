@@ -260,6 +260,18 @@ abstract class AppLocalizations {
   /// **'Sync now'**
   String get syncNow;
 
+  /// No description provided for @syncAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync anyway'**
+  String get syncAnyway;
+
+  /// Shown when a sync would propagate an apparent 'everything deleted' — guards against a flaky connection.
+  ///
+  /// In en, this message translates to:
+  /// **'This Folio now looks empty. Syncing will delete its contents on the other side.'**
+  String get emptySyncWarning;
+
   /// No description provided for @hideFolders.
   ///
   /// In en, this message translates to:
