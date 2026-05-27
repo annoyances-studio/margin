@@ -448,6 +448,14 @@ cache; thereafter the app runs against a `LocalFolderBackend` over the cache,
 with the remote (`WebDavBackend`) as the sync peer. A sync indicator shows
 state; conflicts surface as conflict copies (already modelled).
 
+Open is **offline-first**: reopening a Folio adopts the on-device cache
+immediately and refreshes from the remote in the background (best-effort).
+Only the very first open of a never-cached Folio needs a connection — there is
+nothing local to fall back to. To locate the cache without first reaching the
+remote to identify it, the Folio id is persisted in `SettingsStore`
+(`lastFolioId`). This is the whole point of clone-then-sync: a dropped
+connection (typical on mobile) must never block opening notes already held.
+
 This is why per-note sidecars and `properties.yaml` matter: they are the
 metadata the sync reasons about.
 

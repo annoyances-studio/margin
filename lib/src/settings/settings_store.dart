@@ -24,6 +24,12 @@ abstract interface class SettingsStore {
   Future<String?> getLastWebDavUser();
   Future<void> setLastWebDavUser(String? user);
 
+  /// The last remote Folio's id (UUID). Persisted so its on-device cache can be
+  /// located and opened offline, without first reaching the remote to identify
+  /// it. Null for a local Folio.
+  Future<String?> getLastFolioId();
+  Future<void> setLastFolioId(String? id);
+
   /// Repository-relative path of the last opened note (or null).
   Future<String?> getLastNotePath();
   Future<void> setLastNotePath(String? path);
@@ -46,6 +52,7 @@ class InMemorySettingsStore implements SettingsStore {
   String? _lastRepositoryPath;
   String? _lastFolioType;
   String? _lastWebDavUser;
+  String? _lastFolioId;
   String? _lastNotePath;
 
   @override
@@ -70,6 +77,14 @@ class InMemorySettingsStore implements SettingsStore {
   @override
   Future<void> setLastWebDavUser(String? user) async {
     _lastWebDavUser = user;
+  }
+
+  @override
+  Future<String?> getLastFolioId() async => _lastFolioId;
+
+  @override
+  Future<void> setLastFolioId(String? id) async {
+    _lastFolioId = id;
   }
 
   @override
@@ -109,6 +124,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _lastRepoKey = 'lastRepositoryPath';
   static const String _lastFolioTypeKey = 'lastFolioType';
   static const String _lastWebDavUserKey = 'lastWebDavUser';
+  static const String _lastFolioIdKey = 'lastFolioId';
   static const String _lastNoteKey = 'lastNotePath';
   static const String _viewPolicyKey = 'viewPolicy';
   static const String _defaultNoteViewKey = 'defaultNoteView';
@@ -150,6 +166,12 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   @override
   Future<void> setLastWebDavUser(String? user) =>
       _setString(_lastWebDavUserKey, user);
+
+  @override
+  Future<String?> getLastFolioId() => _getString(_lastFolioIdKey);
+
+  @override
+  Future<void> setLastFolioId(String? id) => _setString(_lastFolioIdKey, id);
 
   @override
   Future<String?> getLastNotePath() async {
