@@ -134,6 +134,94 @@ void main() {
     });
   });
 
+  group('sidecar index', () {
+    test('createNote writes a sidecar index mirroring the note', () async {
+      await service.createNote('Work', 'meeting');
+
+      expect(await backend.exists('Work/meeting.md.yaml'), isTrue);
+      final index = await service.readNoteProperties('Work/meeting.md');
+      expect(index.title, 'meeting');
+    });
+
+    test('saveNote keeps the index title/tags/updated in step', () async {
+      final updated = DateTime.utc(2026, 5, 1, 12);
+      await service.saveNote(
+        'Work/note.md',
+        Note(
+          frontmatter: NoteFrontmatter(
+            title: 'Edited',
+            tags: const ['x', 'y'],
+            updated: updated,
+          ),
+          body: 'body',
+        ),
+      );
+
+      final index = await service.readNoteProperties('Work/note.md');
+      expect(index.title, 'Edited');
+      expect(index.tags, ['x', 'y']);
+      expect(index.updated, updated);
+    });
+
+    test('saving a note preserves the device-local view in the sidecar',
+        () async {
+      await service.createNote('Work', 'meeting');
+      await service.setNoteView('Work/meeting.md', 'preview');
+
+      // A later content save must not clobber the view.
+      await service.saveNote(
+        'Work/meeting.md',
+        Note(
+          frontmatter: const NoteFrontmatter(title: 'meeting'),
+          body: 'new body',
+        ),
+      );
+
+      final index = await service.readNoteProperties('Work/meeting.md');
+      expect(index.view, 'preview');
+      expect(index.title, 'meeting');
+    });
+
+    test('setNoteView preserves the index fields', () async {
+      await service.saveNote(
+        'Work/n.md',
+        Note(
+          frontmatter: const NoteFrontmatter(title: 'Keep', tags: ['t']),
+          body: 'b',
+        ),
+      );
+      await service.setNoteView('Work/n.md', 'split');
+
+      final index = await service.readNoteProperties('Work/n.md');
+      expect(index.title, 'Keep');
+      expect(index.tags, ['t']);
+      expect(index.view, 'split');
+    });
+
+    test('deleteNote also removes the sidecar (no orphan)', () async {
+      await service.createNote('Work', 'temp');
+      expect(await backend.exists('Work/temp.md.yaml'), isTrue);
+
+      await service.deleteNote('Work/temp.md');
+      expect(await backend.exists('Work/temp.md.yaml'), isFalse);
+    });
+
+    test('renameFolder moves notes and their sidecars together', () async {
+      await service.createNote('Work', 'meeting');
+      await service.setNoteView('Work/meeting.md', 'preview');
+
+      final newPath = await service.renameFolder('Work', 'Office');
+
+      expect(await backend.exists('$newPath/meeting.md'), isTrue);
+      expect(await backend.exists('$newPath/meeting.md.yaml'), isTrue);
+      expect(await backend.exists('Work/meeting.md.yaml'), isFalse);
+      // The moved sidecar still carries its index + view.
+      final index = await service.readNoteProperties('$newPath/meeting.md');
+      expect(index.title, 'meeting');
+      expect(index.view, 'preview');
+    });
+  });
+
   group('folders', () {
     test('createFolder writes properties and is readable', () async {
       await service.createFolder('', 'Project X');

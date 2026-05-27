@@ -96,10 +96,27 @@ class ContentService {
   }
 
   /// Serializes and writes [note] to [path] (encoding through the codec),
-  /// overwriting any existing file.
+  /// overwriting any existing file, then refreshes its sidecar index so the two
+  /// never drift.
   Future<void> saveNote(String path, Note note) async {
     final plain = Uint8List.fromList(utf8.encode(note.serialize()));
     await backend.write(path, codec.encode(plain));
+    await _writeNoteIndex(path, note);
+  }
+
+  /// Rewrites a note's sidecar so its search-index fields (title/tags/updated)
+  /// mirror [note], while preserving the device/UI [NoteProperties.view]. This
+  /// keeps `<note>.md.yaml` a faithful, openable-without-the-body index of the
+  /// note — the small file search scans instead of every `.md`.
+  Future<void> _writeNoteIndex(String notePath, Note note) async {
+    final existing = await readNoteProperties(notePath); // keep view
+    final indexed = NoteProperties(
+      title: note.frontmatter.title,
+      tags: note.frontmatter.tags,
+      updated: note.frontmatter.updated,
+      view: existing.view,
+    );
+    await writeNoteProperties(notePath, indexed);
   }
 
   /// Creates a new note named [fileName] inside [folderPath].
@@ -236,8 +253,10 @@ class ContentService {
 
   String _notePropertiesPath(String notePath) => '$notePath.yaml';
 
-  /// Reads a note's sidecar properties (decoding through the codec); returns
-  /// empty properties if there is no sidecar.
+  /// Reads a note's sidecar properties — its search-index record (title, tags,
+  /// updated) plus UI prefs (view) — decoding through the codec. Returns empty
+  /// properties if there is no sidecar. This is the small file search scans
+  /// instead of opening the note body.
   Future<NoteProperties> readNoteProperties(String notePath) async {
     try {
       final stored = await backend.read(_notePropertiesPath(notePath));

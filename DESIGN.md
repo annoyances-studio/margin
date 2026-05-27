@@ -459,14 +459,27 @@ connection (typical on mobile) must never block opening notes already held.
 This is why per-note sidecars and `properties.yaml` matter: they are the
 metadata the sync reasons about.
 
-Decisions to settle when starting the epic:
+### Sidecar as a search index
 
-- Sidecar hygiene: a note's `<note>.md.yaml` must track the note — move on
-  rename, delete with the note, never orphan (real bug seen in testing: a
-  `test2.md` note with a stale `Test 2.md.yaml` sidecar).
-- Should the per-note `view` sync at all? It is arguably device-local; consider
-  moving it from the synced sidecar into `SettingsStore` keyed by Folio UUID +
-  note path, leaving sidecars for genuinely shared metadata.
+The per-note sidecar `<note>.md.yaml` is the note's **lightweight search
+index**: `title`, `tags` and `updated` mirror the note's frontmatter, so search
+can scan these tiny files instead of opening (and decoding) every `.md`.
+`saveNote` rewrites the index in the same operation that writes the note, so the
+two never drift. Index fields are metadata only — no body excerpt: a note may be
+just pasted URLs or scratch text, where an excerpt carries little meaning. (A
+future, opt-in "summarize with Claude" could fill a real summary field; out of
+scope now.)
+
+The sidecar also still holds the per-note `view` (editor/split/preview). It is
+arguably device-local, but for now it stays in the (synced) sidecar so a
+"fully rendered" preference on read-only notes can be evaluated in real use;
+revisit moving it to device-local `SettingsStore` after testing.
+
+Hygiene (verified by tests): the sidecar tracks its note — written on
+create/save, `view` preserved across content saves, deleted with the note (no
+orphan), and moved with the note when its folder is renamed. There is no
+note-rename feature yet; if one is added it must move the sidecar too. Notes
+authored by other tools gain an index on their first save in Margin.
 
 Slice breakdown (rough): cache layout + `DeviceNotes` move → download-on-open
 into the UUID cache → run on the cache backend → wire `SyncEngine` (cache ⇄
