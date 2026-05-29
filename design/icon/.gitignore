@@ -1,0 +1,6 @@
+# Generated preview/exploration renders (reproducible via the *.py scripts).
+# The canonical icons live in their platform locations (windows/, assets/,
+# android/.../mipmap-*).
+png/
+png_b/
+png_final/

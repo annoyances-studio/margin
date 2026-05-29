@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Margin icon candidates</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 24px; }
+  h1 { font-size: 18px; }
+  .row { display: flex; align-items: flex-end; gap: 20px; padding: 14px;
+         border-radius: 10px; margin: 8px 0; }
+  .light { background: #f3f3f3; } .dark { background: #1e1e1e; color: #ccc; }
+  figure { margin: 0; text-align: center; }
+  figcaption { font-size: 11px; color: #888; margin-top: 4px; }
+  img.s256 { width: 96px; height: 96px; } /* shown at 96 to fit; it's a 256 art */
+  img.s48 { width: 48px; height: 48px; }
+  img.s32 { width: 32px; height: 32px; }
+  img.s16 { width: 16px; height: 16px; }
+  .name { width: 130px; font-weight: 600; }
+</style>
+<h1>Margin icon candidates — judge legibility at 32px and 16px</h1>
+<p>Each row shows the same SVG at 96 / 48 / 32 / 16 px. The 16px is the tray size.</p>
+
+<div id="rows"></div>
+<script>
+  const cands = [
+    ['A — bracket', 'A-bracket.svg'],
+    ['B — bracket + dot', 'B-bracket-dot.svg'],
+    ['C — [ ] + text', 'C-bracket-pair-text.svg'],
+  ];
+  const sizes = [['s256','96'],['s48','48'],['s32','32'],['s16','16']];
+  const host = document.getElementById('rows');
+  for (const bg of ['light','dark']) {
+    const h = document.createElement('div');
+    h.style.fontWeight = '600'; h.style.marginTop = '16px';
+    h.textContent = bg === 'light' ? 'On light' : 'On dark';
+    host.appendChild(h);
+    for (const [name, file] of cands) {
+      const row = document.createElement('div');
+      row.className = 'row ' + bg;
+      const label = document.createElement('div');
+      label.className = 'name'; label.textContent = name;
+      row.appendChild(label);
+      for (const [cls, px] of sizes) {
+        const fig = document.createElement('figure');
+        const img = document.createElement('img');
+        img.src = file; img.className = cls;
+        const cap = document.createElement('figcaption');
+        cap.textContent = px + 'px';
+        fig.appendChild(img); fig.appendChild(cap);
+        row.appendChild(fig);
+      }
+      host.appendChild(row);
+    }
+  }
+</script>
