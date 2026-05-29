@@ -79,10 +79,16 @@ class LocalFolderBackend implements StorageBackend, MovableBackend {
     }
     final entries = <StorageEntry>[];
     await for (final entity in dir.list(followLinks: false)) {
+      final rel = _toRelativePosix(entity.path);
+      // A child can never be the directory itself ('.'/empty) or escape upward.
+      // Cloud-placeholder/reparse folders mid-sync (OneDrive) have produced such
+      // phantom entries, which would otherwise recurse back into the root and
+      // render as a bogus "." tree (and could loop the sync walker).
+      if (rel.isEmpty || rel == '.' || rel.split('/').contains('..')) continue;
       final stat = await entity.stat();
       final isDir = stat.type == FileSystemEntityType.directory;
       entries.add(StorageEntry(
-        path: _toRelativePosix(entity.path),
+        path: rel,
         isDirectory: isDir,
         modified: stat.modified,
         size: isDir ? null : stat.size,

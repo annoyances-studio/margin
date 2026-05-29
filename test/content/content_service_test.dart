@@ -9,6 +9,33 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 
+/// A backend that injects a phantom self-referential "." child into one folder
+/// (as OneDrive placeholders did transiently), to prove the tree builder won't
+/// recurse back into the root.
+class _PhantomDotBackend implements StorageBackend {
+  final MemoryBackend _inner;
+  _PhantomDotBackend(this._inner);
+
+  @override
+  Future<List<StorageEntry>> list(String path) async {
+    final entries = await _inner.list(path);
+    if (path == 'Trap') {
+      // A bogus entry whose path resolves to the root — the dangerous case.
+      entries.add(const StorageEntry(path: '.', isDirectory: true));
+    }
+    return entries;
+  }
+
+  @override
+  Future<bool> exists(String path) => _inner.exists(path);
+  @override
+  Future<Uint8List> read(String path) => _inner.read(path);
+  @override
+  Future<void> write(String path, Uint8List bytes) => _inner.write(path, bytes);
+  @override
+  Future<void> delete(String path) => _inner.delete(path);
+}
+
 /// A non-trivial codec used to prove the [ContentCodec] seam is actually
 /// applied: stored bytes are XOR-masked, so on-disk content differs from the
 /// plaintext while reads still return the original.
@@ -220,6 +247,22 @@ void main() {
       expect(index.title, 'meeting');
       expect(index.view, 'preview');
     });
+  });
+
+  test('a phantom "." child does not recurse into the root', () async {
+    final inner = MemoryBackend();
+    final svc = ContentService(_PhantomDotBackend(inner));
+    await inner.write('Trap/properties.yaml', bytes('title: "Trap"'));
+    await inner.write('Trap/note.md', bytes('n'));
+    await inner.write('Other/properties.yaml', bytes('title: "Other"'));
+
+    final root = await svc.tree(); // must terminate, not blow the stack
+    final trap = root.folders.firstWhere((f) => f.name == 'Trap');
+    // The phantom "." child is ignored: Trap shows its note, no sub-folders,
+    // and certainly not a copy of the root.
+    expect(trap.folders, isEmpty);
+    expect(trap.notes.map((n) => n.name), ['note.md']);
+    expect(root.folders.map((f) => f.name), ['Other', 'Trap']);
   });
 
   group('empty folders', () {

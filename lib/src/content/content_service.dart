@@ -58,6 +58,19 @@ class ContentService {
     var hasProperties = false;
 
     for (final entry in entries) {
+      // Defend against a backend yielding the directory itself or a path that
+      // isn't strictly below it (seen transiently with OneDrive placeholders):
+      // recursing into such an entry walks back to the root and renders as a
+      // bogus "." subtree. A real child's path is `path/<name>` (or `<name>` at
+      // the root).
+      final expectedPrefix = path.isEmpty ? '' : '$path/';
+      if (entry.name == '.' ||
+          entry.name == '..' ||
+          entry.name.isEmpty ||
+          entry.path == path ||
+          !entry.path.startsWith(expectedPrefix)) {
+        continue;
+      }
       if (entry.isDirectory) {
         if (entry.name == attachmentsDirName) continue;
         final child = await _buildFolder(entry.path, entry.name);
