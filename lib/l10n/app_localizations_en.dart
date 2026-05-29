@@ -27,6 +27,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectWebDav => 'Connect to WebDAV';
 
   @override
+  String get connectOneDrive => 'Connect OneDrive';
+
+  @override
   String get serverUrl => 'Server URL';
 
   @override

@@ -23,6 +23,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // OneDrive OAuth: tell flutter_appauth which URI scheme to register
+        // intent filters for, so the system browser can hand the redirect
+        // (msauth://com.lordofthedummies.margin/<sigHash>) back to the app.
+        // The package's own RedirectUriReceiverActivity declaration is then
+        // complete — including the transparent theme that prevents the brief
+        // "blank screen" while the receiver activity finishes itself.
+        manifestPlaceholders["appAuthRedirectScheme"] = "msauth"
     }
 
     buildTypes {

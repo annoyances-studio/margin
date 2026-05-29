@@ -19,6 +19,9 @@
   "connectWebDav": "Connect to WebDAV",
   "@connectWebDav": { "description": "Landing button / dialog title for adding a WebDAV Folio." },
 
+  "connectOneDrive": "Connect OneDrive",
+  "@connectOneDrive": { "description": "Landing button to start the OneDrive OAuth sign-in." },
+
   "serverUrl": "Server URL",
   "username": "Username",
   "password": "Password",

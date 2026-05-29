@@ -134,6 +134,12 @@ abstract class AppLocalizations {
   /// **'Connect to WebDAV'**
   String get connectWebDav;
 
+  /// Landing button to start the OneDrive OAuth sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect OneDrive'**
+  String get connectOneDrive;
+
   /// No description provided for @serverUrl.
   ///
   /// In en, this message translates to:

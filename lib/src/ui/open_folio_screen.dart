@@ -2,13 +2,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../l10n/app_localizations.dart';
+import '../credentials/credential_store.dart';
+import '../storage/onedrive_auth.dart';
+import '../storage/onedrive_oauth.dart';
 import 'app_controller.dart';
 
 /// The landing screen: open this device's notes folder, or (on desktop) open or
@@ -57,6 +62,18 @@ class OpenFolioScreen extends StatelessWidget {
                 label: Text(l10n.connectWebDav),
                 onPressed: () => _connectWebDav(context),
               ),
+              // OneDrive is gated on the build-time client id + redirect URI
+              // being configured (so non-OneDrive builds don't show a dead
+              // button). Smoke-test phase: signs in and shows /me's display
+              // name. The real Folio-open flow lands once the backend exists.
+              if (OneDriveAuth.isConfiguredFromEnv) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.cloud_queue_outlined),
+                  label: Text(l10n.connectOneDrive),
+                  onPressed: () => _connectOneDrive(context),
+                ),
+              ],
               if (_supportsFolderPicker) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -177,6 +194,43 @@ class OpenFolioScreen extends StatelessWidget {
     if (confirmed == true && url.text.trim().isNotEmpty) {
       // Password intentionally not trimmed (it may contain spaces).
       await controller.openWebDav(url.text.trim(), user.text.trim(), pass.text);
+    }
+  }
+
+  /// Smoke-test handler: drive the OAuth round-trip end-to-end and pop a
+  /// SnackBar with the user's display name from Graph's `/me`. Proves the
+  /// Entra registration is correctly wired before we build anything on top.
+  Future<void> _connectOneDrive(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final auth = OneDriveAuth(
+      clientId: OneDriveAuth.clientIdFromEnv,
+      redirectUri: OneDriveAuth.redirectUriFromEnv,
+      credentials: SecureCredentialStore(),
+      authorize: FlutterAppAuthOneDriveAuthorize().call,
+      refresh: HttpOneDriveRefresh().call,
+    );
+
+    try {
+      if (!await auth.isSignedIn) {
+        await auth.signIn();
+      }
+      final token = await auth.accessToken();
+      final response = await http.get(
+        Uri.parse('https://graph.microsoft.com/v1.0/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode != 200) {
+        throw Exception('GET /me failed (HTTP ${response.statusCode})');
+      }
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final name = json['displayName']?.toString() ?? json['userPrincipalName']?.toString() ?? '(unnamed)';
+      messenger.showSnackBar(
+        SnackBar(content: Text('Signed in to OneDrive as $name')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('OneDrive sign-in failed: $e')),
+      );
     }
   }
 

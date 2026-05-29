@@ -7,6 +7,7 @@
   "openFolio": "Abrir un Folio",
   "createFolio": "Crear un Folio",
   "connectWebDav": "Conectar a WebDAV",
+  "connectOneDrive": "Conectar OneDrive",
   "serverUrl": "URL del servidor",
   "username": "Usuario",
   "password": "Contraseña",
