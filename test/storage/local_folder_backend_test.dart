@@ -35,6 +35,23 @@ void main() {
       expect(utf8.decode(out), '# Hello');
     });
 
+    test('move renames a directory and its contents in one operation',
+        () async {
+      await backend.write('Work/note.md', bytes('hi'));
+      await backend.write('Work/sub/deep.md', bytes('deep'));
+
+      await backend.move('Work', 'Office');
+
+      expect(await backend.exists('Work'), isFalse);
+      expect(await backend.exists('Office/note.md'), isTrue);
+      expect(utf8.decode(await backend.read('Office/sub/deep.md')), 'deep');
+    });
+
+    test('move on a missing source throws NotFoundException', () async {
+      expect(backend.move('Nope', 'Other'),
+          throwsA(isA<NotFoundException>()));
+    });
+
     test('write creates parent directories', () async {
       await backend.write('a/b/c/deep.md', bytes('x'));
       expect(await backend.exists('a/b/c/deep.md'), isTrue);

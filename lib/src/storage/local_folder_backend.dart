@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -17,11 +18,35 @@ import 'storage_exception.dart';
 /// forward-slash paths are mapped onto [rootPath] using the host's path
 /// separator. Paths containing `..` segments are rejected so a repository can
 /// never read or write outside its own root.
-class LocalFolderBackend implements StorageBackend {
+class LocalFolderBackend implements StorageBackend, MovableBackend {
   /// Absolute path to the directory that serves as the repository root.
   final String rootPath;
 
-  LocalFolderBackend(String rootPath) : rootPath = p.normalize(rootPath);
+  /// Ceiling on a single filesystem operation. Normal local I/O is sub-second;
+  /// this only trips when a file is locked or a cloud-placeholder is hydrating
+  /// (OneDrive, Dropbox, …), turning an indefinite hang into a recoverable
+  /// error instead of a frozen UI.
+  final Duration ioTimeout;
+
+  LocalFolderBackend(
+    String rootPath, {
+    this.ioTimeout = const Duration(seconds: 30),
+  }) : rootPath = p.normalize(rootPath);
+
+  /// Runs a filesystem future under [ioTimeout], converting a stall into a
+  /// [StorageException] the UI can surface (and recover from) rather than a
+  /// permanent freeze.
+  Future<T> _guard<T>(Future<T> op, String action, String path) async {
+    try {
+      return await op.timeout(ioTimeout);
+    } on TimeoutException {
+      throw StorageException(
+        '$action timed out after ${ioTimeout.inSeconds}s '
+        '(the file may be locked or syncing)',
+        path: path,
+      );
+    }
+  }
 
   /// The absolute on-disk path for a repository-relative [path]. Useful for
   /// revealing a file or folder in the OS file manager.
@@ -84,14 +109,14 @@ class LocalFolderBackend implements StorageBackend {
     if (type == FileSystemEntityType.directory) {
       throw InvalidPathException(path, 'Path is a directory, not a file');
     }
-    return File(resolved).readAsBytes();
+    return _guard(File(resolved).readAsBytes(), 'read', path);
   }
 
   @override
   Future<void> write(String path, Uint8List bytes) async {
     final file = File(_resolve(path));
     await file.parent.create(recursive: true);
-    await file.writeAsBytes(bytes, flush: true);
+    await _guard(file.writeAsBytes(bytes, flush: true), 'write', path);
   }
 
   @override
@@ -105,9 +130,25 @@ class LocalFolderBackend implements StorageBackend {
       case FileSystemEntityType.notFound:
         return; // no-op
       case FileSystemEntityType.directory:
-        await Directory(resolved).delete(recursive: true);
+        await _guard(Directory(resolved).delete(recursive: true), 'delete', path);
       default:
-        await File(resolved).delete();
+        await _guard(File(resolved).delete(), 'delete', path);
     }
+  }
+
+  /// Atomic move/rename within the same root — one filesystem operation instead
+  /// of copy-every-file-then-delete. Used by folder rename; far gentler on
+  /// OS-synced folders (no churn window for the sync client to lock a file).
+  @override
+  Future<void> move(String from, String to) async {
+    final fromAbs = _resolve(from);
+    final toAbs = _resolve(to);
+    final type = await FileSystemEntity.type(fromAbs, followLinks: false);
+    if (type == FileSystemEntityType.notFound) throw NotFoundException(from);
+    await Directory(p.dirname(toAbs)).create(recursive: true);
+    final Future<FileSystemEntity> renamed = type == FileSystemEntityType.directory
+        ? Directory(fromAbs).rename(toAbs)
+        : File(fromAbs).rename(toAbs);
+    await _guard(renamed, 'move', from);
   }
 }

@@ -41,3 +41,18 @@ abstract interface class StorageBackend {
   /// Deleting a path that does not exist is a no-op.
   Future<void> delete(String path);
 }
+
+/// Optional capability for backends that can move/rename a path within
+/// themselves far more cheaply than a copy-then-delete — e.g. an atomic
+/// filesystem rename. Higher layers (folder rename) use this when available and
+/// fall back to copy+delete otherwise.
+///
+/// Avoiding copy+delete matters on OS-synced folders (OneDrive, Dropbox, …): a
+/// folder rename done as "copy every file, then delete the old tree" creates a
+/// burst of sync churn that can briefly lock files; an atomic move sidesteps it.
+abstract interface class MovableBackend {
+  /// Moves [from] to [to] within the same backend. The parent of [to] is
+  /// created as needed; [to] must not already exist. Throws [NotFoundException]
+  /// if [from] does not exist.
+  Future<void> move(String from, String to);
+}

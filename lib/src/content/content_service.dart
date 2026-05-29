@@ -377,16 +377,31 @@ class ContentService {
       throw ContentException('A folder named "$newName" already exists');
     }
 
-    // Move raw bytes (no codec) so any encryption is preserved as-is.
+    // Prefer an atomic move when the backend can do one (local filesystem):
+    // a single rename instead of copy-every-file + delete-old. This is far
+    // gentler on OS-synced folders (OneDrive/Dropbox), where the copy+delete
+    // churn could briefly lock a file and hang the rename. Other backends
+    // (WebDAV, OneDrive-over-Graph) fall back to the byte-level copy+delete,
+    // which preserves any at-rest encryption as-is.
+    final mover = backend is MovableBackend ? backend as MovableBackend : null;
     if (caseOnly) {
+      // Case-only on a case-insensitive FS collides with itself; route through
+      // a temporary name so source and target are never the same path.
       final temp = _join(
         parent,
         '.margin-rename-${DateTime.now().microsecondsSinceEpoch}',
       );
-      await _copyDirectoryRaw(folderPath, temp);
-      await backend.delete(folderPath);
-      await _copyDirectoryRaw(temp, newPath);
-      await backend.delete(temp);
+      if (mover != null) {
+        await mover.move(folderPath, temp);
+        await mover.move(temp, newPath);
+      } else {
+        await _copyDirectoryRaw(folderPath, temp);
+        await backend.delete(folderPath);
+        await _copyDirectoryRaw(temp, newPath);
+        await backend.delete(temp);
+      }
+    } else if (mover != null) {
+      await mover.move(folderPath, newPath);
     } else {
       await _copyDirectoryRaw(folderPath, newPath);
       await backend.delete(folderPath);
