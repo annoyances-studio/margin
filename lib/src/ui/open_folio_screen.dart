@@ -2,18 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../../l10n/app_localizations.dart';
-import '../credentials/credential_store.dart';
 import '../storage/onedrive_auth.dart';
-import '../storage/onedrive_oauth.dart';
 import 'app_controller.dart';
 
 /// The landing screen: open this device's notes folder, or (on desktop) open or
@@ -197,41 +193,69 @@ class OpenFolioScreen extends StatelessWidget {
     }
   }
 
-  /// Smoke-test handler: drive the OAuth round-trip end-to-end and pop a
-  /// SnackBar with the user's display name from Graph's `/me`. Proves the
-  /// Entra registration is correctly wired before we build anything on top.
+  /// Connects a OneDrive Folio: sign in (system browser) if needed, ask which
+  /// folder to use, then open/create a Folio there through the local cache. The
+  /// access token is held in the OS keystore by the controller — never here.
   Future<void> _connectOneDrive(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final auth = OneDriveAuth(
-      clientId: OneDriveAuth.clientIdFromEnv,
-      redirectUri: OneDriveAuth.redirectUriFromEnv,
-      credentials: SecureCredentialStore(),
-      authorize: FlutterAppAuthOneDriveAuthorize().call,
-      refresh: HttpOneDriveRefresh().call,
-    );
+    final signedIn = await controller.signInOneDrive();
+    if (!signedIn || !context.mounted) return; // error surfaces via the screen
 
-    try {
-      if (!await auth.isSignedIn) {
-        await auth.signIn();
-      }
-      final token = await auth.accessToken();
-      final response = await http.get(
-        Uri.parse('https://graph.microsoft.com/v1.0/me'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode != 200) {
-        throw Exception('GET /me failed (HTTP ${response.statusCode})');
-      }
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final name = json['displayName']?.toString() ?? json['userPrincipalName']?.toString() ?? '(unnamed)';
-      messenger.showSnackBar(
-        SnackBar(content: Text('Signed in to OneDrive as $name')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('OneDrive sign-in failed: $e')),
-      );
-    }
+    final choice = await _promptOneDriveFolder(context);
+    if (choice == null) return;
+    await controller.openOneDrive(choice.folder, name: choice.name);
+  }
+
+  /// Asks for the OneDrive folder (created if missing) and the Folio name.
+  /// A typed path keeps the PoC simple; a visual folder browser can come later.
+  Future<({String folder, String name})?> _promptOneDriveFolder(
+    BuildContext context,
+  ) {
+    final folder = TextEditingController(text: 'Apps/Margin/Notes');
+    final name = TextEditingController(text: 'My Notes');
+    return showDialog<({String folder, String name})>(
+      context: context,
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.connectOneDrive),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: folder,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.oneDriveFolderLabel,
+                  helperText: l10n.oneDriveFolderHelp,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: name,
+                decoration: InputDecoration(labelText: l10n.folioNameLabel),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final f = folder.text.trim();
+                if (f.isEmpty) return;
+                Navigator.of(context).pop((
+                  folder: f,
+                  name: name.text.trim().isEmpty ? 'My Notes' : name.text.trim(),
+                ));
+              },
+              child: Text(l10n.connect),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<String?> _promptName(BuildContext context) {

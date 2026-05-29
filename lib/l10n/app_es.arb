@@ -8,6 +8,8 @@
   "createFolio": "Crear un Folio",
   "connectWebDav": "Conectar a WebDAV",
   "connectOneDrive": "Conectar OneDrive",
+  "oneDriveFolderLabel": "Carpeta en tu OneDrive",
+  "oneDriveFolderHelp": "Se crea si aún no existe.",
   "serverUrl": "URL del servidor",
   "username": "Usuario",
   "password": "Contraseña",

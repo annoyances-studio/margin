@@ -15,8 +15,12 @@ import '../content/tree_node.dart';
 import '../credentials/credential_store.dart';
 import '../folio/note.dart';
 import '../folio/folio.dart';
+import '../folio/folio_exception.dart';
 import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
+import '../storage/onedrive_auth.dart';
+import '../storage/onedrive_backend.dart';
+import '../storage/onedrive_oauth.dart';
 import '../storage/storage_backend.dart';
 import '../storage/webdav_backend.dart';
 import '../sync/sync_engine.dart';
@@ -228,15 +232,20 @@ class AppController extends ChangeNotifier {
     _restoring = true;
     _notify();
     try {
+      // Pass the cached Folio id so an offline reopen adopts the cache instead
+      // of waiting on (and failing) a remote identify.
+      final knownId = await _settings.getLastFolioId();
       if (type == 'webdav') {
         final username = await _settings.getLastWebDavUser() ?? '';
         final password =
             await _credentials.read(_webDavCredKey(location, username));
         if (password == null) return; // can't reconnect without the secret
-        // Pass the cached Folio id so an offline reopen adopts the cache
-        // instead of waiting on (and failing) a remote identify.
-        final knownId = await _settings.getLastFolioId();
         await openWebDav(location, username, password, knownId: knownId);
+        if (!hasFolio) await _settings.setLastFolioType(null);
+      } else if (type == 'onedrive') {
+        // Tokens live in the keystore; if sign-in lapsed, openOneDrive surfaces
+        // the error and we fall back to the landing screen.
+        await openOneDrive(location, knownId: knownId);
         if (!hasFolio) await _settings.setLastFolioType(null);
       } else {
         await openPath(location);
@@ -289,6 +298,76 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  /// Builds the OneDrive auth helper, reading the build-time client id/redirect
+  /// URI and persisting tokens in the same keystore as other credentials.
+  OneDriveAuth _buildOneDriveAuth() => OneDriveAuth(
+        clientId: OneDriveAuth.clientIdFromEnv,
+        redirectUri: OneDriveAuth.redirectUriFromEnv,
+        credentials: _credentials,
+        authorize: FlutterAppAuthOneDriveAuthorize().call,
+        refresh: HttpOneDriveRefresh(client: _httpClientFactory()).call,
+      );
+
+  /// Whether a OneDrive sign-in is already on file (so the connect flow can skip
+  /// the browser and go straight to choosing a folder).
+  Future<bool> get isOneDriveSignedIn => _buildOneDriveAuth().isSignedIn;
+
+  /// Drives the OneDrive OAuth sign-in (system browser). Returns true on
+  /// success. Failures are surfaced via [error]. Safe to call when already
+  /// signed in (it will simply re-confirm).
+  Future<bool> signInOneDrive() async {
+    _error = null;
+    try {
+      final auth = _buildOneDriveAuth();
+      if (!await auth.isSignedIn) await auth.signIn();
+      // Confirm we can actually mint a token (catches a revoked consent early).
+      await auth.accessToken();
+      return true;
+    } catch (e) {
+      _error = 'OneDrive sign-in failed: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Opens (or creates) a Folio in the user's OneDrive at [rootPath], through
+  /// the local cache. Assumes [signInOneDrive] already succeeded. On first use
+  /// of a folder, the folder and a new Folio are created there; otherwise the
+  /// existing Folio is opened. [knownId] (on restore) takes the offline-first
+  /// path.
+  Future<void> openOneDrive(
+    String rootPath, {
+    String name = 'My Notes',
+    String? knownId,
+  }) async {
+    final auth = _buildOneDriveAuth();
+    final backend = OneDriveBackend(
+      rootPath: rootPath,
+      accessToken: auth.accessToken,
+      client: _httpClientFactory(),
+    );
+    // First-time open of a (possibly new) folder: make sure the folder exists
+    // before we try to write a Folio into it. Errors surface via [error].
+    if (knownId == null) {
+      try {
+        await backend.ensureRoot();
+      } catch (e) {
+        _error = 'Could not open the OneDrive folder: $e';
+        notifyListeners();
+        return;
+      }
+    }
+    await openThroughCache(
+      backend,
+      knownId: knownId,
+      createName: knownId == null ? name : null,
+    );
+    if (hasFolio) {
+      await _settings.setLastFolioType('onedrive');
+      await _settings.setLastFolioPath(rootPath);
+    }
+  }
+
   /// Opens a [remote] Folio through a local cache (clone-then-sync): adopts the
   /// on-device cache as the working backend and keeps [remote] as the sync peer.
   /// This is what makes a remote Folio's notes and attachments work offline with
@@ -298,7 +377,14 @@ class AppController extends ChangeNotifier {
   /// cache is adopted immediately (no network needed) and the remote is synced
   /// in the background. Only the very first open of a never-cached Folio needs a
   /// connection — there is nothing local to fall back to.
-  Future<void> openThroughCache(StorageBackend remote, {String? knownId}) async {
+  ///
+  /// When [createName] is given and the remote holds no Folio yet, a new one is
+  /// created there (used when opening a fresh cloud folder as a Folio).
+  Future<void> openThroughCache(
+    StorageBackend remote, {
+    String? knownId,
+    String? createName,
+  }) async {
     await _run(() async {
       final root = await _cacheRoot();
 
@@ -322,8 +408,9 @@ class AppController extends ChangeNotifier {
         }
       }
 
-      // First open (no cache yet): identify and clone the remote.
-      final id = (await Folio.open(remote)).id;
+      // First open (no cache yet): identify the remote Folio, creating one when
+      // asked to and none exists there yet.
+      final id = (await _openOrCreateRemote(remote, createName)).id;
       final cacheDir = Directory(p.join(root.path, id));
       await cacheDir.create(recursive: true);
       final local = LocalFolderBackend(cacheDir.path);
@@ -352,6 +439,20 @@ class AppController extends ChangeNotifier {
       await _restoreLastNote();
       unawaited(_settings.setLastFolioId(id));
     });
+  }
+
+  /// Opens the remote Folio, or creates one named [createName] when none exists
+  /// there yet (and creating is requested).
+  Future<Folio> _openOrCreateRemote(
+    StorageBackend remote,
+    String? createName,
+  ) async {
+    if (createName == null) return Folio.open(remote);
+    try {
+      return await Folio.open(remote);
+    } on NotAMarginFolioException {
+      return Folio.create(remote, name: createName);
+    }
   }
 
   /// Reconciles the cache with the remote peer: flushes pending edits, syncs

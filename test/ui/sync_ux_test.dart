@@ -93,6 +93,21 @@ void main() {
     expect(cachedNote.existsSync(), isFalse);
   });
 
+  test('openThroughCache with createName initializes a Folio on an empty remote',
+      () async {
+    final empty = MemoryBackend(); // no Folio yet
+    final c = controller();
+    addTearDown(c.dispose);
+
+    await c.openThroughCache(empty, createName: 'Fresh Notes');
+
+    expect(c.hasFolio, isTrue);
+    expect(c.folioName, 'Fresh Notes');
+    expect(c.canSync, isTrue);
+    // The new Folio was written through to the remote.
+    expect(await empty.exists('properties.yaml'), isTrue);
+  });
+
   test('manual syncNow pushes a local edit to the remote', () async {
     final c = controller();
     addTearDown(c.dispose);

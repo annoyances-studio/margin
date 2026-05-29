@@ -30,6 +30,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connectOneDrive => 'Conectar OneDrive';
 
   @override
+  String get oneDriveFolderLabel => 'Carpeta en tu OneDrive';
+
+  @override
+  String get oneDriveFolderHelp => 'Se crea si aún no existe.';
+
+  @override
   String get serverUrl => 'URL del servidor';
 
   @override

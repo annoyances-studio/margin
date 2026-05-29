@@ -30,6 +30,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectOneDrive => 'Connect OneDrive';
 
   @override
+  String get oneDriveFolderLabel => 'Folder in your OneDrive';
+
+  @override
+  String get oneDriveFolderHelp => 'Created if it doesn\'t exist yet.';
+
+  @override
   String get serverUrl => 'Server URL';
 
   @override

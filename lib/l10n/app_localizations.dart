@@ -140,6 +140,18 @@ abstract class AppLocalizations {
   /// **'Connect OneDrive'**
   String get connectOneDrive;
 
+  /// Label for the OneDrive folder path field.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder in your OneDrive'**
+  String get oneDriveFolderLabel;
+
+  /// Helper text under the OneDrive folder field.
+  ///
+  /// In en, this message translates to:
+  /// **'Created if it doesn\'t exist yet.'**
+  String get oneDriveFolderHelp;
+
   /// No description provided for @serverUrl.
   ///
   /// In en, this message translates to:

@@ -22,6 +22,12 @@
   "connectOneDrive": "Connect OneDrive",
   "@connectOneDrive": { "description": "Landing button to start the OneDrive OAuth sign-in." },
 
+  "oneDriveFolderLabel": "Folder in your OneDrive",
+  "@oneDriveFolderLabel": { "description": "Label for the OneDrive folder path field." },
+
+  "oneDriveFolderHelp": "Created if it doesn't exist yet.",
+  "@oneDriveFolderHelp": { "description": "Helper text under the OneDrive folder field." },
+
   "serverUrl": "Server URL",
   "username": "Username",
   "password": "Password",
