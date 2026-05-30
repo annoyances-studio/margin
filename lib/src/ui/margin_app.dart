@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../credentials/credential_store.dart';
+import '../desktop/desktop_integration.dart';
 import '../desktop/startup_service.dart';
 import '../mobile/app_background.dart';
 import '../settings/settings_store.dart';
@@ -32,36 +33,61 @@ class MarginApp extends StatefulWidget {
   /// Run-at-login control; defaults to a no-op (used by widget tests).
   final StartupService startupService;
 
+  /// Optional pre-built controller (tests). When null, one is created from the
+  /// injected stores and started normally.
+  final AppController? controller;
+
   const MarginApp({
     super.key,
     this.settings,
     this.credentials,
     this.syncStates,
     this.startupService = const NoopStartupService(),
+    this.controller,
   });
 
   @override
   State<MarginApp> createState() => _MarginAppState();
 }
 
-class _MarginAppState extends State<MarginApp> {
-  late final AppController _controller = AppController(
-    settings: widget.settings,
-    credentials: widget.credentials,
-    syncStates: widget.syncStates,
-  );
+class _MarginAppState extends State<MarginApp> with WidgetsBindingObserver {
+  late final AppController _controller = widget.controller ??
+      AppController(
+        settings: widget.settings,
+        credentials: widget.credentials,
+        syncStates: widget.syncStates,
+      );
 
   @override
   void initState() {
     super.initState();
-    // Load view settings and reopen the last repository (falls back to landing).
-    _controller.start();
+    WidgetsBinding.instance.addObserver(this);
+    // Save the open note when the desktop window is closed to the tray (or the
+    // app quits), so an unsaved buffer is never lost. Mobile backgrounding is
+    // covered by didChangeAppLifecycleState below.
+    DesktopTray.instance.beforeHide = _controller.save;
+    // Load view settings and reopen the last Folio (falls back to landing).
+    // A pre-built controller (tests) is left as-is.
+    if (widget.controller == null) _controller.start();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    // Only own the controller's lifecycle when we created it.
+    if (widget.controller == null) _controller.dispose();
     super.dispose();
+  }
+
+  /// Flush the open note to disk whenever the app loses the foreground — app
+  /// switch / background on mobile, focus loss / minimize on desktop — so edits
+  /// survive the process being suspended or reclaimed. [AppController.save] is a
+  /// no-op when nothing is dirty.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _controller.save();
+    }
   }
 
   @override

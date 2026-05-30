@@ -60,6 +60,19 @@ class DesktopTray with TrayListener, WindowListener {
   static const String _iconWindows = 'assets/tray_icon.ico';
   static const String _iconOther = 'assets/tray_icon.png';
 
+  /// Invoked just before the window hides to the tray or the app quits, so the
+  /// UI layer can flush unsaved work (the open note). Set by the app. Best
+  /// effort; failures are swallowed so they can't block hiding/quitting.
+  Future<void> Function()? beforeHide;
+
+  Future<void> _runBeforeHide() async {
+    try {
+      await beforeHide?.call();
+    } catch (e) {
+      debugPrint('beforeHide failed: $e');
+    }
+  }
+
   Future<void> setup() async {
     if (!isDesktop) return;
     windowManager.addListener(this);
@@ -100,13 +113,16 @@ class DesktopTray with TrayListener, WindowListener {
 
   @override
   void onWindowClose() async {
-    // Hide instead of destroying so the app lives on in the tray.
+    // Hide instead of destroying so the app lives on in the tray — but flush
+    // the open note first so closing to the tray never loses unsaved edits.
     if (await windowManager.isPreventClose()) {
+      await _runBeforeHide();
       await windowManager.hide();
     }
   }
 
   Future<void> _quit() async {
+    await _runBeforeHide(); // save the open note before tearing the app down
     await windowManager.setPreventClose(false);
     await windowManager.destroy();
   }
