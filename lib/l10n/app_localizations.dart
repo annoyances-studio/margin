@@ -320,6 +320,18 @@ abstract class AppLocalizations {
   /// **'Copied to clipboard'**
   String get copiedToClipboard;
 
+  /// Button to copy an error message for reporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy error'**
+  String get copyError;
+
+  /// Cue shown while fetching a newer version of the open note.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for the latest…'**
+  String get checkingForUpdates;
+
   /// Editor action: paste clipboard HTML converted to markdown.
   ///
   /// In en, this message translates to:

@@ -33,18 +33,46 @@ class LocalFolderBackend implements StorageBackend, MovableBackend {
     this.ioTimeout = const Duration(seconds: 30),
   }) : rootPath = p.normalize(rootPath);
 
-  /// Runs a filesystem future under [ioTimeout], converting a stall into a
-  /// [StorageException] the UI can surface (and recover from) rather than a
-  /// permanent freeze.
-  Future<T> _guard<T>(Future<T> op, String action, String path) async {
-    try {
-      return await op.timeout(ioTimeout);
-    } on TimeoutException {
-      throw StorageException(
-        '$action timed out after ${ioTimeout.inSeconds}s '
-        '(the file may be locked or syncing)',
-        path: path,
-      );
+  /// Backoff between retries when a file is transiently locked (OneDrive/Dropbox
+  /// and antivirus briefly hold handles, especially right after a sync).
+  static const List<Duration> _retryDelays = [
+    Duration(milliseconds: 200),
+    Duration(milliseconds: 500),
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+  ];
+
+  /// Runs a filesystem operation under [ioTimeout], retrying transient lock
+  /// errors (access-denied / sharing-violation from a sync client) with backoff.
+  /// Converts a stall or a persistent lock into a [StorageException] the UI can
+  /// surface and recover from, rather than a frozen UI or a raw OS error.
+  Future<T> _guard<T>(
+    Future<T> Function() op,
+    String action,
+    String path,
+  ) async {
+    for (var attempt = 0;; attempt++) {
+      try {
+        return await op().timeout(ioTimeout);
+      } on TimeoutException {
+        throw StorageException(
+          '$action timed out after ${ioTimeout.inSeconds}s '
+          '(the file may be locked or syncing)',
+          path: path,
+        );
+      } on FileSystemException catch (e) {
+        // Retry transient locks a few times; a sync client usually releases
+        // within a second or two.
+        if (attempt < _retryDelays.length) {
+          await Future<void>.delayed(_retryDelays[attempt]);
+          continue;
+        }
+        throw StorageException(
+          '$action failed: ${e.osError?.message ?? e.message} '
+          '(the file may be locked by another app, e.g. OneDrive)',
+          path: path,
+        );
+      }
     }
   }
 
@@ -115,14 +143,14 @@ class LocalFolderBackend implements StorageBackend, MovableBackend {
     if (type == FileSystemEntityType.directory) {
       throw InvalidPathException(path, 'Path is a directory, not a file');
     }
-    return _guard(File(resolved).readAsBytes(), 'read', path);
+    return _guard(() => File(resolved).readAsBytes(), 'read', path);
   }
 
   @override
   Future<void> write(String path, Uint8List bytes) async {
     final file = File(_resolve(path));
     await file.parent.create(recursive: true);
-    await _guard(file.writeAsBytes(bytes, flush: true), 'write', path);
+    await _guard(() => file.writeAsBytes(bytes, flush: true), 'write', path);
   }
 
   @override
@@ -136,9 +164,10 @@ class LocalFolderBackend implements StorageBackend, MovableBackend {
       case FileSystemEntityType.notFound:
         return; // no-op
       case FileSystemEntityType.directory:
-        await _guard(Directory(resolved).delete(recursive: true), 'delete', path);
+        await _guard(
+            () => Directory(resolved).delete(recursive: true), 'delete', path);
       default:
-        await _guard(File(resolved).delete(), 'delete', path);
+        await _guard(() => File(resolved).delete(), 'delete', path);
     }
   }
 
@@ -152,9 +181,12 @@ class LocalFolderBackend implements StorageBackend, MovableBackend {
     final type = await FileSystemEntity.type(fromAbs, followLinks: false);
     if (type == FileSystemEntityType.notFound) throw NotFoundException(from);
     await Directory(p.dirname(toAbs)).create(recursive: true);
-    final Future<FileSystemEntity> renamed = type == FileSystemEntityType.directory
-        ? Directory(fromAbs).rename(toAbs)
-        : File(fromAbs).rename(toAbs);
-    await _guard(renamed, 'move', from);
+    await _guard(
+      () => type == FileSystemEntityType.directory
+          ? Directory(fromAbs).rename(toAbs)
+          : File(fromAbs).rename(toAbs),
+      'move',
+      from,
+    );
   }
 }

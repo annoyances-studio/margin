@@ -122,6 +122,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copiedToClipboard => 'Copied to clipboard';
 
   @override
+  String get copyError => 'Copy error';
+
+  @override
+  String get checkingForUpdates => 'Checking for the latest…';
+
+  @override
   String get pasteAsMarkdown => 'Paste as Markdown';
 
   @override

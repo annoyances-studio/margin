@@ -123,6 +123,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get copiedToClipboard => 'Copiado al portapapeles';
 
   @override
+  String get copyError => 'Copiar error';
+
+  @override
+  String get checkingForUpdates => 'Buscando la última versión…';
+
+  @override
   String get pasteAsMarkdown => 'Pegar como Markdown';
 
   @override

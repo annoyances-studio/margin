@@ -697,6 +697,11 @@ class AppController extends ChangeNotifier {
       _noteRefreshFuture ?? Future<void>.value();
   Future<void>? _noteRefreshFuture;
 
+  /// True while checking the remote for a newer version of the open note, so the
+  /// UI can show a "checking for the latest" cue.
+  bool _noteRefreshing = false;
+  bool get noteRefreshing => _noteRefreshing;
+
   /// Best-effort: if the remote has a newer version of [notePath] (by its
   /// sidecar's `updated`), pull it into the cache and — only if the user is
   /// still on that note and hasn't started editing — reload the editor with it.
@@ -706,6 +711,8 @@ class AppController extends ChangeNotifier {
     final folio = _folio;
     final content = _content;
     if (peer == null || folio == null || content == null) return;
+    _noteRefreshing = true;
+    _notify();
     try {
       final pulled = await _pullNoteIfRemoteNewer(peer, folio, content, notePath)
           .timeout(const Duration(seconds: 10));
@@ -719,6 +726,9 @@ class AppController extends ChangeNotifier {
       _notify();
     } catch (_) {
       // Offline / missing / parse error -> keep the cached copy.
+    } finally {
+      _noteRefreshing = false;
+      _notify();
     }
   }
 

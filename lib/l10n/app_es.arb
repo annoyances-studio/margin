@@ -39,6 +39,8 @@
   "copyAsMarkdown": "Código Markdown",
   "copyAsPlainText": "Texto sin formato",
   "copiedToClipboard": "Copiado al portapapeles",
+  "copyError": "Copiar error",
+  "checkingForUpdates": "Buscando la última versión…",
   "pasteAsMarkdown": "Pegar como Markdown",
   "downloadingImages": "Descargando imágenes…",
   "emptySyncWarning": "Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.",

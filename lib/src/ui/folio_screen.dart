@@ -4,6 +4,7 @@
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../content/tree_node.dart';
@@ -160,11 +161,32 @@ class _FolioScreenState extends State<FolioScreen> {
   Widget _mobileHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-      child: Text(
-        _mobileTitle(),
-        style: Theme.of(context).textTheme.titleMedium,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _mobileTitle(),
+              style: Theme.of(context).textTheme.titleMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // A brief cue that the latest version is being fetched on open.
+          if (controller.noteRefreshing)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 6),
+                Text(_l10n.checkingForUpdates,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ]),
+            ),
+        ],
       ),
     );
   }
@@ -738,7 +760,21 @@ class _FolioScreenState extends State<FolioScreen> {
       backgroundColor: Theme.of(context).colorScheme.errorContainer,
       content: Text(message),
       leading: const Icon(Icons.error_outline),
-      actions: const [SizedBox.shrink()],
+      actions: [
+        TextButton.icon(
+          icon: const Icon(Icons.copy, size: 16),
+          label: Text(_l10n.copyError),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: message));
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(_l10n.copiedToClipboard),
+                duration: const Duration(seconds: 1),
+              ));
+            }
+          },
+        ),
+      ],
     );
   }
 
