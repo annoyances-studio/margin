@@ -15,7 +15,11 @@ bool get isDesktop =>
 
 /// Sets up the desktop window: a sensible size and "close hides to tray"
 /// behaviour (DESIGN.md). No-op off desktop.
-Future<void> initDesktopWindow() async {
+///
+/// When [startMinimized] is true (a run-at-login launch with `--minimized`), the
+/// window is prepared but not shown — the app lives in the tray until the user
+/// opens it.
+Future<void> initDesktopWindow({bool startMinimized = false}) async {
   if (!isDesktop) return;
   await windowManager.ensureInitialized();
   const options = WindowOptions(
@@ -25,6 +29,7 @@ Future<void> initDesktopWindow() async {
     title: 'Margin',
   );
   await windowManager.waitUntilReadyToShow(options, () async {
+    if (startMinimized) return; // stay hidden in the tray
     await windowManager.show();
     await windowManager.focus();
   });

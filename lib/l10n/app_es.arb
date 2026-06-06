@@ -89,5 +89,6 @@
   "defaultView": "Vista predeterminada",
   "defaultViewForNotes": "Vista predeterminada para notas",
   "viewNoteSpecified": "Según la nota",
-  "startAtLogin": "Iniciar Margin al iniciar sesión"
+  "startAtLogin": "Iniciar Margin al iniciar sesión",
+  "startMinimized": "Iniciar minimizado (en la bandeja)"
 }

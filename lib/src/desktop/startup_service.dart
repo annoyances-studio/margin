@@ -16,8 +16,16 @@ abstract interface class StartupService {
   bool get isSupported;
 
   Future<bool> isEnabled();
-  Future<void> setEnabled(bool value);
+
+  /// Enables/disables run-at-login. When [minimized] is true, the login entry is
+  /// registered to launch with the `--minimized` flag so the app starts hidden
+  /// in the tray. (Re-call with the new [minimized] value to update it.)
+  Future<void> setEnabled(bool value, {bool minimized = false});
 }
+
+/// The launch argument added to the run-at-login entry to start hidden in the
+/// tray. Detected at startup (see main.dart).
+const String kStartMinimizedArg = '--minimized';
 
 /// A [StartupService] that does nothing; used on unsupported platforms and in
 /// tests.
@@ -31,7 +39,7 @@ class NoopStartupService implements StartupService {
   Future<bool> isEnabled() async => false;
 
   @override
-  Future<void> setEnabled(bool value) async {}
+  Future<void> setEnabled(bool value, {bool minimized = false}) async {}
 }
 
 /// A desktop [StartupService] backed by the launch_at_startup plugin.
@@ -39,32 +47,35 @@ class NoopStartupService implements StartupService {
 /// Call [configure] once at startup (after the binding is initialized) before
 /// using it.
 class LaunchAtStartupService implements StartupService {
-  bool _configured = false;
-
   @override
   bool get isSupported =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
-  void configure() {
-    if (!isSupported || _configured) return;
+  /// (Re)registers the app with the given launch [args]. Cheap to call again
+  /// to change the args before enabling.
+  void _setup({List<String> args = const []}) {
+    if (!isSupported) return;
     launchAtStartup.setup(
       appName: 'Margin',
       appPath: Platform.resolvedExecutable,
+      args: args,
     );
-    _configured = true;
   }
+
+  void configure() => _setup();
 
   @override
   Future<bool> isEnabled() async {
     if (!isSupported) return false;
-    configure();
+    _setup();
     return launchAtStartup.isEnabled();
   }
 
   @override
-  Future<void> setEnabled(bool value) async {
+  Future<void> setEnabled(bool value, {bool minimized = false}) async {
     if (!isSupported) return;
-    configure();
+    // Register with the right launch args, then (re)write the login entry.
+    _setup(args: minimized ? const [kStartMinimizedArg] : const []);
     if (value) {
       await launchAtStartup.enable();
     } else {

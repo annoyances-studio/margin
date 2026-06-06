@@ -45,6 +45,10 @@ abstract interface class SettingsStore {
   /// Whether the desktop window should float above others.
   Future<bool> getAlwaysOnTop();
   Future<void> setAlwaysOnTop(bool value);
+
+  /// Whether a run-at-login launch should start hidden in the tray.
+  Future<bool> getStartMinimized();
+  Future<void> setStartMinimized(bool value);
 }
 
 /// A non-persistent [SettingsStore] for tests and as a safe default.
@@ -117,6 +121,14 @@ class InMemorySettingsStore implements SettingsStore {
 
   @override
   Future<void> setAlwaysOnTop(bool value) async => _alwaysOnTop = value;
+
+  bool _startMinimized = false;
+
+  @override
+  Future<bool> getStartMinimized() async => _startMinimized;
+
+  @override
+  Future<void> setStartMinimized(bool value) async => _startMinimized = value;
 }
 
 /// A [SettingsStore] backed by `shared_preferences`.
@@ -129,6 +141,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _viewPolicyKey = 'viewPolicy';
   static const String _defaultNoteViewKey = 'defaultNoteView';
   static const String _alwaysOnTopKey = 'alwaysOnTop';
+  static const String _startMinimizedKey = 'startMinimized';
 
   Future<String?> _getString(String key) async {
     final prefs = await SharedPreferences.getInstance();
@@ -223,5 +236,17 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   Future<void> setAlwaysOnTop(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_alwaysOnTopKey, value);
+  }
+
+  @override
+  Future<bool> getStartMinimized() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_startMinimizedKey) ?? false;
+  }
+
+  @override
+  Future<void> setStartMinimized(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_startMinimizedKey, value);
   }
 }

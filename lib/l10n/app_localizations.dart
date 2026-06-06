@@ -577,6 +577,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start Margin when I log in'**
   String get startAtLogin;
+
+  /// Sub-option of run-at-login: launch hidden to the tray.
+  ///
+  /// In en, this message translates to:
+  /// **'Start minimized (in the tray)'**
+  String get startMinimized;
 }
 
 class _AppLocalizationsDelegate

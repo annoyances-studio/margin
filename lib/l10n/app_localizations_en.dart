@@ -255,4 +255,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startAtLogin => 'Start Margin when I log in';
+
+  @override
+  String get startMinimized => 'Start minimized (in the tray)';
 }

@@ -14,6 +14,7 @@ class _FakeStartupService implements StartupService {
   @override
   final bool isSupported;
   bool enabled;
+  bool lastMinimized = false;
 
   _FakeStartupService({this.isSupported = true, this.enabled = false});
 
@@ -21,7 +22,10 @@ class _FakeStartupService implements StartupService {
   Future<bool> isEnabled() async => enabled;
 
   @override
-  Future<void> setEnabled(bool value) async => enabled = value;
+  Future<void> setEnabled(bool value, {bool minimized = false}) async {
+    enabled = value;
+    lastMinimized = minimized;
+  }
 }
 
 void main() {
@@ -51,6 +55,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.enabled, isTrue);
+  });
+
+  testWidgets('start-minimized sub-option registers the launch flag',
+      (tester) async {
+    final service = _FakeStartupService(enabled: true);
+    await tester.pumpWidget(host(service));
+    await tester.pumpAndSettle();
+
+    // With login on, the "start minimized" checkbox is enabled.
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+
+    expect(controller.startMinimized, isTrue);
+    expect(service.lastMinimized, isTrue); // re-registered with --minimized
   });
 
   testWidgets('hides the login switch when unsupported', (tester) async {

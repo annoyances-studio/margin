@@ -258,4 +258,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get startAtLogin => 'Iniciar Margin al iniciar sesión';
+
+  @override
+  String get startMinimized => 'Iniciar minimizado (en la bandeja)';
 }

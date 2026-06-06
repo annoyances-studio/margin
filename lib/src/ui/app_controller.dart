@@ -147,6 +147,9 @@ class AppController extends ChangeNotifier {
   /// Whether the desktop window floats above others (device-local).
   bool _alwaysOnTop = false;
 
+  /// Whether a run-at-login launch should start hidden in the tray (device-local).
+  bool _startMinimized = false;
+
   bool _busy = false;
   String? _error;
 
@@ -193,6 +196,7 @@ class AppController extends ChangeNotifier {
   EditorViewMode get defaultNoteView => _defaultNoteView;
   EditorViewMode get viewMode => _viewMode;
   bool get alwaysOnTop => _alwaysOnTop;
+  bool get startMinimized => _startMinimized;
   bool get isBusy => _busy;
   String? get error => _error;
 
@@ -211,9 +215,18 @@ class AppController extends ChangeNotifier {
           editorViewModeFromId(await _settings.getDefaultNoteView()) ??
               EditorViewMode.edit;
       _alwaysOnTop = await _settings.getAlwaysOnTop();
+      _startMinimized = await _settings.getStartMinimized();
     } catch (_) {
       // Settings unavailable (e.g. tests): keep defaults.
     }
+  }
+
+  /// Persists and updates the "start minimized at login" preference. Registering
+  /// the launch flag is the UI/startup layer's job (desktop-only).
+  Future<void> setStartMinimized(bool value) async {
+    _startMinimized = value;
+    await _settings.setStartMinimized(value);
+    notifyListeners();
   }
 
   /// Persists and updates the always-on-top preference. Applying it to the OS

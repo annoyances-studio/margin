@@ -62,10 +62,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Future<void> _toggleStartup(bool value) async {
     setState(() => _launchAtLogin = value);
-    await widget.startupService.setEnabled(value);
+    await widget.startupService
+        .setEnabled(value, minimized: controller.startMinimized);
     final actual = await widget.startupService.isEnabled();
     if (!mounted) return;
     setState(() => _launchAtLogin = actual);
+  }
+
+  Future<void> _toggleStartMinimized(bool value) async {
+    await controller.setStartMinimized(value);
+    // Re-register the login entry so its launch flag matches.
+    if (_launchAtLogin) {
+      await widget.startupService.setEnabled(true, minimized: value);
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -108,13 +118,25 @@ class _SettingsDialogState extends State<SettingsDialog> {
               },
             ),
             const Divider(height: 28),
-            if (widget.startupService.isSupported)
+            if (widget.startupService.isSupported) ...[
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.startAtLogin),
                 value: _launchAtLogin,
                 onChanged: _loadingStartup ? null : _toggleStartup,
               ),
+              CheckboxListTile(
+                contentPadding: const EdgeInsets.only(left: 16),
+                controlAffinity: ListTileControlAffinity.leading,
+                dense: true,
+                title: Text(l10n.startMinimized),
+                value: controller.startMinimized,
+                // Only meaningful when launching at login.
+                onChanged: (_launchAtLogin && !_loadingStartup)
+                    ? (v) => _toggleStartMinimized(v ?? false)
+                    : null,
+              ),
+            ],
           ],
         ),
       ),

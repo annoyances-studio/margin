@@ -146,5 +146,7 @@
   "defaultView": "Default view",
   "defaultViewForNotes": "Default view for notes",
   "viewNoteSpecified": "Note specified",
-  "startAtLogin": "Start Margin when I log in"
+  "startAtLogin": "Start Margin when I log in",
+  "startMinimized": "Start minimized (in the tray)",
+  "@startMinimized": { "description": "Sub-option of run-at-login: launch hidden to the tray." }
 }
