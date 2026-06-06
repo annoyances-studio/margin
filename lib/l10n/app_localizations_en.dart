@@ -132,6 +132,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'This Folio now looks empty. Syncing will delete its contents on the other side.';
 
   @override
+  String get searchNotes => 'Search notes…';
+
+  @override
+  String get searchNoResults => 'No matching notes.';
+
+  @override
   String get hideFolders => 'Hide folders';
 
   @override

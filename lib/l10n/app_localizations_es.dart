@@ -133,6 +133,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.';
 
   @override
+  String get searchNotes => 'Buscar notas…';
+
+  @override
+  String get searchNoResults => 'No hay notas coincidentes.';
+
+  @override
   String get hideFolders => 'Ocultar carpetas';
 
   @override

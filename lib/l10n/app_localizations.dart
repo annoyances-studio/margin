@@ -338,6 +338,18 @@ abstract class AppLocalizations {
   /// **'This Folio now looks empty. Syncing will delete its contents on the other side.'**
   String get emptySyncWarning;
 
+  /// Placeholder for the note search box.
+  ///
+  /// In en, this message translates to:
+  /// **'Search notes…'**
+  String get searchNotes;
+
+  /// Shown when a note search has no hits.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching notes.'**
+  String get searchNoResults;
+
   /// No description provided for @hideFolders.
   ///
   /// In en, this message translates to:

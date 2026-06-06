@@ -90,6 +90,11 @@
   "emptySyncWarning": "This Folio now looks empty. Syncing will delete its contents on the other side.",
   "@emptySyncWarning": { "description": "Shown when a sync would propagate an apparent 'everything deleted' — guards against a flaky connection." },
 
+  "searchNotes": "Search notes…",
+  "@searchNotes": { "description": "Placeholder for the note search box." },
+  "searchNoResults": "No matching notes.",
+  "@searchNoResults": { "description": "Shown when a note search has no hits." },
+
   "hideFolders": "Hide folders",
   "showFolders": "Show folders",
   "folders": "Folders",

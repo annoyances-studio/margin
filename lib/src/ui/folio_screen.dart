@@ -43,6 +43,8 @@ class _FolioScreenState extends State<FolioScreen> {
   final PageController _pageController = PageController(initialPage: 1);
   int _currentPage = 1;
 
+  final TextEditingController _searchController = TextEditingController();
+
   AppController get controller => widget.controller;
 
   /// Localized strings for the current context.
@@ -58,6 +60,7 @@ class _FolioScreenState extends State<FolioScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -484,25 +487,91 @@ class _FolioScreenState extends State<FolioScreen> {
     return Column(
       children: [
         _treeHeader(),
+        _searchField(),
         const Divider(height: 1),
         Expanded(
-          child: FolderTreeView(
-            root: tree,
-            selectedNotePath: controller.selectedNotePath,
-            // Always-scrollable on phones so pull-to-refresh fires even when
-            // the tree is short.
-            physics: scrollable ? const AlwaysScrollableScrollPhysics() : null,
-            canRevealInFileManager:
-                canRevealInFileManager && controller.isLocalFolio,
-            onNoteTap: (note) {
-              controller.selectNote(note);
-              onNoteSelected?.call();
-            },
-            onFolderAction: _handleFolderAction,
-            onNoteAction: _handleNoteAction,
-          ),
+          child: controller.isSearching
+              ? _searchResultsList(onNoteSelected: onNoteSelected)
+              : FolderTreeView(
+                  root: tree,
+                  selectedNotePath: controller.selectedNotePath,
+                  // Always-scrollable on phones so pull-to-refresh fires even
+                  // when the tree is short.
+                  physics:
+                      scrollable ? const AlwaysScrollableScrollPhysics() : null,
+                  canRevealInFileManager:
+                      canRevealInFileManager && controller.isLocalFolio,
+                  onNoteTap: (note) {
+                    controller.selectNote(note);
+                    onNoteSelected?.call();
+                  },
+                  onFolderAction: _handleFolderAction,
+                  onNoteAction: _handleNoteAction,
+                ),
         ),
       ],
+    );
+  }
+
+  /// Search box that filters notes by title/tags via the sidecar index.
+  Widget _searchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: TextField(
+        key: const Key('noteSearchField'),
+        controller: _searchController,
+        onChanged: controller.setSearchQuery,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          isDense: true,
+          prefixIcon: const Icon(Icons.search, size: 20),
+          hintText: _l10n.searchNotes,
+          border: const OutlineInputBorder(),
+          suffixIcon: controller.isSearching
+              ? IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: _l10n.cancel,
+                  onPressed: () {
+                    _searchController.clear();
+                    controller.clearSearch();
+                  },
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  /// Flat list of search hits; tapping one opens it (and, on phones, swipes to
+  /// the editor via [onNoteSelected]).
+  Widget _searchResultsList({VoidCallback? onNoteSelected}) {
+    final results = controller.searchResults;
+    if (results.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(_l10n.searchNoResults, textAlign: TextAlign.center),
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (context, i) {
+        final note = results[i];
+        final slash = note.path.lastIndexOf('/');
+        final folder = slash < 0 ? '' : note.path.substring(0, slash);
+        return ListTile(
+          dense: true,
+          leading: const Icon(Icons.description_outlined),
+          title: Text(note.title),
+          subtitle: folder.isEmpty ? null : Text(folder),
+          selected: note.path == controller.selectedNotePath,
+          onTap: () {
+            controller.selectNote(note);
+            onNoteSelected?.call();
+          },
+        );
+      },
     );
   }
 

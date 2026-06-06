@@ -67,6 +67,28 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
   });
 
+  testWidgets('Folders page: searching filters to matching notes',
+      (tester) async {
+    useNarrowScreen(tester);
+    final controller = await openWithNote(); // Work/meeting.md
+    await controller.createFolder('Personal');
+    await controller.createNote('groceries', folderPath: 'Personal');
+    await tester.pumpWidget(
+      localizedApp(FolioScreen(controller: controller)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Folders'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('noteSearchField')), 'groc');
+    await tester.pumpAndSettle();
+
+    // The matching note appears as a result tile; the non-match is filtered out.
+    expect(find.widgetWithText(ListTile, 'groceries'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'meeting'), findsNothing);
+  });
+
   testWidgets('phone layout: the Folders page shows the tree', (tester) async {
     useNarrowScreen(tester);
     final controller = await openWithNote();

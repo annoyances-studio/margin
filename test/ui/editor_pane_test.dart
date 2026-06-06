@@ -8,6 +8,7 @@ import 'package:margin/margin.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/folio_screen.dart';
 import 'package:margin/src/ui/widgets/markdown_preview.dart';
+import 'package:margin/src/ui/widgets/note_editor.dart';
 
 import '../support/test_app.dart';
 
@@ -30,7 +31,7 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(NoteEditor), findsOneWidget);
     expect(find.byType(MarkdownPreview), findsNothing);
   });
 
@@ -42,7 +43,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.vertical_split_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(NoteEditor), findsOneWidget);
     expect(find.byType(MarkdownPreview), findsOneWidget);
   });
 
@@ -55,7 +56,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MarkdownPreview), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(NoteEditor), findsNothing);
   });
 
   testWidgets('title shows the repo name with tree shown, note path when hidden',

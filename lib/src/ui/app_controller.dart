@@ -638,6 +638,9 @@ class AppController extends ChangeNotifier {
     _syncProgress = null;
     _hasUnsyncedChanges = false;
     _syncError = null;
+    _searchQuery = '';
+    _searchResults = const [];
+    _searchIndex = null;
     // Explicit close: forget the Folio (and note) so the next launch shows
     // the landing screen rather than reopening it. (Any WebDAV password stays
     // in the keystore; re-adding the same URL reuses it.)
@@ -757,6 +760,85 @@ class AppController extends ChangeNotifier {
     _dirty = false;
     _viewMode = await _resolveViewMode();
     unawaited(_settings.setLastNotePath(note.path));
+  }
+
+  // --- search (over the lightweight sidecar index) ---
+
+  String _searchQuery = '';
+  String get searchQuery => _searchQuery;
+  bool get isSearching => _searchQuery.trim().isNotEmpty;
+
+  List<NoteNode> _searchResults = const [];
+  List<NoteNode> get searchResults => _searchResults;
+
+  /// Cached note index (path -> searchable text), built from sidecars. Null when
+  /// it needs rebuilding (after a tree change).
+  List<_NoteIndexEntry>? _searchIndex;
+
+  /// Sets the note-search query and recomputes results. Matching is a
+  /// case-insensitive substring over each note's title, tags and file name —
+  /// read from the tiny `.md.yaml` sidecars, not the note bodies.
+  Future<void> setSearchQuery(String query) async {
+    _searchQuery = query;
+    if (query.trim().isEmpty) {
+      _searchResults = const [];
+      notifyListeners();
+      return;
+    }
+    await _ensureSearchIndex();
+    if (_searchQuery != query) return; // superseded by a newer keystroke
+    final q = query.trim().toLowerCase();
+    _searchResults = [
+      for (final e in _searchIndex!)
+        if (e.haystack.contains(q)) e.note,
+    ]..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    notifyListeners();
+  }
+
+  /// Clears the active search.
+  void clearSearch() {
+    if (_searchQuery.isEmpty) return;
+    _searchQuery = '';
+    _searchResults = const [];
+    notifyListeners();
+  }
+
+  /// Builds the in-memory search index from the sidecars, once, until the tree
+  /// changes (which nulls it). Tolerates unreadable sidecars (uses the filename).
+  Future<void> _ensureSearchIndex() async {
+    if (_searchIndex != null) return;
+    final tree = _tree;
+    final content = _content;
+    if (tree == null || content == null) {
+      _searchIndex = const [];
+      return;
+    }
+    final entries = <_NoteIndexEntry>[];
+    Future<void> walk(FolderNode folder) async {
+      for (final note in folder.notes) {
+        var title = note.title;
+        var tags = const <String>[];
+        try {
+          final props = await content.readNoteProperties(note.path);
+          if (props.title != null && props.title!.isNotEmpty) {
+            title = props.title!;
+          }
+          tags = props.tags;
+        } catch (_) {
+          // Unreadable sidecar -> fall back to the file-name title.
+        }
+        entries.add(_NoteIndexEntry(
+          note: note,
+          haystack: '$title ${tags.join(' ')} ${note.name}'.toLowerCase(),
+        ));
+      }
+      for (final sub in folder.folders) {
+        await walk(sub);
+      }
+    }
+
+    await walk(tree);
+    _searchIndex = entries;
   }
 
   // --- editing ---
@@ -1068,6 +1150,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _reloadTree() async {
     _tree = await _content!.tree();
+    _searchIndex = null; // notes changed -> rebuild the search index on demand
   }
 
   /// Reselects the last opened note if it still exists; otherwise leaves no
@@ -1164,4 +1247,12 @@ class AppController extends ChangeNotifier {
       }
     });
   }
+}
+
+/// One entry in the in-memory note search index: the note plus its precomputed
+/// lowercase searchable text (title + tags + file name).
+class _NoteIndexEntry {
+  final NoteNode note;
+  final String haystack;
+  const _NoteIndexEntry({required this.note, required this.haystack});
 }

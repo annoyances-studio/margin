@@ -43,6 +43,9 @@
   "downloadingImages": "Descargando imágenes…",
   "emptySyncWarning": "Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.",
 
+  "searchNotes": "Buscar notas…",
+  "searchNoResults": "No hay notas coincidentes.",
+
   "hideFolders": "Ocultar carpetas",
   "showFolders": "Mostrar carpetas",
   "folders": "Carpetas",
