@@ -282,6 +282,8 @@ class _FolioScreenState extends State<FolioScreen> {
         tooltip: _l10n.more,
         onSelected: _handleOverflow,
         itemBuilder: (_) => [
+          if (controller.canCopyNote)
+            PopupMenuItem(value: 'copy', child: Text(_l10n.copyNote)),
           if (controller.canSync)
             PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
           if (isDesktop)
@@ -310,6 +312,8 @@ class _FolioScreenState extends State<FolioScreen> {
 
   void _handleOverflow(String value) {
     switch (value) {
+      case 'copy':
+        _showCopyMenu();
       case 'sync':
         controller.syncNow();
       case 'alwaysOnTop':
@@ -321,6 +325,52 @@ class _FolioScreenState extends State<FolioScreen> {
       case 'quit':
         quitDesktopApp();
     }
+  }
+
+  /// Lets the user copy the open note as rich text (for Word/web), Markdown
+  /// source, or plain text — the copy half of the clipboard interop.
+  Future<void> _showCopyMenu() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = _l10n;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.text_snippet_outlined),
+              title: Text(l10n.copyFormatted),
+              onTap: () => Navigator.pop(context, 'formatted'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: Text(l10n.copyAsMarkdown),
+              onTap: () => Navigator.pop(context, 'markdown'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.notes),
+              title: Text(l10n.copyAsPlainText),
+              onTap: () => Navigator.pop(context, 'plain'),
+            ),
+          ],
+        ),
+      ),
+    );
+    switch (choice) {
+      case 'formatted':
+        await controller.copyNoteFormatted();
+      case 'markdown':
+        await controller.copyNoteMarkdown();
+      case 'plain':
+        await controller.copyNotePlain();
+      default:
+        return; // dismissed
+    }
+    messenger.showSnackBar(SnackBar(
+      content: Text(l10n.copiedToClipboard),
+      duration: const Duration(seconds: 1),
+    ));
   }
 
   Future<void> _toggleAlwaysOnTop() async {

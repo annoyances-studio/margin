@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../content/markdown_convert.dart';
 import '../../desktop/file_reveal.dart';
+import '../clipboard_service.dart';
 import '../link_target.dart';
 import 'markdown_editing_controller.dart';
 
@@ -33,12 +35,17 @@ class NoteEditor extends StatefulWidget {
   /// links for the open/preview affordance.
   final String? imageBaseDir;
 
+  /// Clipboard access for "Paste as Markdown". Injectable so tests use a fake;
+  /// defaults (null) to the platform clipboard resolved in the state.
+  final ClipboardService? clipboard;
+
   const NoteEditor({
     super.key,
     required this.notePath,
     required this.body,
     required this.onChanged,
     this.imageBaseDir,
+    this.clipboard,
   });
 
   @override
@@ -48,6 +55,10 @@ class NoteEditor extends StatefulWidget {
 class _NoteEditorState extends State<NoteEditor> {
   late final MarkdownEditingController _controller =
       MarkdownEditingController(text: widget.body);
+
+  /// The injected clipboard, or the platform default.
+  late final ClipboardService _clipboard =
+      widget.clipboard ?? createClipboardService();
 
   MarkdownLink? _activeLink;
 
@@ -136,6 +147,29 @@ class _NoteEditorState extends State<NoteEditor> {
     if (target != null && canOpenTargets) openWithDefaultApp(target);
   }
 
+  /// Reads the clipboard's HTML (from Word, the web, OneNote, …), converts it to
+  /// Markdown, and inserts it at the caret — the migration/"paste rich content
+  /// as markdown" path. Falls back to the clipboard's plain text when there is
+  /// no HTML. (Plain Ctrl+V still pastes verbatim via the default menu item.)
+  Future<void> _pasteAsMarkdown() async {
+    final inserted = clipboardToMarkdown(
+      html: await _clipboard.readHtml(),
+      plainText: await _clipboard.readText(),
+    );
+    if (inserted.isEmpty || !mounted) return;
+
+    final selection = _controller.selection;
+    final text = _controller.text;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final updated = text.replaceRange(start, end, inserted);
+    _controller.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: start + inserted.length),
+    );
+    widget.onChanged(updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -161,6 +195,23 @@ class _NoteEditorState extends State<NoteEditor> {
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
                 style: const TextStyle(fontSize: 15, height: 1.45),
+                // Add "Paste as Markdown" to the selection toolbar alongside the
+                // default actions (which keep pasting verbatim).
+                contextMenuBuilder: (context, editableState) {
+                  final items = List<ContextMenuButtonItem>.from(
+                    editableState.contextMenuButtonItems,
+                  )..add(ContextMenuButtonItem(
+                      label: AppLocalizations.of(context).pasteAsMarkdown,
+                      onPressed: () {
+                        ContextMenuController.removeAny();
+                        _pasteAsMarkdown();
+                      },
+                    ));
+                  return AdaptiveTextSelectionToolbar.buttonItems(
+                    anchors: editableState.contextMenuAnchors,
+                    buttonItems: items,
+                  );
+                },
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   hintText: l10n.writeInMarkdown,

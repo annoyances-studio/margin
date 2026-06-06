@@ -104,6 +104,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncAnyway => 'Sync anyway';
 
   @override
+  String get copyNote => 'Copy note';
+
+  @override
+  String get copyFormatted => 'Formatted (for Word, web)';
+
+  @override
+  String get copyAsMarkdown => 'Markdown source';
+
+  @override
+  String get copyAsPlainText => 'Plain text';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get pasteAsMarkdown => 'Paste as Markdown';
+
+  @override
   String get emptySyncWarning =>
       'This Folio now looks empty. Syncing will delete its contents on the other side.';
 

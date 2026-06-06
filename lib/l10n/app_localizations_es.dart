@@ -105,6 +105,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get syncAnyway => 'Sincronizar de todos modos';
 
   @override
+  String get copyNote => 'Copiar nota';
+
+  @override
+  String get copyFormatted => 'Con formato (para Word, web)';
+
+  @override
+  String get copyAsMarkdown => 'Código Markdown';
+
+  @override
+  String get copyAsPlainText => 'Texto sin formato';
+
+  @override
+  String get copiedToClipboard => 'Copiado al portapapeles';
+
+  @override
+  String get pasteAsMarkdown => 'Pegar como Markdown';
+
+  @override
   String get emptySyncWarning =>
       'Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.';
 

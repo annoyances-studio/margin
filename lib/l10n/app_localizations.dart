@@ -284,6 +284,42 @@ abstract class AppLocalizations {
   /// **'Sync anyway'**
   String get syncAnyway;
 
+  /// Overflow menu item to copy the open note.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy note'**
+  String get copyNote;
+
+  /// Copy option: rich text / HTML.
+  ///
+  /// In en, this message translates to:
+  /// **'Formatted (for Word, web)'**
+  String get copyFormatted;
+
+  /// Copy option: raw markdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown source'**
+  String get copyAsMarkdown;
+
+  /// Copy option: stripped plain text.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain text'**
+  String get copyAsPlainText;
+
+  /// Confirmation shown after a copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get copiedToClipboard;
+
+  /// Editor action: paste clipboard HTML converted to markdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste as Markdown'**
+  String get pasteAsMarkdown;
+
   /// Shown when a sync would propagate an apparent 'everything deleted' — guards against a flaky connection.
   ///
   /// In en, this message translates to:

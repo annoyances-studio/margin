@@ -33,6 +33,12 @@
   "alwaysOnTop": "Siempre visible",
   "syncNow": "Sincronizar ahora",
   "syncAnyway": "Sincronizar de todos modos",
+  "copyNote": "Copiar nota",
+  "copyFormatted": "Con formato (para Word, web)",
+  "copyAsMarkdown": "Código Markdown",
+  "copyAsPlainText": "Texto sin formato",
+  "copiedToClipboard": "Copiado al portapapeles",
+  "pasteAsMarkdown": "Pegar como Markdown",
   "emptySyncWarning": "Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.",
 
   "hideFolders": "Ocultar carpetas",

@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../content/content_service.dart';
+import '../content/markdown_convert.dart';
 import '../content/tree_node.dart';
 import '../credentials/credential_store.dart';
 import '../folio/note.dart';
@@ -25,6 +26,7 @@ import '../storage/storage_backend.dart';
 import '../storage/webdav_backend.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_state_store.dart';
+import 'clipboard_service.dart';
 import 'editor_view_mode.dart';
 
 /// Drives the UI: owns the open repository, the folder tree, the selected note
@@ -45,16 +47,21 @@ class AppController extends ChangeNotifier {
   /// Injectable so tests can use a temp dir instead of the OS documents dir.
   final Future<Directory> Function() _cacheRoot;
 
+  /// Clipboard access (incl. rich HTML). Injectable so tests use a fake.
+  final ClipboardService _clipboard;
+
   AppController({
     SettingsStore? settings,
     CredentialStore? credentials,
     SyncStateStore? syncStates,
     http.Client Function()? httpClientFactory,
     Future<Directory> Function()? cacheRoot,
+    ClipboardService? clipboard,
   })  : _settings = settings ?? InMemorySettingsStore(),
         _credentials = credentials ?? InMemoryCredentialStore(),
         _syncStates = syncStates ?? InMemorySyncStateStore(),
         _httpClientFactory = httpClientFactory ?? (() => http.Client()),
+        _clipboard = clipboard ?? createClipboardService(),
         _cacheRoot = cacheRoot ??
             (() async {
               final docs = await getApplicationDocumentsDirectory();
@@ -681,6 +688,33 @@ class AppController extends ChangeNotifier {
     _workingBody = body;
     _dirty = true;
     notifyListeners();
+  }
+
+  // --- copy the open note (uses the current editing buffer) ---
+
+  /// Whether there is an open note to copy.
+  bool get canCopyNote => _selectedNotePath != null;
+
+  /// Copies the open note as **rich text** (HTML) so it pastes into Word/web
+  /// with formatting, with a plain-text fallback for plain targets.
+  Future<void> copyNoteFormatted() async {
+    if (_selectedNotePath == null) return;
+    await _clipboard.copyRich(
+      html: markdownToHtml(_workingBody),
+      text: markdownToPlainText(_workingBody),
+    );
+  }
+
+  /// Copies the open note's raw **Markdown** source.
+  Future<void> copyNoteMarkdown() async {
+    if (_selectedNotePath == null) return;
+    await _clipboard.copyText(_workingBody);
+  }
+
+  /// Copies the open note as **plain text** (markup stripped).
+  Future<void> copyNotePlain() async {
+    if (_selectedNotePath == null) return;
+    await _clipboard.copyText(markdownToPlainText(_workingBody));
   }
 
   Future<void> save() async {
