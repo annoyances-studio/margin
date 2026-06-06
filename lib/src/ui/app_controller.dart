@@ -624,6 +624,10 @@ class AppController extends ChangeNotifier {
     await _run(() async {
       final repo = await Folio.open(backend);
       _adopt(repo, ContentService(backend));
+      // Clean up empty folders left behind by deletions made outside the app
+      // (e.g. a sync from another device, where the OS sync client removed the
+      // files but left the empty directory). Best-effort.
+      await _pruneEmptyFolders();
       await _reloadTree();
       await _restoreLastNote();
     });
