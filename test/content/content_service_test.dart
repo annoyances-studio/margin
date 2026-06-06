@@ -403,6 +403,18 @@ void main() {
       expect(second, startsWith('_attachments/pic-'));
     });
 
+    test('repeated names never overwrite (each keeps its own bytes)', () async {
+      await service.createFolder('', 'Work');
+      final a = await service.addAttachment('Work', 'pic.png', bytes('A'));
+      final b = await service.addAttachment('Work', 'pic.png', bytes('B'));
+      final c = await service.addAttachment('Work', 'pic.png', bytes('C'));
+
+      expect({a, b, c}.length, 3); // three distinct files
+      expect(utf8.decode(await backend.read('Work/$a')), 'A');
+      expect(utf8.decode(await backend.read('Work/$b')), 'B');
+      expect(utf8.decode(await backend.read('Work/$c')), 'C');
+    });
+
     test('addAttachment replaces spaces but keeps the extension', () async {
       await service.createFolder('', 'Work');
       final link =

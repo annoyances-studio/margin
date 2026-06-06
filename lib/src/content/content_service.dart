@@ -223,15 +223,23 @@ class ContentService {
     Uint8List bytes,
   ) async {
     final dir = _join(folderPath, attachmentsDirName);
-    var name = _sanitizeFileName(fileName);
-    if (await backend.exists(_join(dir, name))) {
-      final dot = name.lastIndexOf('.');
-      final stem = dot > 0 ? name.substring(0, dot) : name;
-      final ext = dot > 0 ? name.substring(dot) : '';
-      name = '$stem-${DateTime.now().millisecondsSinceEpoch}$ext';
-    }
+    final name = await _uniqueAttachmentName(dir, _sanitizeFileName(fileName));
     await backend.write(_join(dir, name), codec.encode(bytes));
     return '$attachmentsDirName/$name';
+  }
+
+  /// Returns [name] if free in [dir], else `stem-1.ext`, `stem-2.ext`, … until a
+  /// free name is found — so a repeated name (e.g. several pasted images) never
+  /// overwrites an existing attachment.
+  Future<String> _uniqueAttachmentName(String dir, String name) async {
+    if (!await backend.exists(_join(dir, name))) return name;
+    final dot = name.lastIndexOf('.');
+    final stem = dot > 0 ? name.substring(0, dot) : name;
+    final ext = dot > 0 ? name.substring(dot) : '';
+    for (var i = 1;; i++) {
+      final candidate = '$stem-$i$ext';
+      if (!await backend.exists(_join(dir, candidate))) return candidate;
+    }
   }
 
   String _sanitizeFileName(String fileName) {
