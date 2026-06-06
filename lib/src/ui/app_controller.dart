@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ import '../content/markdown_convert.dart';
 import '../content/tree_node.dart';
 import '../credentials/credential_store.dart';
 import '../folio/note.dart';
+import '../folio/note_properties.dart';
 import '../folio/folio.dart';
 import '../folio/folio_exception.dart';
 import '../settings/settings_store.dart';
@@ -23,6 +25,7 @@ import '../storage/onedrive_auth.dart';
 import '../storage/onedrive_backend.dart';
 import '../storage/onedrive_oauth.dart';
 import '../storage/storage_backend.dart';
+import '../storage/storage_exception.dart';
 import '../storage/webdav_backend.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_state_store.dart';
@@ -667,6 +670,80 @@ class AppController extends ChangeNotifier {
     }
     notifyListeners();
     if (hadUnsavedEdits) _scheduleSync();
+    // Bring the latest version of this note from the remote in the background,
+    // so you edit fresh content rather than a stale cache (conflict avoidance).
+    if (canSync) _noteRefreshFuture = _refreshOpenNoteFromPeer(note.path);
+  }
+
+  /// The in-flight per-note freshness pull, if any (exposed for tests).
+  @visibleForTesting
+  Future<void> get pendingNoteRefresh =>
+      _noteRefreshFuture ?? Future<void>.value();
+  Future<void>? _noteRefreshFuture;
+
+  /// Best-effort: if the remote has a newer version of [notePath] (by its
+  /// sidecar's `updated`), pull it into the cache and — only if the user is
+  /// still on that note and hasn't started editing — reload the editor with it.
+  /// Never blocks note-switching (it runs unawaited) and tolerates offline.
+  Future<void> _refreshOpenNoteFromPeer(String notePath) async {
+    final peer = _syncPeer;
+    final folio = _folio;
+    final content = _content;
+    if (peer == null || folio == null || content == null) return;
+    try {
+      final pulled = await _pullNoteIfRemoteNewer(peer, folio, content, notePath)
+          .timeout(const Duration(seconds: 10));
+      if (!pulled) return;
+      // Don't clobber: only refresh when still viewing this note, unedited.
+      if (_selectedNotePath != notePath || _dirty) return;
+      final loaded = await content.readNote(notePath);
+      _currentNote = loaded;
+      _workingBody = loaded.body;
+      _editorRevision++; // force the editor widget to reload the fresh body
+      _notify();
+    } catch (_) {
+      // Offline / missing / parse error -> keep the cached copy.
+    }
+  }
+
+  /// Pulls [notePath] (and its sidecar) from [peer] into the cache when the
+  /// remote sidecar's `updated` is newer than the local one. Returns whether a
+  /// pull happened. Reads are remote (not serialized); the cache writes are
+  /// serialized so they can't race a running sync.
+  Future<bool> _pullNoteIfRemoteNewer(
+    StorageBackend peer,
+    Folio folio,
+    ContentService content,
+    String notePath,
+  ) async {
+    final sidecarPath = '$notePath.yaml';
+    final Uint8List remoteSidecarRaw;
+    try {
+      remoteSidecarRaw = await peer.read(sidecarPath);
+    } on NotFoundException {
+      return false; // no remote sidecar to compare against
+    }
+    final remoteUpdated =
+        NoteProperties.parse(utf8.decode(content.codec.decode(remoteSidecarRaw)))
+            .updated;
+    if (remoteUpdated == null) return false;
+
+    DateTime? localUpdated;
+    try {
+      localUpdated = (await content.readNoteProperties(notePath)).updated;
+    } catch (_) {
+      localUpdated = null;
+    }
+    if (localUpdated != null && !remoteUpdated.isAfter(localUpdated)) {
+      return false; // cache is already current
+    }
+
+    final remoteNoteRaw = await peer.read(notePath);
+    await _serialize(() async {
+      await folio.backend.write(notePath, remoteNoteRaw);
+      await folio.backend.write(sidecarPath, remoteSidecarRaw);
+    });
+    return true;
   }
 
   /// Loads [note] as the current note. No save-before-switch and no [_run], so

@@ -3,11 +3,13 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
+import 'package:margin/src/folio/note_properties.dart';
 import 'package:margin/src/ui/app_controller.dart';
 
 /// Wraps a backend so a test can stall its `list` mid-sync (the sync snapshots
@@ -175,6 +177,38 @@ void main() {
     gated.gate = null;
     await c.pendingSync;
     expect(c.syncError, isNull);
+  });
+
+  test('opening a note pulls a newer remote version (freshness)', () async {
+    final c = controller();
+    addTearDown(c.dispose);
+    await c.openThroughCache(remote);
+    await c.createFolder('Work');
+    await c.createNote('a', folderPath: 'Work');
+    await c.createNote('b', folderPath: 'Work'); // 'b' ends up selected
+    await c.pendingSync;
+
+    // Another device edits 'a' on the remote with a newer timestamp.
+    final newer = DateTime.now().toUtc().add(const Duration(days: 1));
+    final edited = Note(
+      frontmatter: NoteFrontmatter(title: 'a', updated: newer),
+      body: '# edited elsewhere',
+    );
+    await remote.write('Work/a.md',
+        Uint8List.fromList(utf8.encode(edited.serialize())));
+    await remote.write(
+      'Work/a.md.yaml',
+      Uint8List.fromList(
+          utf8.encode(NoteProperties(title: 'a', updated: newer).toYaml())),
+    );
+
+    // Switching to 'a' opens the (stale) cache, then the background pull brings
+    // the fresher remote version into the editor.
+    await c.selectNote(_findNote(c.tree!, 'a.md')!);
+    expect(c.selectedNotePath, 'Work/a.md');
+    await c.pendingNoteRefresh;
+
+    expect(c.workingBody, contains('edited elsewhere'));
   });
 
   test('manual syncNow pushes a local edit to the remote', () async {
