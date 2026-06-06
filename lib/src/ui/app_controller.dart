@@ -711,6 +711,53 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  /// Downloads a remote image and saves it as an attachment of the open note,
+  /// returning its note-relative link — used to localize hotlinked images on
+  /// paste so they don't rot. Times out per image so a slow/dead URL can't hang
+  /// the app; returns null on any failure (caller keeps the original link).
+  Future<String?> downloadImageAsAttachment(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !(uri.isScheme('http') || uri.isScheme('https'))) {
+      return null;
+    }
+    final client = _httpClientFactory();
+    try {
+      final res =
+          await client.get(uri).timeout(const Duration(seconds: 12));
+      if (res.statusCode != 200 || res.bodyBytes.isEmpty) return null;
+      final ext = _imageExtension(res.headers['content-type'], uri.path);
+      return saveAttachmentForCurrentNote(res.bodyBytes, ext);
+    } catch (_) {
+      return null; // timeout, network error, etc. -> keep the hotlink
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Best-effort image extension from a content-type or URL path; defaults png.
+  String _imageExtension(String? contentType, String urlPath) {
+    final type = (contentType ?? '').split(';').first.trim().toLowerCase();
+    switch (type) {
+      case 'image/jpeg':
+        return 'jpg';
+      case 'image/png':
+        return 'png';
+      case 'image/gif':
+        return 'gif';
+      case 'image/webp':
+        return 'webp';
+      case 'image/bmp':
+        return 'bmp';
+      case 'image/svg+xml':
+        return 'svg';
+    }
+    final dot = urlPath.lastIndexOf('.');
+    final fromPath = dot < 0 ? '' : urlPath.substring(dot + 1).toLowerCase();
+    const known = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'};
+    if (known.contains(fromPath)) return fromPath == 'jpeg' ? 'jpg' : fromPath;
+    return 'png';
+  }
+
   /// Saves [bytes] as an attachment of the open note (e.g. a pasted image) and
   /// returns its note-relative link, without inserting or saving the note.
   Future<String?> saveAttachmentForCurrentNote(

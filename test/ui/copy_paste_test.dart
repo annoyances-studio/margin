@@ -6,6 +6,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/content/markdown_convert.dart';
 import 'package:margin/src/ui/app_controller.dart';
@@ -132,6 +134,42 @@ void main() {
 
       expect(link, startsWith('_attachments/'));
       expect(await backend.exists('W/$link'), isTrue);
+    });
+
+    test('downloadImageAsAttachment fetches a remote image and saves it',
+        () async {
+      final tmp = await Directory.systemTemp.createTemp('margin_dl_');
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      final backend = LocalFolderBackend(tmp.path);
+      final mock = MockClient((req) async => http.Response.bytes(
+            [1, 2, 3, 4],
+            200,
+            headers: {'content-type': 'image/jpeg'},
+          ));
+      final c = AppController(httpClientFactory: () => mock);
+      addTearDown(c.dispose);
+      await c.create(backend, 'N');
+      await c.createFolder('W');
+      await c.createNote('n', folderPath: 'W');
+
+      final link = await c.downloadImageAsAttachment('https://i.test/pic.jpg');
+
+      expect(link, startsWith('_attachments/'));
+      expect(link, endsWith('.jpg')); // from image/jpeg content-type
+      expect(await backend.exists('W/$link'), isTrue);
+    });
+
+    test('downloadImageAsAttachment returns null on a non-200', () async {
+      final c = AppController(
+        httpClientFactory: () => MockClient((_) async => http.Response('', 404)),
+      );
+      addTearDown(c.dispose);
+      expect(
+        await c.downloadImageAsAttachment('https://i.test/missing.png'),
+        isNull,
+      );
     });
   });
 

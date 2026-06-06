@@ -326,6 +326,12 @@ abstract class AppLocalizations {
   /// **'Paste as Markdown'**
   String get pasteAsMarkdown;
 
+  /// Shown while pasted remote images are being downloaded into attachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading images…'**
+  String get downloadingImages;
+
   /// Shown when a sync would propagate an apparent 'everything deleted' — guards against a flaky connection.
   ///
   /// In en, this message translates to:

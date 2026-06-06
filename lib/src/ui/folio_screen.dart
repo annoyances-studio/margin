@@ -195,6 +195,7 @@ class _FolioScreenState extends State<FolioScreen> {
           imageBaseDir: _imageBaseDir(),
           onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
+          onDownloadImage: controller.downloadImageAsAttachment,
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
@@ -446,6 +447,7 @@ class _FolioScreenState extends State<FolioScreen> {
       imageBaseDir: _imageBaseDir(),
       onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
       onSaveAttachment: controller.saveAttachmentForCurrentNote,
+      onDownloadImage: controller.downloadImageAsAttachment,
     );
 
     if (!_showTree || tree == null) {

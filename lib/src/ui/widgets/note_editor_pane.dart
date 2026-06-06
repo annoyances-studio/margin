@@ -37,6 +37,10 @@ class NoteEditorPane extends StatelessWidget {
   final Future<String?> Function(Uint8List bytes, String extension)?
       onSaveAttachment;
 
+  /// Downloads a remote pasted image into an attachment (for "Paste as
+  /// Markdown").
+  final Future<String?> Function(String url)? onDownloadImage;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
@@ -47,6 +51,7 @@ class NoteEditorPane extends StatelessWidget {
     this.imageBaseDir,
     this.onSpecialCopy,
     this.onSaveAttachment,
+    this.onDownloadImage,
   });
 
   @override
@@ -63,6 +68,7 @@ class NoteEditorPane extends StatelessWidget {
       imageBaseDir: imageBaseDir,
       onSpecialCopy: onSpecialCopy,
       onSaveAttachment: onSaveAttachment,
+      onDownloadImage: onDownloadImage,
     );
     final preview = MarkdownPreview(
       data: body,

@@ -40,6 +40,7 @@
   "copyAsPlainText": "Texto sin formato",
   "copiedToClipboard": "Copiado al portapapeles",
   "pasteAsMarkdown": "Pegar como Markdown",
+  "downloadingImages": "Descargando imágenes…",
   "emptySyncWarning": "Este Folio parece vacío ahora. Sincronizar eliminará su contenido en el otro lado.",
 
   "hideFolders": "Ocultar carpetas",

@@ -84,6 +84,8 @@
   "@copiedToClipboard": { "description": "Confirmation shown after a copy." },
   "pasteAsMarkdown": "Paste as Markdown",
   "@pasteAsMarkdown": { "description": "Editor action: paste clipboard HTML converted to markdown." },
+  "downloadingImages": "Downloading images…",
+  "@downloadingImages": { "description": "Shown while pasted remote images are being downloaded into attachments." },
 
   "emptySyncWarning": "This Folio now looks empty. Syncing will delete its contents on the other side.",
   "@emptySyncWarning": { "description": "Shown when a sync would propagate an apparent 'everything deleted' — guards against a flaky connection." },

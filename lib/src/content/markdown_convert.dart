@@ -92,6 +92,40 @@ Future<String> rewriteDataUriImages(
   return out.toString();
 }
 
+final RegExp _remoteImage =
+    RegExp(r'!\[([^\]]*)\]\(\s*(https?://[^)\s]+)\s*\)');
+
+/// True if [markdown] has any remote (`http(s)`) image embed — used to decide
+/// whether a paste needs the (slower, networked) download step.
+bool hasRemoteImages(String markdown) => _remoteImage.hasMatch(markdown);
+
+/// Downloads remote image embeds and re-links them to saved attachments:
+/// [download] fetches+saves the image at a URL and returns the new note-relative
+/// link (or null to keep the original hotlink, e.g. on timeout/404). Keeps the
+/// image's alt text, falling back to "Pasted Image".
+Future<String> rewriteRemoteImages(
+  String markdown,
+  Future<String?> Function(String url) download,
+) async {
+  final matches = _remoteImage.allMatches(markdown).toList();
+  if (matches.isEmpty) return markdown;
+  final out = StringBuffer();
+  var last = 0;
+  for (final m in matches) {
+    out.write(markdown.substring(last, m.start));
+    final link = await download(m.group(2)!);
+    if (link == null) {
+      out.write(m.group(0)); // keep the original link on failure
+    } else {
+      final alt = m.group(1)!.trim();
+      out.write('![${alt.isEmpty ? 'Pasted Image' : alt}]($link)');
+    }
+    last = m.end;
+  }
+  out.write(markdown.substring(last));
+  return out.toString();
+}
+
 final RegExp _htmlImg =
     RegExp(r'<img\b[^>]*?\bsrc="([^"]*)"[^>]*>', caseSensitive: false);
 

@@ -125,6 +125,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pasteAsMarkdown => 'Paste as Markdown';
 
   @override
+  String get downloadingImages => 'Downloading images…';
+
+  @override
   String get emptySyncWarning =>
       'This Folio now looks empty. Syncing will delete its contents on the other side.';
 

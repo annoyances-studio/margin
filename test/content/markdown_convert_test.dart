@@ -121,4 +121,39 @@ void main() {
       expect(out, html);
     });
   });
+
+  group('rewriteRemoteImages', () {
+    test('hasRemoteImages detects http(s) image embeds', () {
+      expect(hasRemoteImages('![](https://x.test/a.png)'), isTrue);
+      expect(hasRemoteImages('![](_attachments/a.png)'), isFalse);
+      expect(hasRemoteImages('no images here'), isFalse);
+    });
+
+    test('downloads remote images and re-links to the attachment', () async {
+      final urls = <String>[];
+      final out = await rewriteRemoteImages(
+        'see ![](https://i.test/vi/abc/hq.jpg?x=1) here',
+        (url) async {
+          urls.add(url);
+          return '_attachments/dl.jpg';
+        },
+      );
+      expect(urls, ['https://i.test/vi/abc/hq.jpg?x=1']);
+      expect(out, 'see ![Pasted Image](_attachments/dl.jpg) here');
+    });
+
+    test('preserves a non-empty alt label', () async {
+      final out = await rewriteRemoteImages(
+        '![a cat](https://x.test/cat.png)',
+        (url) async => '_attachments/cat.png',
+      );
+      expect(out, '![a cat](_attachments/cat.png)');
+    });
+
+    test('keeps the hotlink when the download fails', () async {
+      const md = '![](https://x.test/dead.png)';
+      final out = await rewriteRemoteImages(md, (url) async => null);
+      expect(out, md);
+    });
+  });
 }

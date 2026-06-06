@@ -48,6 +48,11 @@ class NoteEditor extends StatefulWidget {
   final Future<String?> Function(Uint8List bytes, String extension)?
       onSaveAttachment;
 
+  /// Downloads a remote pasted image and saves it as an attachment, returning
+  /// its note-relative link (null to keep the original hotlink). When provided,
+  /// remote images pasted via "Paste as Markdown" are localized.
+  final Future<String?> Function(String url)? onDownloadImage;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -57,6 +62,7 @@ class NoteEditor extends StatefulWidget {
     this.clipboard,
     this.onSpecialCopy,
     this.onSaveAttachment,
+    this.onDownloadImage,
   });
 
   @override
@@ -171,6 +177,30 @@ class _NoteEditorState extends State<NoteEditor> {
     // "[Pasted Image]") rather than bloating the note with data URIs.
     final saver = widget.onSaveAttachment;
     if (saver != null) inserted = await rewriteDataUriImages(inserted, saver);
+
+    // Download remote (hotlinked) images into attachments so they don't rot.
+    // This can be slow, so show progress; failures keep the original link.
+    final downloader = widget.onDownloadImage;
+    if (downloader != null && mounted && hasRemoteImages(inserted)) {
+      final messenger = ScaffoldMessenger.of(context);
+      final progress = messenger.showSnackBar(SnackBar(
+        duration: const Duration(minutes: 5),
+        content: Row(children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 12),
+          Text(AppLocalizations.of(context).downloadingImages),
+        ]),
+      ));
+      try {
+        inserted = await rewriteRemoteImages(inserted, downloader);
+      } finally {
+        progress.close();
+      }
+    }
     if (inserted.isEmpty || !mounted) return;
 
     final selection = _controller.selection;
