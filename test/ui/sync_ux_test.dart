@@ -2,11 +2,47 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/ui/app_controller.dart';
+
+/// Wraps a backend so a test can stall its `list` mid-sync (the sync snapshots
+/// via list), to prove note navigation doesn't block behind a running sync.
+class _GatedBackend implements StorageBackend {
+  final MemoryBackend _inner;
+  Completer<void>? gate; // when non-null, list() awaits it
+  _GatedBackend(this._inner);
+
+  @override
+  Future<List<StorageEntry>> list(String path) async {
+    if (gate != null) await gate!.future;
+    return _inner.list(path);
+  }
+
+  @override
+  Future<bool> exists(String path) => _inner.exists(path);
+  @override
+  Future<Uint8List> read(String path) => _inner.read(path);
+  @override
+  Future<void> write(String path, Uint8List bytes) => _inner.write(path, bytes);
+  @override
+  Future<void> delete(String path) => _inner.delete(path);
+}
+
+NoteNode? _findNote(FolderNode folder, String name) {
+  for (final n in folder.notes) {
+    if (n.name == name) return n;
+  }
+  for (final f in folder.folders) {
+    final found = _findNote(f, name);
+    if (found != null) return found;
+  }
+  return null;
+}
 
 void main() {
   late Directory cacheDir;
@@ -106,6 +142,39 @@ void main() {
     expect(c.canSync, isTrue);
     // The new Folio was written through to the remote.
     expect(await empty.exists('properties.yaml'), isTrue);
+  });
+
+  test('switching notes stays responsive while a sync is in flight', () async {
+    final gated = _GatedBackend(MemoryBackend());
+    await Folio.create(gated._inner, name: 'Remote');
+    final c = AppController(cacheRoot: () async => cacheDir);
+    addTearDown(c.dispose);
+
+    await c.openThroughCache(gated); // initial clone (gate open)
+    await c.createFolder('Work');
+    await c.createNote('a', folderPath: 'Work');
+    await c.createNote('b', folderPath: 'Work');
+    await c.pendingSync;
+
+    // Stall the next sync mid-flight, then trigger one.
+    gated.gate = Completer<void>();
+    c.updateBody('# edit'); // dirty the selected note (b)
+    await c.save(); // flushes, then schedules a sync that blocks on the gate
+
+    // Switching to another note must NOT wait for the stalled sync.
+    final a = _findNote(c.tree!, 'a.md')!;
+    await c.selectNote(a).timeout(
+          const Duration(seconds: 2),
+          onTimeout: () =>
+              fail('selectNote blocked behind the in-flight sync'),
+        );
+    expect(c.selectedNotePath, 'Work/a.md');
+
+    // Release the sync and let it finish cleanly.
+    gated.gate!.complete();
+    gated.gate = null;
+    await c.pendingSync;
+    expect(c.syncError, isNull);
   });
 
   test('manual syncNow pushes a local edit to the remote', () async {

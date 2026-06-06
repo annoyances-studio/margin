@@ -643,10 +643,21 @@ class AppController extends ChangeNotifier {
   Future<void> selectNote(NoteNode note) async {
     if (note.path == _selectedNotePath) return;
     final hadUnsavedEdits = _dirty;
-    await _run(() async {
-      await _flushIfDirty();
+    try {
+      // A pending edit is a write — flush it through the op-queue so it stays
+      // correctly ordered with a background sync. (Skipped when nothing is
+      // dirty, which is the common "just browsing" case.)
+      if (hadUnsavedEdits) await _serialize(_flushIfDirty);
+      // Opening a note is a read: run it OUTSIDE the op-queue so switching notes
+      // stays responsive even while a sync holds the queue (the original
+      // "can't change the note while it's refreshing" freeze). Dart is
+      // single-threaded, so the worst case is briefly stale content that the
+      // next sync reconciles — never corruption.
       await _openNote(note);
-    });
+    } catch (e) {
+      _error = e.toString();
+    }
+    notifyListeners();
     if (hadUnsavedEdits) _scheduleSync();
   }
 
