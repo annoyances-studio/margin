@@ -39,6 +39,15 @@ class NoteEditor extends StatefulWidget {
   /// defaults (null) to the platform clipboard resolved in the state.
   final ClipboardService? clipboard;
 
+  /// Opens the formatted-copy chooser ("Special Copy"). Null hides the item.
+  final VoidCallback? onSpecialCopy;
+
+  /// Persists a pasted image as an attachment, returning its note-relative link.
+  /// When provided, base64 images pasted via "Paste as Markdown" are saved as
+  /// files instead of being inlined into the note.
+  final Future<String?> Function(Uint8List bytes, String extension)?
+      onSaveAttachment;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -46,6 +55,8 @@ class NoteEditor extends StatefulWidget {
     required this.onChanged,
     this.imageBaseDir,
     this.clipboard,
+    this.onSpecialCopy,
+    this.onSaveAttachment,
   });
 
   @override
@@ -152,10 +163,14 @@ class _NoteEditorState extends State<NoteEditor> {
   /// as markdown" path. Falls back to the clipboard's plain text when there is
   /// no HTML. (Plain Ctrl+V still pastes verbatim via the default menu item.)
   Future<void> _pasteAsMarkdown() async {
-    final inserted = clipboardToMarkdown(
+    var inserted = clipboardToMarkdown(
       html: await _clipboard.readHtml(),
       plainText: await _clipboard.readText(),
     );
+    // Turn any pasted base64 images into real attachments (linked as
+    // "[Pasted Image]") rather than bloating the note with data URIs.
+    final saver = widget.onSaveAttachment;
+    if (saver != null) inserted = await rewriteDataUriImages(inserted, saver);
     if (inserted.isEmpty || !mounted) return;
 
     final selection = _controller.selection;
@@ -198,15 +213,25 @@ class _NoteEditorState extends State<NoteEditor> {
                 // Add "Paste as Markdown" to the selection toolbar alongside the
                 // default actions (which keep pasting verbatim).
                 contextMenuBuilder: (context, editableState) {
+                  final l10n = AppLocalizations.of(context);
                   final items = List<ContextMenuButtonItem>.from(
                     editableState.contextMenuButtonItems,
                   )..add(ContextMenuButtonItem(
-                      label: AppLocalizations.of(context).pasteAsMarkdown,
+                      label: l10n.pasteAsMarkdown,
                       onPressed: () {
                         ContextMenuController.removeAny();
                         _pasteAsMarkdown();
                       },
                     ));
+                  if (widget.onSpecialCopy != null) {
+                    items.add(ContextMenuButtonItem(
+                      label: l10n.specialCopy,
+                      onPressed: () {
+                        ContextMenuController.removeAny();
+                        widget.onSpecialCopy!();
+                      },
+                    ));
+                  }
                   return AdaptiveTextSelectionToolbar.buttonItems(
                     anchors: editableState.contextMenuAnchors,
                     buttonItems: items,

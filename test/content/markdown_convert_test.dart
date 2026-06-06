@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/src/content/markdown_convert.dart';
 
@@ -55,6 +57,68 @@ void main() {
       final text = markdownToPlainText('Tom & Jerry < Co');
       expect(text, contains('Tom & Jerry'));
       expect(text, isNot(contains('&amp;')));
+    });
+  });
+
+  group('rewriteDataUriImages', () {
+    test('saves data-URI images as attachments labelled [Pasted Image]',
+        () async {
+      final exts = <String>[];
+      final out = await rewriteDataUriImages(
+        'before ![](data:image/png;base64,aW1n) after',
+        (bytes, ext) async {
+          exts.add(ext);
+          return '_attachments/pasted.$ext';
+        },
+      );
+      expect(exts, ['png']);
+      expect(out, 'before ![Pasted Image](_attachments/pasted.png) after');
+    });
+
+    test('maps jpeg to a jpg extension', () async {
+      String? ext;
+      await rewriteDataUriImages('![](data:image/jpeg;base64,aW1n)',
+          (bytes, e) async {
+        ext = e;
+        return '_attachments/x.$e';
+      });
+      expect(ext, 'jpg');
+    });
+
+    test('leaves regular image links untouched', () async {
+      const md = '![alt](pics/photo.png)';
+      final out = await rewriteDataUriImages(md, (b, e) async => 'nope');
+      expect(out, md);
+    });
+
+    test('keeps the embed when the save fails (returns null)', () async {
+      const md = '![](data:image/png;base64,aW1n)';
+      final out = await rewriteDataUriImages(md, (b, e) async => null);
+      expect(out, md);
+    });
+  });
+
+  group('embedHtmlImages', () {
+    test('inlines a local image as a base64 data URI', () async {
+      final out = await embedHtmlImages(
+        '<p><img src="pic.png" alt="x"></p>',
+        (src) async => Uint8List.fromList([1, 2, 3]),
+      );
+      expect(out, contains('data:image/png;base64,'));
+      expect(out, isNot(contains('src="pic.png"')));
+    });
+
+    test('leaves http and data sources alone', () async {
+      const html =
+          '<img src="https://x.test/y.png"><img src="data:image/png;base64,aW1n">';
+      final out = await embedHtmlImages(html, (src) async => fail('read $src'));
+      expect(out, html);
+    });
+
+    test('keeps the tag when the image cannot be read', () async {
+      const html = '<img src="missing.png">';
+      final out = await embedHtmlImages(html, (src) async => null);
+      expect(out, html);
     });
   });
 }

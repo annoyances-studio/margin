@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
@@ -27,6 +29,14 @@ class NoteEditorPane extends StatelessWidget {
   /// the preview.
   final String? imageBaseDir;
 
+  /// Opens the formatted-copy chooser ("Special Copy") from the editor/preview
+  /// context menus. Null hides the item.
+  final VoidCallback? onSpecialCopy;
+
+  /// Persists a pasted image as an attachment (for "Paste as Markdown").
+  final Future<String?> Function(Uint8List bytes, String extension)?
+      onSaveAttachment;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
@@ -35,6 +45,8 @@ class NoteEditorPane extends StatelessWidget {
     required this.mode,
     this.revision = 0,
     this.imageBaseDir,
+    this.onSpecialCopy,
+    this.onSaveAttachment,
   });
 
   @override
@@ -49,8 +61,14 @@ class NoteEditorPane extends StatelessWidget {
       body: body,
       onChanged: onChanged,
       imageBaseDir: imageBaseDir,
+      onSpecialCopy: onSpecialCopy,
+      onSaveAttachment: onSaveAttachment,
     );
-    final preview = MarkdownPreview(data: body, imageBaseDir: imageBaseDir);
+    final preview = MarkdownPreview(
+      data: body,
+      imageBaseDir: imageBaseDir,
+      onSpecialCopy: onSpecialCopy,
+    );
 
     switch (mode) {
       case EditorViewMode.edit:

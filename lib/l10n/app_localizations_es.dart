@@ -108,6 +108,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get copyNote => 'Copiar nota';
 
   @override
+  String get specialCopy => 'Copia especial…';
+
+  @override
   String get copyFormatted => 'Con formato (para Word, web)';
 
   @override

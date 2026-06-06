@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
+import '../../../l10n/app_localizations.dart';
 import '../../desktop/file_reveal.dart';
 import '../link_target.dart';
 
@@ -25,11 +26,15 @@ class MarkdownPreview extends StatelessWidget {
   /// [AlwaysScrollableScrollPhysics] so pull-to-refresh works on short notes.
   final ScrollPhysics? physics;
 
+  /// Opens the formatted-copy chooser ("Special Copy"). Null hides the item.
+  final VoidCallback? onSpecialCopy;
+
   const MarkdownPreview({
     super.key,
     required this.data,
     this.imageBaseDir,
     this.physics,
+    this.onSpecialCopy,
   });
 
   @override
@@ -38,15 +43,43 @@ class MarkdownPreview extends StatelessWidget {
     // raw editor at a glance (it reads as "rendered", not "editable").
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
-      child: Markdown(
-        data: data,
-        selectable: true,
-        physics: physics,
-        extensionSet: md.ExtensionSet.gitHubFlavored,
-        padding: const EdgeInsets.all(16),
-        sizedImageBuilder: _buildImage,
-        onTapLink: (text, href, title) => _openLink(href),
+      // SelectionArea gives proper cross-block text selection (flutter_markdown's
+      // own `selectable:` only selects within a single block), plus a place to
+      // attach the Special Copy action.
+      child: SelectionArea(
+        contextMenuBuilder: _buildSelectionMenu,
+        child: Markdown(
+          data: data,
+          selectable: false, // SelectionArea owns selection now
+          physics: physics,
+          extensionSet: md.ExtensionSet.gitHubFlavored,
+          padding: const EdgeInsets.all(16),
+          sizedImageBuilder: _buildImage,
+          onTapLink: (text, href, title) => _openLink(href),
+        ),
       ),
+    );
+  }
+
+  Widget _buildSelectionMenu(
+    BuildContext context,
+    SelectableRegionState selectableState,
+  ) {
+    final items = List<ContextMenuButtonItem>.from(
+      selectableState.contextMenuButtonItems,
+    );
+    if (onSpecialCopy != null) {
+      items.add(ContextMenuButtonItem(
+        label: AppLocalizations.of(context).specialCopy,
+        onPressed: () {
+          ContextMenuController.removeAny();
+          onSpecialCopy!();
+        },
+      ));
+    }
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: selectableState.contextMenuAnchors,
+      buttonItems: items,
     );
   }
 

@@ -290,6 +290,12 @@ abstract class AppLocalizations {
   /// **'Copy note'**
   String get copyNote;
 
+  /// Context-menu item opening the copy-format options.
+  ///
+  /// In en, this message translates to:
+  /// **'Special Copy…'**
+  String get specialCopy;
+
   /// Copy option: rich text / HTML.
   ///
   /// In en, this message translates to:

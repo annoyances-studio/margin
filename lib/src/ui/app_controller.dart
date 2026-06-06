@@ -28,6 +28,7 @@ import '../sync/sync_engine.dart';
 import '../sync/sync_state_store.dart';
 import 'clipboard_service.dart';
 import 'editor_view_mode.dart';
+import 'link_target.dart';
 
 /// Drives the UI: owns the open repository, the folder tree, the selected note
 /// and its editing buffer. Widget-independent so it can be unit-tested without
@@ -696,13 +697,60 @@ class AppController extends ChangeNotifier {
   bool get canCopyNote => _selectedNotePath != null;
 
   /// Copies the open note as **rich text** (HTML) so it pastes into Word/web
-  /// with formatting, with a plain-text fallback for plain targets.
+  /// with formatting, with a plain-text fallback for plain targets. Local
+  /// attachment images are inlined as base64 so the HTML is self-contained.
   Future<void> copyNoteFormatted() async {
     if (_selectedNotePath == null) return;
+    final html = await embedHtmlImages(
+      markdownToHtml(_workingBody),
+      _readLocalImage,
+    );
     await _clipboard.copyRich(
-      html: markdownToHtml(_workingBody),
+      html: html,
       text: markdownToPlainText(_workingBody),
     );
+  }
+
+  /// Saves [bytes] as an attachment of the open note (e.g. a pasted image) and
+  /// returns its note-relative link, without inserting or saving the note.
+  Future<String?> saveAttachmentForCurrentNote(
+    Uint8List bytes,
+    String extension,
+  ) async {
+    final folder = _currentNoteFolder();
+    if (folder == null || _content == null) return null;
+    final name = 'pasted-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    try {
+      String? link;
+      await _serialize(() async {
+        link = await _content!.addAttachment(folder, name, bytes);
+      });
+      return link;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Repo-relative folder of the open note (or null if none open).
+  String? _currentNoteFolder() {
+    final notePath = _selectedNotePath;
+    if (notePath == null) return null;
+    final slash = notePath.lastIndexOf('/');
+    return slash < 0 ? '' : notePath.substring(0, slash);
+  }
+
+  /// Reads a note-relative image source from disk (for HTML embedding); null for
+  /// external/unresolvable sources.
+  Future<Uint8List?> _readLocalImage(String src) async {
+    final folder = _currentNoteFolder();
+    final baseDir = folder == null ? null : localAbsolutePath(folder);
+    final path = resolveLinkTarget(src, baseDir);
+    if (path == null) return null;
+    try {
+      return await File(path).readAsBytes();
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Copies the open note's raw **Markdown** source.

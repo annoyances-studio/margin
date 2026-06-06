@@ -2,6 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:html2md/html2md.dart' as html2md;
 import 'package:markdown/markdown.dart' as md;
 
@@ -60,6 +63,112 @@ String clipboardToMarkdown({String? html, String? plainText}) =>
     (html != null && html.trim().isNotEmpty)
         ? htmlToMarkdown(html)
         : (plainText ?? '');
+
+final RegExp _dataUriImage = RegExp(
+  r'!\[[^\]]*\]\(\s*data:image/([A-Za-z0-9.+-]+);base64,([^)\s]+)\s*\)',
+);
+
+/// Replaces base64 data-URI image embeds (as pasted from Word/web) with real
+/// attachments: [save] persists the decoded bytes (given a file extension) and
+/// returns the new note-relative link, which is re-linked as `![Pasted Image]
+/// (...)`. If [save] returns null (or the data can't be decoded), the original
+/// embed is kept.
+Future<String> rewriteDataUriImages(
+  String markdown,
+  Future<String?> Function(Uint8List bytes, String extension) save,
+) async {
+  final matches = _dataUriImage.allMatches(markdown).toList();
+  if (matches.isEmpty) return markdown;
+  final out = StringBuffer();
+  var last = 0;
+  for (final m in matches) {
+    out.write(markdown.substring(last, m.start));
+    final bytes = _tryDecodeBase64(m.group(2)!);
+    final link = bytes == null ? null : await save(bytes, _imageExt(m.group(1)!));
+    out.write(link != null ? '![Pasted Image]($link)' : m.group(0));
+    last = m.end;
+  }
+  out.write(markdown.substring(last));
+  return out.toString();
+}
+
+final RegExp _htmlImg =
+    RegExp(r'<img\b[^>]*?\bsrc="([^"]*)"[^>]*>', caseSensitive: false);
+
+/// Inlines local image sources in [html] as base64 data URIs so the HTML is
+/// self-contained (e.g. when pasting into Word, which can't read local paths).
+/// [read] returns the bytes for a (non-http, non-data) src, or null to leave it
+/// as-is. Used by "Copy formatted".
+Future<String> embedHtmlImages(
+  String html,
+  Future<Uint8List?> Function(String src) read,
+) async {
+  final matches = _htmlImg.allMatches(html).toList();
+  if (matches.isEmpty) return html;
+  final out = StringBuffer();
+  var last = 0;
+  for (final m in matches) {
+    out.write(html.substring(last, m.start));
+    final tag = m.group(0)!;
+    final src = m.group(1)!;
+    Uint8List? bytes;
+    if (!src.startsWith('http') && !src.startsWith('data:')) {
+      bytes = await read(src);
+    }
+    if (bytes == null) {
+      out.write(tag);
+    } else {
+      final dataUri =
+          'data:${_mimeForExt(_extFromPath(src))};base64,${base64.encode(bytes)}';
+      out.write(tag.replaceFirst('src="$src"', 'src="$dataUri"'));
+    }
+    last = m.end;
+  }
+  out.write(html.substring(last));
+  return out.toString();
+}
+
+Uint8List? _tryDecodeBase64(String data) {
+  try {
+    return base64.decode(data.replaceAll(RegExp(r'\s'), ''));
+  } catch (_) {
+    return null;
+  }
+}
+
+String _imageExt(String mimeSubtype) {
+  switch (mimeSubtype.toLowerCase()) {
+    case 'jpeg':
+    case 'jpg':
+      return 'jpg';
+    case 'svg+xml':
+      return 'svg';
+    default:
+      return mimeSubtype.toLowerCase(); // png, gif, webp, bmp, …
+  }
+}
+
+String _extFromPath(String path) {
+  final dot = path.lastIndexOf('.');
+  return dot < 0 ? '' : path.substring(dot + 1).toLowerCase();
+}
+
+String _mimeForExt(String ext) {
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'png':
+    case 'gif':
+    case 'webp':
+    case 'bmp':
+      return 'image/$ext';
+    default:
+      return 'application/octet-stream';
+  }
+}
 
 String _decodeBasicEntities(String s) => s
     .replaceAll('&lt;', '<')

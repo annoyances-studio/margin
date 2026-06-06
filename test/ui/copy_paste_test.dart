@@ -2,6 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/content/markdown_convert.dart';
@@ -84,6 +87,51 @@ void main() {
       expect(c.canCopyNote, isFalse);
       await c.copyNoteMarkdown();
       expect(clip.text, isNull);
+    });
+  });
+
+  group('images', () {
+    test('copyNoteFormatted inlines a local attachment image as base64',
+        () async {
+      final tmp = await Directory.systemTemp.createTemp('margin_copyimg_');
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      final backend = LocalFolderBackend(tmp.path);
+      final clip = _FakeClipboard();
+      final c = AppController(clipboard: clip);
+      addTearDown(c.dispose);
+      await c.create(backend, 'N');
+      await c.createFolder('W');
+      await c.createNote('n', folderPath: 'W');
+      await backend.write(
+          'W/_attachments/pic.png', Uint8List.fromList([1, 2, 3, 4]));
+      c.updateBody('![](_attachments/pic.png)');
+
+      await c.copyNoteFormatted();
+
+      expect(clip.html, contains('data:image/png;base64,'));
+      expect(clip.html, isNot(contains('src="_attachments/pic.png"')));
+    });
+
+    test('saveAttachmentForCurrentNote writes bytes and returns the link',
+        () async {
+      final tmp = await Directory.systemTemp.createTemp('margin_saveatt_');
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      final backend = LocalFolderBackend(tmp.path);
+      final c = AppController();
+      addTearDown(c.dispose);
+      await c.create(backend, 'N');
+      await c.createFolder('W');
+      await c.createNote('n', folderPath: 'W');
+
+      final link = await c.saveAttachmentForCurrentNote(
+          Uint8List.fromList([9, 8, 7]), 'png');
+
+      expect(link, startsWith('_attachments/'));
+      expect(await backend.exists('W/$link'), isTrue);
     });
   });
 

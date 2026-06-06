@@ -193,6 +193,8 @@ class _FolioScreenState extends State<FolioScreen> {
           mode: EditorViewMode.edit, // preview is its own page here
           revision: controller.editorRevision,
           imageBaseDir: _imageBaseDir(),
+          onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
+          onSaveAttachment: controller.saveAttachmentForCurrentNote,
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
@@ -201,6 +203,7 @@ class _FolioScreenState extends State<FolioScreen> {
                   data: controller.workingBody,
                   imageBaseDir: _imageBaseDir(),
                   physics: const AlwaysScrollableScrollPhysics(),
+                  onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
                 ),
               ),
       ],
@@ -282,8 +285,6 @@ class _FolioScreenState extends State<FolioScreen> {
         tooltip: _l10n.more,
         onSelected: _handleOverflow,
         itemBuilder: (_) => [
-          if (controller.canCopyNote)
-            PopupMenuItem(value: 'copy', child: Text(_l10n.copyNote)),
           if (controller.canSync)
             PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
           if (isDesktop)
@@ -312,8 +313,6 @@ class _FolioScreenState extends State<FolioScreen> {
 
   void _handleOverflow(String value) {
     switch (value) {
-      case 'copy':
-        _showCopyMenu();
       case 'sync':
         controller.syncNow();
       case 'alwaysOnTop':
@@ -445,6 +444,8 @@ class _FolioScreenState extends State<FolioScreen> {
       mode: controller.viewMode,
       revision: controller.editorRevision,
       imageBaseDir: _imageBaseDir(),
+      onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
+      onSaveAttachment: controller.saveAttachmentForCurrentNote,
     );
 
     if (!_showTree || tree == null) {

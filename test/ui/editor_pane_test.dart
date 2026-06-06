@@ -86,22 +86,7 @@ void main() {
     expect(find.text('Close Folio'), findsOneWidget);
     // Desktop-only: quit the whole app (vs. just closing the Folio).
     expect(find.text('Close Margin'), findsOneWidget);
-    // Copy is offered when a note is open.
-    expect(find.text('Copy note'), findsOneWidget);
-  });
-
-  testWidgets('Copy note opens a sheet with the three formats', (tester) async {
-    final controller = await openWithNote(tester);
-    await tester.pumpWidget(app(controller));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Copy note'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Formatted (for Word, web)'), findsOneWidget);
-    expect(find.text('Markdown source'), findsOneWidget);
-    expect(find.text('Plain text'), findsOneWidget);
+    // Copy lives in the editor/preview context menu now, not the overflow.
+    expect(find.text('Copy note'), findsNothing);
   });
 }

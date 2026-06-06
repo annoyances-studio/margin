@@ -72,6 +72,8 @@
 
   "copyNote": "Copy note",
   "@copyNote": { "description": "Overflow menu item to copy the open note." },
+  "specialCopy": "Special Copy…",
+  "@specialCopy": { "description": "Context-menu item opening the copy-format options." },
   "copyFormatted": "Formatted (for Word, web)",
   "@copyFormatted": { "description": "Copy option: rich text / HTML." },
   "copyAsMarkdown": "Markdown source",
