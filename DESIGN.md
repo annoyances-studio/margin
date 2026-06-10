@@ -131,17 +131,20 @@ sync nearly anything to a folder, so the genuinely hard problem is **mobile**.
 - **SMB/CIFS** — desktop via OS mount/UNC path; mobile not realistic (sandbox;
   only immature Dart libs). No in-app backend.
 - **NFS** — desktop via OS mount only; no Dart client. No backend.
-- **OneDrive / Google Drive / Dropbox** — desktop free via the provider's sync
-  folder; mobile needs OAuth + the provider REST API (token in
-  `CredentialStore`; auth via `flutter_web_auth_2` or a provider SDK). Build on
-  demand: Dropbox simplest, then OneDrive (Graph), Google Drive last
-  (restricted-scope verification / CASA audit is costly).
+- **OneDrive** — **shipped** as the prototype mobile cloud provider: Graph REST
+  + OAuth (`flutter_web_auth_2`), token in `CredentialStore`, clone-then-sync
+  against a local cache. Desktop still prefers the OneDrive-synced local folder.
+- **Google Drive / Dropbox** — not built; desktop free via the provider's sync
+  folder; mobile would need the same OAuth + REST treatment as OneDrive. Build
+  on demand: Dropbox simplest, Google Drive last (restricted-scope verification
+  / CASA audit is costly).
 - **iCloud** — synced folder on macOS and Windows (iCloud app); iOS-direct is
   app-container / document-picker only (entitlements, Apple Developer account);
   Android/Linux: none.
 
-Roadmap: WebDAV (done) → SFTP (password + key) → mobile OAuth cloud (on
-demand). Everything else is handled by a mounted/synced folder on desktop.
+Roadmap: WebDAV (done) → OneDrive (done, prototype mobile cloud) → SFTP
+(password + SSH key, **not yet built**) → further mobile OAuth clouds on demand.
+Everything else is handled by a mounted/synced folder on desktop.
 
 ### Self-hosting story
 
@@ -576,23 +579,23 @@ created on purpose survive even when empty.
 ## Open items
 
 - Mobile layout (slide-over tree) and the Android/iOS builds.
-- Decide v1 backend set (likely local folder + WebDAV); WebDAV not yet built.
-- Attachments (`_attachments/` per folder) and the later "clean up unused" scan.
-- Mobile cloud providers (OneDrive, Google Drive, …): desktop gets these for
-  free via OS-synced local folders, but mobile sandboxing means no synced
-  folder to point at, so they would need direct provider APIs with **OAuth**.
-  A later, per-provider effort — still built-in (no plugins), behind the same
-  `StorageBackend` interface.
+- **SFTP/SSH backend** — the main missing backend (local folder, WebDAV, and
+  OneDrive prototype cloud are shipped). Password + SSH-key auth via `dartssh2`.
+- Attachments: per-folder `_attachments/` is in place; the "clean up unused"
+  scan is still to do.
+- Further mobile cloud providers (Google Drive, Dropbox): OneDrive is the
+  shipped prototype; the rest are a later per-provider effort over OAuth +
+  provider REST, still built-in (no plugins) behind the same `StorageBackend`.
 
 ## Backlog
 
 Smaller items to tackle later:
 
-- Paste handling: when clipboard content carries formatting (HTML/RTF), convert
-  it to Markdown on paste rather than dropping to plain text. May be non-trivial.
+- Paste handling: **partly done** — rich bidirectional copy/paste works (win32
+  CF_HTML on Windows, incl. image download/attach). Remaining: HTML/RTF →
+  Markdown fidelity, and formatted paste on non-Windows platforms (plain only).
 - Widen the folder right-click hit area to the whole row (currently the label).
 - Editor styling for links `[text](url)`, list bullets, and task checkboxes.
-- Optionally start hidden to the tray when launched at login.
 - Live tree refresh when files change on disk externally.
 - Hide the search bar until the search logic is decided. It works for file
   names but is cumbersome; keep it out of the UI until the search story
