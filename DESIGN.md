@@ -214,6 +214,50 @@ note (conflict, Phone, 2026-05-22).md
 
 The user reconciles manually. No automatic merge.
 
+#### Surfacing & resolution (design)
+
+The guiding principle is **never lose data, even for a user who ignores the
+problem.** Sync stays fully automatic — it never blocks editing to ask a
+question. A conflict just leaves both versions on disk (the original wins the
+canonical path; the divergent copy gets the `(conflict, <label>, <date>)`
+suffix) and surfaces a *passive* cue.
+
+- **The cue is derived from the tree, not from the sync event.** A conflict is
+  "present" whenever a `(conflict, …)`-named file exists in the Folio —
+  recomputed on every tree refresh. This makes it **durable** (survives restart),
+  **device-independent** (the copy syncs everywhere, so any device shows it), and
+  **self-clearing** (the moment the last conflict file is gone, the cue clears on
+  every device after sync). `SyncResult.hadConflicts` is only used to *flash*
+  attention right after the sync that created the copy.
+- **Visual:** tint the in-app `AppBar` (it is our widget, not OS chrome — safe to
+  recolor cross-platform) with the separator-line color while conflicts exist,
+  plus a count badge ("3 to resolve") and a row badge on the conflict files so
+  the user can *find* them. The global tint says "something's wrong"; the row
+  badge says "here."
+- **The marker is the filename suffix itself** (not a hidden sidecar flag).
+  Resolution is then just the file ops the user already has — **Delete** and
+  **Rename** — and the cue clears as a side effect, with no dedicated "dismiss"
+  button and no hidden state:
+  - *Keep server, drop mine* → delete the conflict copy.
+  - *Keep mine, drop server* → delete the original, rename the copy onto it.
+  - *Keep both as real notes* → rename the copy to a meaningful name (dropping
+    the suffix). This promotes it to a first-class note **and** clears the cue in
+    one action. A filename marker clears on rename; a sidecar flag would not,
+    leaving a normally-named note still secretly flagged — which is why the
+    suffix wins.
+- **Discoverability sugar:** a "Resolve…" entry in the conflict row's context
+  menu that just opens the normal rename dialog pre-filled with the stem minus
+  the suffix. Pure shortcut to rename; makes the comfortable path obvious.
+- **Stacking is allowed.** A lazy user who never resolves just accumulates
+  `note (conflict, Phone, d1) (conflict, Desktop, d2).md`; nothing is ever lost,
+  the count badge just grows. We explicitly tolerate this.
+- **Desktop's payoff is *compare*.** Because "keep both" / careful merge matters
+  most for long notes, a side-by-side / diff of `note.md` vs. its conflict copy
+  (with quick jump between the same-stem pair) is the one genuinely new build
+  item; everything else rides on existing file sync + tree rendering. On phone
+  the user just acknowledges and defers to a bigger screen — which works for free
+  because the cue and files travel with sync.
+
 ---
 
 ## Repository and metadata
@@ -550,3 +594,6 @@ Smaller items to tackle later:
 - Editor styling for links `[text](url)`, list bullets, and task checkboxes.
 - Optionally start hidden to the tray when launched at login.
 - Live tree refresh when files change on disk externally.
+- Hide the search bar until the search logic is decided. It works for file
+  names but is cumbersome; keep it out of the UI until the search story
+  (index scope, deep/full-text, ranking) is settled.

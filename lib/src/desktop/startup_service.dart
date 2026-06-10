@@ -27,6 +27,13 @@ abstract interface class StartupService {
 /// tray. Detected at startup (see main.dart).
 const String kStartMinimizedArg = '--minimized';
 
+/// Whether the app should start hidden in the tray, given the process launch
+/// [args] (`main`'s parameter — forwarded by the desktop runner). NOTE: this is
+/// *not* `Platform.executableArguments`, which carries the Dart VM args (empty
+/// in a release build) and so never sees the run-at-login flag.
+bool shouldStartMinimized(List<String> args) =>
+    args.contains(kStartMinimizedArg);
+
 /// A [StartupService] that does nothing; used on unsupported platforms and in
 /// tests.
 class NoopStartupService implements StartupService {
@@ -67,7 +74,15 @@ class LaunchAtStartupService implements StartupService {
   @override
   Future<bool> isEnabled() async {
     if (!isSupported) return false;
-    _setup();
+    // The plugin's isEnabled() returns true only when the stored Run entry
+    // matches the *exact* command line it was set up with, args included. Since
+    // a run-at-login entry may or may not carry the --minimized flag, checking a
+    // single arg variant would misreport the other as "disabled" — which pins
+    // the Settings switch and makes run-at-login impossible to turn off. Treat
+    // the entry as enabled if either variant is registered.
+    _setup(args: const [kStartMinimizedArg]);
+    if (await launchAtStartup.isEnabled()) return true;
+    _setup(args: const []);
     return launchAtStartup.isEnabled();
   }
 
