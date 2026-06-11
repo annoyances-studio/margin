@@ -595,6 +595,10 @@ Smaller items to tackle later:
   CF_HTML on Windows, incl. image download/attach). Remaining: HTML/RTF →
   Markdown fidelity, and formatted paste on non-Windows platforms (plain only).
 - Widen the folder right-click hit area to the whole row (currently the label).
+- Landing (`OpenFolioScreen`) UX: a "Recent Folios" list, a consolidated
+  open/connect button instead of separate per-backend entry points, and a
+  rethought "New Folio" flow (today a local-only Create button; creating a
+  Folio on a remote backend happens implicitly through connect).
 - Editor styling for links `[text](url)`, list bullets, and task checkboxes.
 - Live tree refresh when files change on disk externally.
 - Hide the search bar until the search logic is decided. It works for file
