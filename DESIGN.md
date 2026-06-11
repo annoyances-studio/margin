@@ -604,3 +604,13 @@ Smaller items to tackle later:
 - Hide the search bar until the search logic is decided. It works for file
   names but is cumbersome; keep it out of the UI until the search story
   (index scope, deep/full-text, ranking) is settled.
+- Add **Rename** to the note actions (context menu). Must move the `.md.yaml`
+  sidecar together with the note — same rule as the future move/copy work.
+- Consider stylizing the app name as `margin•` or `margin.` — a text
+  rendering of the icon. Would touch the landing title, window title, and
+  About; the `appName` l10n key is the single source.
+- Desktop typography: the overall font size may be too large — try a slightly
+  denser scale on desktop (keep mobile as is).
+- Ctrl+Scroll zoom on desktop: live text scaling (likely a settings-persisted
+  scale factor applied at the `MaterialApp` level). Pairs with the denser
+  default — zoom makes a denser default safe to ship.
