@@ -34,6 +34,12 @@ abstract interface class SettingsStore {
   Future<String?> getLastNotePath();
   Future<void> setLastNotePath(String? path);
 
+  /// The recent-Folios list as a JSON string (see `recent_folios.dart` for the
+  /// shape and codec). Unlike the last-Folio fields above, this survives an
+  /// explicit close — it is what the landing screen's "Recent" entries read.
+  Future<String?> getRecentFolios();
+  Future<void> setRecentFolios(String? json);
+
   /// The default-view policy id (`note`/`editor`/`split`/`preview`).
   Future<String?> getViewPolicy();
   Future<void> setViewPolicy(String id);
@@ -99,6 +105,16 @@ class InMemorySettingsStore implements SettingsStore {
     _lastNotePath = path;
   }
 
+  String? _recentFolios;
+
+  @override
+  Future<String?> getRecentFolios() async => _recentFolios;
+
+  @override
+  Future<void> setRecentFolios(String? json) async {
+    _recentFolios = json;
+  }
+
   String? _viewPolicy;
   String? _defaultNoteView;
 
@@ -138,6 +154,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _lastWebDavUserKey = 'lastWebDavUser';
   static const String _lastFolioIdKey = 'lastFolioId';
   static const String _lastNoteKey = 'lastNotePath';
+  static const String _recentFoliosKey = 'recentFolios';
   static const String _viewPolicyKey = 'viewPolicy';
   static const String _defaultNoteViewKey = 'defaultNoteView';
   static const String _alwaysOnTopKey = 'alwaysOnTop';
@@ -201,6 +218,13 @@ class SharedPreferencesSettingsStore implements SettingsStore {
       await prefs.setString(_lastNoteKey, path);
     }
   }
+
+  @override
+  Future<String?> getRecentFolios() => _getString(_recentFoliosKey);
+
+  @override
+  Future<void> setRecentFolios(String? json) =>
+      _setString(_recentFoliosKey, json);
 
   @override
   Future<String?> getViewPolicy() async {

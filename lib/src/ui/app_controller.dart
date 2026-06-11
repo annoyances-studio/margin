@@ -19,6 +19,7 @@ import '../folio/note.dart';
 import '../folio/note_properties.dart';
 import '../folio/folio.dart';
 import '../folio/folio_exception.dart';
+import '../settings/recent_folios.dart';
 import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
 import '../storage/onedrive_auth.dart';
@@ -216,8 +217,64 @@ class AppController extends ChangeNotifier {
               EditorViewMode.edit;
       _alwaysOnTop = await _settings.getAlwaysOnTop();
       _startMinimized = await _settings.getStartMinimized();
+      _recentFolios = decodeRecentFolios(await _settings.getRecentFolios());
     } catch (_) {
       // Settings unavailable (e.g. tests): keep defaults.
+    }
+  }
+
+  // --- recent Folios ---
+
+  /// Recently opened Folios (most recent first; device notes excluded — it has
+  /// its own permanent landing button). Survives an explicit close, unlike the
+  /// last-Folio auto-restore fields. No secrets: reconnect reads the keystore.
+  List<RecentFolio> _recentFolios = const [];
+  List<RecentFolio> get recentFolios => _recentFolios;
+
+  void _recordRecent(RecentFolio entry) {
+    _recentFolios = upsertRecentFolio(_recentFolios, entry);
+    unawaited(_settings.setRecentFolios(encodeRecentFolios(_recentFolios)));
+    notifyListeners();
+  }
+
+  void removeRecentFolio(RecentFolio entry) {
+    _recentFolios =
+        _recentFolios.where((f) => !f.sameTarget(entry)).toList(growable: false);
+    unawaited(_settings.setRecentFolios(encodeRecentFolios(_recentFolios)));
+    notifyListeners();
+  }
+
+  /// Reopens a remembered Folio, dispatching on its backend type — the same
+  /// reconnect paths as [restoreLastFolio], including the offline-first cache
+  /// adoption for remote Folios. Failures keep the entry (it may just be
+  /// offline) and surface through [error]; a *missing* local folder gets a
+  /// distinct message so the user knows the Folio itself is gone, not the
+  /// connection.
+  Future<void> openRecentFolio(RecentFolio recent) async {
+    _error = null;
+    switch (recent.type) {
+      case 'webdav':
+        final password = await _credentials
+            .read(_webDavCredKey(recent.location, recent.user ?? ''));
+        if (password == null) {
+          // The keystore lost the secret (or it was never this device's):
+          // reconnecting needs credentials again.
+          _error = 'No saved password for ${recent.location} — '
+              'connect to WebDAV again.';
+          notifyListeners();
+          return;
+        }
+        await openWebDav(recent.location, recent.user ?? '', password,
+            knownId: recent.id);
+      case 'onedrive':
+        await openOneDrive(recent.location, knownId: recent.id);
+      default:
+        if (!await Directory(recent.location).exists()) {
+          _error = 'This Folio\'s folder is missing: ${recent.location}';
+          notifyListeners();
+          return;
+        }
+        await openPath(recent.location);
     }
   }
 
@@ -272,7 +329,16 @@ class AppController extends ChangeNotifier {
         await openOneDrive(location, knownId: knownId);
         if (!hasFolio) await _settings.setLastFolioType(null);
       } else {
-        await openPath(location);
+        // Restoring the device-notes Folio must not seed the recent list (it
+        // has its own landing button); any other local Folio may (this also
+        // seeds recents for users upgrading from the single last-Folio era).
+        var record = true;
+        try {
+          record = location != await _deviceNotesPath();
+        } catch (_) {
+          // Docs dir unavailable: then device notes can't be at [location].
+        }
+        await openPath(location, record: record);
         if (!hasFolio) await _settings.setLastFolioPath(null);
       }
     } finally {
@@ -281,11 +347,17 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> openPath(String path) async {
+  /// [record] adds the Folio to the recent list; the device-notes Folio passes
+  /// false (it has its own permanent landing button).
+  Future<void> openPath(String path, {bool record = true}) async {
     await open(LocalFolderBackend(path));
     if (hasFolio) {
       await _settings.setLastFolioType('local');
       await _settings.setLastFolioPath(path);
+      if (record) {
+        _recordRecent(
+            RecentFolio(type: 'local', location: path, name: folioName));
+      }
     }
   }
 
@@ -319,6 +391,13 @@ class AppController extends ChangeNotifier {
       await _settings.setLastFolioPath(url);
       await _settings.setLastWebDavUser(username);
       await _credentials.write(_webDavCredKey(url, username), password);
+      _recordRecent(RecentFolio(
+        type: 'webdav',
+        location: url,
+        name: folioName,
+        user: username,
+        id: _folioId,
+      ));
     }
   }
 
@@ -389,6 +468,12 @@ class AppController extends ChangeNotifier {
     if (hasFolio) {
       await _settings.setLastFolioType('onedrive');
       await _settings.setLastFolioPath(rootPath);
+      _recordRecent(RecentFolio(
+        type: 'onedrive',
+        location: rootPath,
+        name: folioName,
+        id: _folioId,
+      ));
     }
   }
 
@@ -594,28 +679,39 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  /// Where the on-device Folio lives: under `Margin/DeviceNotes/`, leaving
+  /// `Margin/` as the parent for per-Folio remote caches (`Margin/<UUID>/`).
+  Future<String> _deviceNotesPath() async {
+    final docs = await getApplicationDocumentsDirectory();
+    return p.join(docs.path, 'Margin', 'DeviceNotes');
+  }
+
   /// Opens (or creates) a repository in this device's app documents directory —
   /// the portable, no-picker option that works on mobile, where arbitrary
   /// folders aren't reachable via `dart:io`.
   Future<void> openDeviceFolio({String name = 'My Notes'}) async {
-    final docs = await getApplicationDocumentsDirectory();
-    // The on-device Folio lives under Margin/DeviceNotes/, leaving Margin/ as
-    // the parent for per-Folio remote caches (Margin/<UUID>/) added later.
-    final repoPath = p.join(docs.path, 'Margin', 'DeviceNotes');
+    final repoPath = await _deviceNotesPath();
     await Directory(repoPath).create(recursive: true);
     final backend = LocalFolderBackend(repoPath);
     if (await backend.exists('properties.yaml')) {
-      await openPath(repoPath);
+      await openPath(repoPath, record: false);
     } else {
-      await createPath(repoPath, name);
+      await createPath(repoPath, name, record: false);
     }
   }
 
-  Future<void> createPath(String path, String name) async {
+  /// [record] adds the Folio to the recent list; the device-notes Folio passes
+  /// false (it has its own permanent landing button).
+  Future<void> createPath(String path, String name,
+      {bool record = true}) async {
     await create(LocalFolderBackend(path), name);
     if (hasFolio) {
       await _settings.setLastFolioType('local');
       await _settings.setLastFolioPath(path);
+      if (record) {
+        _recordRecent(
+            RecentFolio(type: 'local', location: path, name: folioName));
+      }
     }
   }
 

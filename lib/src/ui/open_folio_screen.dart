@@ -12,12 +12,41 @@ import '../../l10n/app_localizations.dart';
 import '../storage/onedrive_auth.dart';
 import 'app_controller.dart';
 
-/// The landing screen: open this device's notes folder, or (on desktop) open or
-/// create a notes folder anywhere.
-class OpenFolioScreen extends StatelessWidget {
+/// The landing screen: a primary "open this device's notes" button for the
+/// user who just wants to take notes, an "Open a Folio" button that unfolds
+/// the open/create/connect options, and the recently opened Folios.
+class OpenFolioScreen extends StatefulWidget {
   final AppController controller;
 
   const OpenFolioScreen({super.key, required this.controller});
+
+  @override
+  State<OpenFolioScreen> createState() => _OpenFolioScreenState();
+}
+
+class _OpenFolioScreenState extends State<OpenFolioScreen> {
+  AppController get controller => widget.controller;
+
+  /// Whether the "Open a Folio" options are unfolded.
+  bool _showOpenOptions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Repaint on controller changes (recents loading/removal, busy, errors) —
+    // the screen shows that state, so it can't rely on a parent rebuilding it.
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
 
   /// Folder picking via a real filesystem path only makes sense on desktop;
   /// mobile uses scoped storage (content URIs), so we offer the device folder.
@@ -51,39 +80,17 @@ class OpenFolioScreen extends StatelessWidget {
                 label: Text(l10n.openDeviceNotes),
                 onPressed: () => controller.openDeviceFolio(),
               ),
-              // WebDAV works on every platform (the app speaks the protocol).
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                icon: const Icon(Icons.cloud_outlined),
-                label: Text(l10n.connectWebDav),
-                onPressed: () => _connectWebDav(context),
+                icon: Icon(_showOpenOptions
+                    ? Icons.expand_less
+                    : Icons.expand_more),
+                label: Text(l10n.openFolio),
+                onPressed: () =>
+                    setState(() => _showOpenOptions = !_showOpenOptions),
               ),
-              // OneDrive is gated on the build-time client id + redirect URI
-              // being configured (so non-OneDrive builds don't show a dead
-              // button). Smoke-test phase: signs in and shows /me's display
-              // name. The real Folio-open flow lands once the backend exists.
-              if (OneDriveAuth.isConfiguredFromEnv) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.cloud_queue_outlined),
-                  label: Text(l10n.connectOneDrive),
-                  onPressed: () => _connectOneDrive(context),
-                ),
-              ],
-              if (_supportsFolderPicker) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.folder_open),
-                  label: Text(l10n.openFolio),
-                  onPressed: () => _openExisting(context),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.create_new_folder),
-                  label: Text(l10n.createFolio),
-                  onPressed: () => _createNew(context),
-                ),
-              ],
+              if (_showOpenOptions) ..._openOptions(context, l10n),
+              ..._recentSection(context, l10n),
               if (controller.syncProgress != null) ...[
                 const SizedBox(height: 24),
                 LinearProgressIndicator(
@@ -118,6 +125,78 @@ class OpenFolioScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// The unfolded "Open a Folio" choices: local open/create (desktop only —
+  /// mobile has no folder picker) and the remote connects. OneDrive stays
+  /// gated on the build-time client id + redirect URI being configured (so
+  /// non-OneDrive builds don't show a dead button).
+  List<Widget> _openOptions(BuildContext context, AppLocalizations l10n) => [
+        if (_supportsFolderPicker) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.folder_open),
+            label: Text(l10n.openExistingFolio),
+            onPressed: () => _openExisting(context),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.create_new_folder),
+            label: Text(l10n.createFolioLocal),
+            onPressed: () => _createNew(context),
+          ),
+        ],
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.cloud_outlined),
+          label: Text(l10n.connectWebDav),
+          onPressed: () => _connectWebDav(context),
+        ),
+        if (OneDriveAuth.isConfiguredFromEnv) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.cloud_queue_outlined),
+            label: Text(l10n.connectOneDrive),
+            onPressed: () => _connectOneDrive(context),
+          ),
+        ],
+      ];
+
+  /// The recently opened Folios (device notes never appear — it has its own
+  /// button above). Tap to reopen; the X forgets the entry.
+  List<Widget> _recentSection(BuildContext context, AppLocalizations l10n) {
+    final recents = controller.recentFolios;
+    if (recents.isEmpty) return const [];
+    return [
+      const SizedBox(height: 24),
+      Text(
+        l10n.recentFolios,
+        style: Theme.of(context).textTheme.labelLarge,
+      ),
+      const SizedBox(height: 4),
+      for (final recent in recents)
+        ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Theme.of(context).colorScheme.outline),
+          ),
+          leading: Icon(_recentIcon(recent.type)),
+          title: Text(recent.name, overflow: TextOverflow.ellipsis),
+          subtitle: Text(recent.location, overflow: TextOverflow.ellipsis),
+          trailing: IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: l10n.removeFromRecent,
+            onPressed: () => controller.removeRecentFolio(recent),
+          ),
+          onTap: () => controller.openRecentFolio(recent),
+        ),
+    ];
+  }
+
+  static IconData _recentIcon(String type) => switch (type) {
+        'webdav' => Icons.cloud_outlined,
+        'onedrive' => Icons.cloud_queue_outlined,
+        _ => Icons.folder_outlined,
+      };
 
   Future<void> _openExisting(BuildContext context) async {
     final path = await getDirectoryPath();

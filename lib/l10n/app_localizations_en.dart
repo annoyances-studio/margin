@@ -24,6 +24,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createFolio => 'Create a Folio';
 
   @override
+  String get openExistingFolio => 'Open an existing Folio';
+
+  @override
+  String get createFolioLocal => 'Create a Folio in the local file system';
+
+  @override
+  String get recentFolios => 'Recent';
+
+  @override
+  String get removeFromRecent => 'Remove from recent';
+
+  @override
   String get connectWebDav => 'Connect to WebDAV';
 
   @override

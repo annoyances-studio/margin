@@ -11,17 +11,27 @@ import 'package:margin/src/ui/folio_screen.dart';
 import 'support/test_app.dart';
 
 void main() {
-  testWidgets('landing screen offers open and create', (tester) async {
+  testWidgets('landing screen offers device notes and the Folio options',
+      (tester) async {
     await tester.pumpWidget(const MarginApp());
     await tester.pumpAndSettle();
 
     expect(find.text('Margin'), findsOneWidget);
+    expect(find.text("Open this device's notes"), findsOneWidget);
     expect(find.text('Open a Folio'), findsOneWidget);
-    expect(find.text('Create a Folio'), findsOneWidget);
+
+    // Unfolding "Open a Folio" reveals the open/create/connect choices.
+    await tester.tap(find.text('Open a Folio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open an existing Folio'), findsOneWidget);
+    expect(find.text('Create a Folio in the local file system'), findsOneWidget);
   });
 
   testWidgets('landing screen opens the WebDAV connect form', (tester) async {
     await tester.pumpWidget(const MarginApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open a Folio'));
     await tester.pumpAndSettle();
 
     expect(find.text('Connect to WebDAV'), findsOneWidget);

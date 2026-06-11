@@ -16,6 +16,18 @@
   "createFolio": "Create a Folio",
   "@createFolio": { "description": "Landing button: create a new Folio." },
 
+  "openExistingFolio": "Open an existing Folio",
+  "@openExistingFolio": { "description": "Open-a-Folio option: pick an existing local Folio folder." },
+
+  "createFolioLocal": "Create a Folio in the local file system",
+  "@createFolioLocal": { "description": "Open-a-Folio option: create a new Folio in a chosen local folder." },
+
+  "recentFolios": "Recent",
+  "@recentFolios": { "description": "Landing section label above the recently opened Folios." },
+
+  "removeFromRecent": "Remove from recent",
+  "@removeFromRecent": { "description": "Tooltip on the X that removes an entry from the recent Folios." },
+
   "connectWebDav": "Connect to WebDAV",
   "@connectWebDav": { "description": "Landing button / dialog title for adding a WebDAV Folio." },
 

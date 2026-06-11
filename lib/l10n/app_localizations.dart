@@ -128,6 +128,30 @@ abstract class AppLocalizations {
   /// **'Create a Folio'**
   String get createFolio;
 
+  /// Open-a-Folio option: pick an existing local Folio folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open an existing Folio'**
+  String get openExistingFolio;
+
+  /// Open-a-Folio option: create a new Folio in a chosen local folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a Folio in the local file system'**
+  String get createFolioLocal;
+
+  /// Landing section label above the recently opened Folios.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get recentFolios;
+
+  /// Tooltip on the X that removes an entry from the recent Folios.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from recent'**
+  String get removeFromRecent;
+
   /// Landing button / dialog title for adding a WebDAV Folio.
   ///
   /// In en, this message translates to:
