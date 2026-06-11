@@ -614,3 +614,6 @@ Smaller items to tackle later:
 - Ctrl+Scroll zoom on desktop: live text scaling (likely a settings-persisted
   scale factor applied at the `MaterialApp` level). Pairs with the denser
   default — zoom makes a denser default safe to ship.
+- OneDrive in-app folder browser: the connect dialog takes a typed folder path
+  (PoC-simple); replace with a visual picker over the Graph API (list child
+  folders, navigate, create). Same dialog could later serve WebDAV.
