@@ -82,10 +82,14 @@ class _MarginAppState extends State<MarginApp> with WidgetsBindingObserver {
   /// Flush the open note to disk whenever the app loses the foreground — app
   /// switch / background on mobile, focus loss / minimize on desktop — so edits
   /// survive the process being suspended or reclaimed. [AppController.save] is a
-  /// no-op when nothing is dirty.
+  /// no-op when nothing is dirty. On return to the foreground, retry a failed
+  /// sync: the network blip that cut it (e.g. a WiFi handoff while walking) is
+  /// usually over by the time the user looks at the app again.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed) {
+      _controller.retrySyncOnResume();
+    } else {
       _controller.save();
     }
   }

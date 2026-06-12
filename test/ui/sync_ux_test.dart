@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:margin/margin.dart';
 import 'package:margin/src/folio/note_properties.dart';
 import 'package:margin/src/ui/app_controller.dart';
@@ -33,6 +34,36 @@ class _GatedBackend implements StorageBackend {
   Future<void> write(String path, Uint8List bytes) => _inner.write(path, bytes);
   @override
   Future<void> delete(String path) => _inner.delete(path);
+}
+
+/// Wraps a backend so a test can make its operations fail a set number of
+/// times with a chosen error — simulating a network blip (transient) or a
+/// server rejection (permanent) mid-sync.
+class _FlakyBackend implements StorageBackend {
+  final MemoryBackend _inner;
+  int failuresLeft = 0;
+  Object Function() error = () => http.ClientException('connection abort');
+  _FlakyBackend(this._inner);
+
+  Future<T> _guard<T>(Future<T> Function() op) {
+    if (failuresLeft > 0) {
+      failuresLeft--;
+      throw error();
+    }
+    return op();
+  }
+
+  @override
+  Future<List<StorageEntry>> list(String path) => _guard(() => _inner.list(path));
+  @override
+  Future<bool> exists(String path) => _guard(() => _inner.exists(path));
+  @override
+  Future<Uint8List> read(String path) => _guard(() => _inner.read(path));
+  @override
+  Future<void> write(String path, Uint8List bytes) =>
+      _guard(() => _inner.write(path, bytes));
+  @override
+  Future<void> delete(String path) => _guard(() => _inner.delete(path));
 }
 
 NoteNode? _findNote(FolderNode folder, String name) {
@@ -226,5 +257,71 @@ void main() {
     expect(c.hasUnsyncedChanges, isFalse);
     final remoteBody = await remote.read('Work/note.md');
     expect(String.fromCharCodes(remoteBody), contains('Edited body'));
+  });
+
+  group('transient-failure retry', () {
+    Future<(AppController, _FlakyBackend)> openFlaky() async {
+      final flaky = _FlakyBackend(remote);
+      final c = controller()..syncRetryDelays = const [Duration.zero, Duration.zero, Duration.zero];
+      addTearDown(c.dispose);
+      await c.openThroughCache(flaky); // healthy initial clone
+      return (c, flaky);
+    }
+
+    test('a network blip mid-sync is retried silently and succeeds', () async {
+      final (c, flaky) = await openFlaky();
+
+      flaky.failuresLeft = 2; // cut the next two attempts (the WiFi handoff)
+      await c.createFolder('Work');
+      await c.createNote('note', folderPath: 'Work');
+      await c.pendingSync;
+
+      expect(c.syncError, isNull);
+      expect(c.hasUnsyncedChanges, isFalse);
+      expect(await remote.exists('Work/note.md'), isTrue);
+    });
+
+    test('a non-transient failure surfaces immediately (no retry)', () async {
+      final (c, flaky) = await openFlaky();
+
+      // One failure would be absorbed by a retry — proving the error surfaced
+      // means no retry was attempted for a permanent error.
+      flaky.failuresLeft = 1;
+      flaky.error = () => const StorageException('HTTP 401 Unauthorized');
+      await c.createFolder('Work');
+      await c.pendingSync;
+
+      expect(c.syncError, contains('401'));
+      expect(c.hasUnsyncedChanges, isTrue);
+    });
+
+    test('an outage outlasting the retries surfaces, then resume recovers',
+        () async {
+      final (c, flaky) = await openFlaky();
+
+      // More failures than 1 initial try + 3 retries: the sync gives up.
+      flaky.failuresLeft = 5;
+      await c.createFolder('Work');
+      await c.createNote('note', folderPath: 'Work');
+      await c.pendingSync;
+      expect(c.syncError, isNotNull);
+      expect(c.hasUnsyncedChanges, isTrue);
+
+      // Back to the foreground with the network restored: one kick recovers.
+      c.retrySyncOnResume();
+      await c.pendingSync;
+      expect(c.syncError, isNull);
+      expect(c.hasUnsyncedChanges, isFalse);
+      expect(await remote.exists('Work/note.md'), isTrue);
+    });
+
+    test('retrySyncOnResume is a no-op when everything is synced', () async {
+      final (c, _) = await openFlaky();
+      await c.createFolder('Work');
+      await c.pendingSync; // a clean sync ran
+      final before = c.pendingSync;
+      c.retrySyncOnResume();
+      expect(c.pendingSync, same(before)); // no new sync started
+    });
   });
 }

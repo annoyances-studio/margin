@@ -30,6 +30,7 @@ import '../storage/storage_exception.dart';
 import '../storage/webdav_backend.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_state_store.dart';
+import '../sync/transient_error.dart';
 import 'clipboard_service.dart';
 import 'editor_view_mode.dart';
 import 'link_target.dart';
@@ -250,7 +251,22 @@ class AppController extends ChangeNotifier {
   /// offline) and surface through [error]; a *missing* local folder gets a
   /// distinct message so the user knows the Folio itself is gone, not the
   /// connection.
+  ///
+  /// Shown behind the restoring splash: reconnecting a remote can take a few
+  /// seconds (token refresh, identify, first sync), and a landing screen that
+  /// just sits there reads as "the app hung".
   Future<void> openRecentFolio(RecentFolio recent) async {
+    _restoring = true;
+    _notify();
+    try {
+      await _openRecentFolio(recent);
+    } finally {
+      _restoring = false;
+      _notify();
+    }
+  }
+
+  Future<void> _openRecentFolio(RecentFolio recent) async {
     _error = null;
     switch (recent.type) {
       case 'webdav':
@@ -666,7 +682,7 @@ class AppController extends ChangeNotifier {
       do {
         _pendingSync = false;
         try {
-          await _serialize(() => _syncWithPeer()); // serialized: never overlaps an edit
+          await _syncWithTransientRetry();
           _syncError = null;
         } catch (e) {
           _syncError = e.toString(); // keep _hasUnsyncedChanges; retry later
@@ -677,6 +693,47 @@ class AppController extends ChangeNotifier {
       _autoSyncing = false;
       _notify();
     }
+  }
+
+  /// Delays between silent retries of a background sync cut by a transient
+  /// network failure. Mutable so tests can zero them out.
+  @visibleForTesting
+  List<Duration> syncRetryDelays = const [
+    Duration(seconds: 3),
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+  ];
+
+  /// Runs one serialized sync, silently retrying transient network failures
+  /// (a mobile cellular→WiFi handoff cuts in-flight requests all the time).
+  /// Rerunning a cut sync is safe: the planner recomputes from fresh snapshots
+  /// and [SyncState] is only saved after a successful run, so a half-applied
+  /// sync simply continues. Non-network errors surface immediately.
+  Future<void> _syncWithTransientRetry() async {
+    for (var attempt = 0;; attempt++) {
+      try {
+        // Serialized: never overlaps an edit.
+        await _serialize(() => _syncWithPeer());
+        return;
+      } catch (e) {
+        if (attempt >= syncRetryDelays.length || !isTransientNetworkError(e)) {
+          rethrow;
+        }
+        await Future<void>.delayed(syncRetryDelays[attempt]);
+        // The Folio may have been closed (or the app disposed) while waiting.
+        if (!canSync || _disposed) rethrow;
+      }
+    }
+  }
+
+  /// Kicks one background sync when the app returns to the foreground and the
+  /// last sync failed (or changes are still unsynced) — e.g. the connection
+  /// changed while walking and the cut sync flagged offline; by the time the
+  /// user looks at the app, the network is back. No-op when idle or in-flight.
+  void retrySyncOnResume() {
+    if (!canSync || _autoSyncing) return;
+    if (_syncError == null && !_hasUnsyncedChanges) return;
+    _autoSyncFuture = _autoSync();
   }
 
   /// Where the on-device Folio lives: under `Margin/DeviceNotes/`, leaving

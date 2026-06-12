@@ -95,6 +95,19 @@ void main() {
     expect(controller.recentFolios, hasLength(1));
   });
 
+  test('opening a recent shows the restoring splash while it works', () async {
+    await controller.createPath(temp.path, 'My Notes');
+    controller.closeFolio();
+
+    final seen = <bool>[];
+    controller.addListener(() => seen.add(controller.isRestoring));
+    await controller.openRecentFolio(controller.recentFolios.single);
+
+    expect(seen, contains(true)); // the splash was up during the open...
+    expect(controller.isRestoring, isFalse); // ...and cleared after
+    expect(controller.hasFolio, isTrue);
+  });
+
   test('a fresh controller sees the persisted recents after start()', () async {
     await controller.createPath(temp.path, 'My Notes');
     controller.closeFolio();

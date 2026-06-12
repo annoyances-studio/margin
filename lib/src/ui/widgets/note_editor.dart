@@ -168,9 +168,24 @@ class _NoteEditorState extends State<NoteEditor> {
   /// Markdown, and inserts it at the caret — the migration/"paste rich content
   /// as markdown" path. Falls back to the clipboard's plain text when there is
   /// no HTML. (Plain Ctrl+V still pastes verbatim via the default menu item.)
+  ///
+  /// A clipboard holding *only* an image (the screenshot case — the OS paste
+  /// rejects it because the field is text-only) is attached and linked instead.
+  /// HTML keeps priority: copies from Word/browsers carry HTML alongside any
+  /// bitmap rendering, and the HTML is the faithful version.
   Future<void> _pasteAsMarkdown() async {
+    final html = await _clipboard.readHtml();
+    if (html == null) {
+      final image = await _clipboard.readImage();
+      final saver = widget.onSaveAttachment;
+      if (image != null && saver != null) {
+        final link = await saver(image.bytes, image.extension);
+        if (link != null) _insertAtCaret('![Pasted Image]($link)');
+        return;
+      }
+    }
     var inserted = clipboardToMarkdown(
-      html: await _clipboard.readHtml(),
+      html: html,
       plainText: await _clipboard.readText(),
     );
     // Turn any pasted base64 images into real attachments (linked as
@@ -201,6 +216,12 @@ class _NoteEditorState extends State<NoteEditor> {
         progress.close();
       }
     }
+    _insertAtCaret(inserted);
+  }
+
+  /// Replaces the selection (or inserts at the caret / end) with [inserted]
+  /// and reports the change.
+  void _insertAtCaret(String inserted) {
     if (inserted.isEmpty || !mounted) return;
 
     final selection = _controller.selection;

@@ -34,6 +34,8 @@ class _FakeClipboard implements ClipboardService {
   Future<String?> readHtml() async => html;
   @override
   Future<String?> readText() async => text;
+  @override
+  Future<ClipboardImage?> readImage() async => null;
 }
 
 void main() {
