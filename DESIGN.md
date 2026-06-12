@@ -617,18 +617,6 @@ Smaller items to tackle later:
 - OneDrive in-app folder browser: the connect dialog takes a typed folder path
   (PoC-simple); replace with a visual picker over the Graph API (list child
   folders, navigate, create). Same dialog could later serve WebDAV.
-- **Sync resilience on mobile network handoffs** (seen in the wild: cellular →
-  WiFi mid-sync aborts a Graph request and flags offline). Classify transient
-  network errors (`ClientException`, `SocketException`, timeouts, handshake)
-  in `_autoSync` and retry silently with short backoff (2–3 attempts) before
-  surfacing `syncError`; non-network errors surface immediately. Also kick one
-  retry on app lifecycle resume when a `syncError` is pending. Safe because a
-  rerun is idempotent: the planner recomputes and `SyncState` is only saved on
-  success, so a half-pushed sync just continues.
-- **Paste a bare image from the clipboard.** Page-with-images works (images
-  ride inside the HTML) but an image-*only* clipboard is never read:
-  `ClipboardService` lacks `readImage()`. Add it — Android via the existing
-  MainActivity method channel (ClipData/ContentResolver), Windows via the
-  existing win32 FFI (`CF_DIB`) — then paste tries image → HTML → text. The
-  rest of the path (`saveAttachmentForCurrentNote` + link insert) already
-  exists.
+- Bare-image paste on macOS/Linux/iOS: `readImage()` is implemented for
+  Android (method channel) and Windows (CF_DIB/PNG via win32); the other
+  platforms still return null and fall back to text.
