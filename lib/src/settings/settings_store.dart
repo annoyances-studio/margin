@@ -55,6 +55,12 @@ abstract interface class SettingsStore {
   /// Whether a run-at-login launch should start hidden in the tray.
   Future<bool> getStartMinimized();
   Future<void> setStartMinimized(bool value);
+
+  /// Whether the editor soft-wraps long lines (default true). Off = lines run
+  /// out horizontally with a scrollbar — handy for wide tables and code on
+  /// desktop.
+  Future<bool> getWordWrap();
+  Future<void> setWordWrap(bool value);
 }
 
 /// A non-persistent [SettingsStore] for tests and as a safe default.
@@ -145,6 +151,14 @@ class InMemorySettingsStore implements SettingsStore {
 
   @override
   Future<void> setStartMinimized(bool value) async => _startMinimized = value;
+
+  bool _wordWrap = true;
+
+  @override
+  Future<bool> getWordWrap() async => _wordWrap;
+
+  @override
+  Future<void> setWordWrap(bool value) async => _wordWrap = value;
 }
 
 /// A [SettingsStore] backed by `shared_preferences`.
@@ -159,6 +173,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _defaultNoteViewKey = 'defaultNoteView';
   static const String _alwaysOnTopKey = 'alwaysOnTop';
   static const String _startMinimizedKey = 'startMinimized';
+  static const String _wordWrapKey = 'wordWrap';
 
   Future<String?> _getString(String key) async {
     final prefs = await SharedPreferences.getInstance();
@@ -272,5 +287,17 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   Future<void> setStartMinimized(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_startMinimizedKey, value);
+  }
+
+  @override
+  Future<bool> getWordWrap() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_wordWrapKey) ?? true;
+  }
+
+  @override
+  Future<void> setWordWrap(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_wordWrapKey, value);
   }
 }

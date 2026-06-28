@@ -41,6 +41,9 @@ class NoteEditorPane extends StatelessWidget {
   /// Markdown").
   final Future<String?> Function(String url)? onDownloadImage;
 
+  /// Whether the editor soft-wraps long lines (false = horizontal scroll).
+  final bool wordWrap;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
@@ -52,6 +55,7 @@ class NoteEditorPane extends StatelessWidget {
     this.onSpecialCopy,
     this.onSaveAttachment,
     this.onDownloadImage,
+    this.wordWrap = true,
   });
 
   @override
@@ -69,6 +73,7 @@ class NoteEditorPane extends StatelessWidget {
       onSpecialCopy: onSpecialCopy,
       onSaveAttachment: onSaveAttachment,
       onDownloadImage: onDownloadImage,
+      wordWrap: wordWrap,
     );
     final preview = MarkdownPreview(
       data: body,

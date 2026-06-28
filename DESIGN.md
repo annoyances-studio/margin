@@ -601,6 +601,15 @@ Smaller items to tackle later:
   Folio on a remote backend happens implicitly through connect).
 - Editor styling for links `[text](url)`, list bullets, and task checkboxes.
 - Live tree refresh when files change on disk externally.
+- Quick word-wrap toggle reachable from the editor toolbar (not just Settings),
+  for flipping it per-note while reading wide tables.
+- Cosmetic polish (parked): smaller breadcrumb font in the app bar; mirror the
+  open note's breadcrumb into the OS window title (currently just "Margin");
+  move the folder expand/collapse chevron to the *left* of the name (less busy,
+  symmetric) rather than beside the ⋮ menu.
+- Editor styling: render table pipes `|` in a distinct color and/or bold so raw
+  Markdown tables are easier to scan (partial relief until the table grid; the
+  word-wrap-off + this combo covers most of the table pain).
 - Hide the search bar until the search logic is decided. It works for file
   names but is cumbersome; keep it out of the UI until the search story
   (index scope, deep/full-text, ranking) is settled.

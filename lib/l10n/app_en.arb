@@ -136,6 +136,8 @@
   "renameEllipsis": "Rename…",
   "setColorEllipsis": "Set color…",
   "openInFileManager": "Open in file manager",
+  "openContainingFolder": "Open containing folder",
+  "@openContainingFolder": { "description": "Note action: reveal the note's file highlighted in its folder (desktop)." },
   "folderName": "Folder name",
   "folderActions": "Folder actions",
   "noteActions": "Note actions",
@@ -164,5 +166,10 @@
   "viewNoteSpecified": "Note specified",
   "startAtLogin": "Start Margin when I log in",
   "startMinimized": "Start minimized (in the tray)",
-  "@startMinimized": { "description": "Sub-option of run-at-login: launch hidden to the tray." }
+  "@startMinimized": { "description": "Sub-option of run-at-login: launch hidden to the tray." },
+
+  "wordWrap": "Word wrap",
+  "@wordWrap": { "description": "Settings toggle: soft-wrap long lines in the editor." },
+  "wordWrapSubtitle": "Off: long lines scroll sideways (better for tables)",
+  "@wordWrapSubtitle": { "description": "Explains what turning word wrap off does." }
 }

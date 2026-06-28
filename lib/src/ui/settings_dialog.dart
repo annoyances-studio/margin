@@ -118,7 +118,18 @@ class _SettingsDialogState extends State<SettingsDialog> {
               },
             ),
             const Divider(height: 28),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.wordWrap),
+              subtitle: Text(l10n.wordWrapSubtitle),
+              value: controller.wordWrap,
+              onChanged: (v) async {
+                await controller.setWordWrap(v);
+                setState(() {});
+              },
+            ),
             if (widget.startupService.isSupported) ...[
+              const Divider(height: 28),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.startAtLogin),

@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
+import 'package:margin/src/settings/settings_store.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/editor_view_mode.dart';
 
@@ -106,6 +107,21 @@ void main() {
     await controller.create(backend, 'My Notes');
     expect(controller.isLocalFolio, isFalse);
     expect(controller.localAbsolutePath('Work'), isNull);
+  });
+
+  test('word-wrap preference defaults on, persists, and reloads', () async {
+    final settings = InMemorySettingsStore();
+    final c1 = AppController(settings: settings);
+    addTearDown(c1.dispose);
+    expect(c1.wordWrap, isTrue); // default
+
+    await c1.setWordWrap(false);
+    expect(await settings.getWordWrap(), isFalse);
+
+    final c2 = AppController(settings: settings);
+    addTearDown(c2.dispose);
+    await c2.start(); // _loadViewSettings reads it back
+    expect(c2.wordWrap, isFalse);
   });
 
   test('attachToCurrentNote stores the file and inserts a link', () async {

@@ -53,6 +53,10 @@ class NoteEditor extends StatefulWidget {
   /// remote images pasted via "Paste as Markdown" are localized.
   final Future<String?> Function(String url)? onDownloadImage;
 
+  /// When false, long lines run off the right edge with a horizontal scrollbar
+  /// instead of soft-wrapping — easier to read wide tables and code.
+  final bool wordWrap;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -63,6 +67,7 @@ class NoteEditor extends StatefulWidget {
     this.onSpecialCopy,
     this.onSaveAttachment,
     this.onDownloadImage,
+    this.wordWrap = true,
   });
 
   @override
@@ -82,6 +87,9 @@ class _NoteEditorState extends State<NoteEditor> {
   /// Whether Ctrl/Cmd is currently held — when it is, the editor shows a click
   /// cursor to signal that links can be followed (and a click opens them).
   bool _followModifierHeld = false;
+
+  /// Horizontal scroll position for the no-wrap layout.
+  final ScrollController _hScroll = ScrollController();
 
   @override
   void initState() {
@@ -114,6 +122,7 @@ class _NoteEditorState extends State<NoteEditor> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
+    _hScroll.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -236,6 +245,94 @@ class _NoteEditorState extends State<NoteEditor> {
     widget.onChanged(updated);
   }
 
+  /// The editing field itself. Shared by the wrapped and no-wrap layouts.
+  Widget _editorField(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return TextField(
+      controller: _controller,
+      onChanged: widget.onChanged,
+      // Ctrl/Cmd held → click cursor, signalling links are followable.
+      mouseCursor: _followModifierHeld
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.text,
+      maxLines: null,
+      expands: true,
+      textAlignVertical: TextAlignVertical.top,
+      style: const TextStyle(fontSize: 15, height: 1.45),
+      // Add "Paste as Markdown" to the selection toolbar alongside the
+      // default actions (which keep pasting verbatim).
+      contextMenuBuilder: (context, editableState) {
+        final l10n = AppLocalizations.of(context);
+        final items = List<ContextMenuButtonItem>.from(
+          editableState.contextMenuButtonItems,
+        )..add(ContextMenuButtonItem(
+            label: l10n.pasteAsMarkdown,
+            onPressed: () {
+              ContextMenuController.removeAny();
+              _pasteAsMarkdown();
+            },
+          ));
+        if (widget.onSpecialCopy != null) {
+          items.add(ContextMenuButtonItem(
+            label: l10n.specialCopy,
+            onPressed: () {
+              ContextMenuController.removeAny();
+              widget.onSpecialCopy!();
+            },
+          ));
+        }
+        return AdaptiveTextSelectionToolbar.buttonItems(
+          anchors: editableState.contextMenuAnchors,
+          buttonItems: items,
+        );
+      },
+      decoration: InputDecoration(
+        border: InputBorder.none,
+        hintText: l10n.writeInMarkdown,
+      ),
+    );
+  }
+
+  /// No-wrap layout: the field is sized to its widest line and scrolls
+  /// horizontally, so long table rows and code stay on one line.
+  Widget _noWrapEditor(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = _noWrapWidth(constraints.maxWidth);
+        return Scrollbar(
+          controller: _hScroll,
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            controller: _hScroll,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(width: width, child: _editorField(context)),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Width for the no-wrap field: the widest line (measured exactly for the few
+  /// longest by character count — a cheap, good-enough proxy), but never less
+  /// than the viewport so short notes behave normally. Plus a small cushion for
+  /// the caret and proportional-font slack.
+  double _noWrapWidth(double available) {
+    final lines = _controller.text.split('\n')
+      ..sort((a, b) => b.length.compareTo(a.length));
+    const style = TextStyle(fontSize: 15, height: 1.45);
+    var widest = 0.0;
+    for (final line in lines.take(5)) {
+      final tp = TextPainter(
+        text: TextSpan(text: line, style: style),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      if (tp.width > widest) widest = tp.width;
+    }
+    final wanted = widest + 24;
+    return wanted < available ? available : wanted;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -250,49 +347,9 @@ class _NoteEditorState extends State<NoteEditor> {
             onPointerUp: _handlePointerUp,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _controller,
-                onChanged: widget.onChanged,
-                // Ctrl/Cmd held → click cursor, signalling links are followable.
-                mouseCursor: _followModifierHeld
-                    ? SystemMouseCursors.click
-                    : SystemMouseCursors.text,
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-                style: const TextStyle(fontSize: 15, height: 1.45),
-                // Add "Paste as Markdown" to the selection toolbar alongside the
-                // default actions (which keep pasting verbatim).
-                contextMenuBuilder: (context, editableState) {
-                  final l10n = AppLocalizations.of(context);
-                  final items = List<ContextMenuButtonItem>.from(
-                    editableState.contextMenuButtonItems,
-                  )..add(ContextMenuButtonItem(
-                      label: l10n.pasteAsMarkdown,
-                      onPressed: () {
-                        ContextMenuController.removeAny();
-                        _pasteAsMarkdown();
-                      },
-                    ));
-                  if (widget.onSpecialCopy != null) {
-                    items.add(ContextMenuButtonItem(
-                      label: l10n.specialCopy,
-                      onPressed: () {
-                        ContextMenuController.removeAny();
-                        widget.onSpecialCopy!();
-                      },
-                    ));
-                  }
-                  return AdaptiveTextSelectionToolbar.buttonItems(
-                    anchors: editableState.contextMenuAnchors,
-                    buttonItems: items,
-                  );
-                },
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: l10n.writeInMarkdown,
-                ),
-              ),
+              child: widget.wordWrap
+                  ? _editorField(context)
+                  : _noWrapEditor(context),
             ),
           ),
         ),
@@ -332,6 +389,9 @@ class _LinkAffordance extends StatelessWidget {
     // A local image we can attempt to render inline.
     final previewImage = isImage && !external && resolved != null;
     final canOpen = resolved != null && canOpenTargets;
+    // A local file (attachment): offer "reveal in folder" so the user can pick
+    // or edit the actual file, not just open it in a viewer.
+    final canReveal = resolved != null && !external && canRevealInFileManager;
 
     // Prefer the link's [label]; fall back to its target.
     final label = link.label.trim();
@@ -365,6 +425,13 @@ class _LinkAffordance extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
+              if (canReveal)
+                IconButton(
+                  tooltip: l10n.openContainingFolder,
+                  onPressed: () =>
+                      revealInFileManager(resolved, selectFile: true),
+                  icon: const Icon(Icons.folder_open, size: 18),
+                ),
               if (canOpen)
                 TextButton.icon(
                   onPressed: () => openWithDefaultApp(resolved),

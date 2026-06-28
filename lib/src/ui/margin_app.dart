@@ -94,6 +94,22 @@ class _MarginAppState extends State<MarginApp> with WidgetsBindingObserver {
     }
   }
 
+  /// Shared theme for both brightnesses. The text selection color is set
+  /// explicitly and kept translucent so selected text (e.g. a block quote in
+  /// the preview) stays readable instead of being washed out by an opaque
+  /// highlight.
+  ThemeData _theme(Brightness brightness) {
+    final scheme =
+        ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: brightness);
+    return ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      textSelectionTheme: TextSelectionThemeData(
+        selectionColor: scheme.primary.withValues(alpha: 0.30),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -102,16 +118,8 @@ class _MarginAppState extends State<MarginApp> with WidgetsBindingObserver {
       supportedLocales: AppLocalizations.supportedLocales,
       // Follow the OS light/dark setting.
       themeMode: ThemeMode.system,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
       home: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {

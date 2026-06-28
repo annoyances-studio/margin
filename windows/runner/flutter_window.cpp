@@ -1,8 +1,11 @@
 #include "flutter_window.h"
 
+#include <algorithm>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+
+#include "utils.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -27,9 +30,19 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
-  });
+  // A run-at-login launch passes --minimized: start hidden in the tray and let
+  // the Dart side (window_manager) decide if/when to show. The window is
+  // created without WS_VISIBLE, so simply not showing it here keeps it hidden.
+  // Without this guard the window would flash on screen on every login.
+  const std::vector<std::string> args = GetCommandLineArguments();
+  const bool start_minimized =
+      std::find(args.begin(), args.end(), "--minimized") != args.end();
+
+  if (!start_minimized) {
+    flutter_controller_->engine()->SetNextFrameCallback([&]() {
+      this->Show();
+    });
+  }
 
   // Flutter can complete the first frame before the "show window" callback is
   // registered. The following call ensures a frame is pending to ensure the

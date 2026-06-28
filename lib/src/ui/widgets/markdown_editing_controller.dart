@@ -138,7 +138,9 @@ TextStyle _blockStyle(String line, TextStyle base) {
   if (RegExp(r'^\s*>\s?').hasMatch(line)) {
     return base.copyWith(
       fontStyle: FontStyle.italic,
-      color: base.color?.withValues(alpha: 0.7),
+      // Dimmed to read as a quote, but not so faint it's hard to read
+      // (especially under a selection highlight).
+      color: base.color?.withValues(alpha: 0.85),
     );
   }
 

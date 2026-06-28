@@ -43,7 +43,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byWidgetPredicate((w) => w is DropdownButton), findsNWidgets(2));
-    expect(find.byType(SwitchListTile), findsOneWidget);
+    // Two switches now: word wrap (always) + start-at-login (when supported).
+    expect(find.byType(SwitchListTile), findsNWidgets(2));
+    expect(find.text('Start Margin when I log in'), findsOneWidget);
   });
 
   testWidgets('toggling the login switch calls the service', (tester) async {
@@ -51,7 +53,7 @@ void main() {
     await tester.pumpWidget(host(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('Start Margin when I log in'));
     await tester.pumpAndSettle();
 
     expect(service.enabled, isTrue);
@@ -71,11 +73,25 @@ void main() {
     expect(service.lastMinimized, isTrue); // re-registered with --minimized
   });
 
+  testWidgets('word-wrap toggle flips the controller preference',
+      (tester) async {
+    await tester.pumpWidget(host(_FakeStartupService()));
+    await tester.pumpAndSettle();
+
+    expect(controller.wordWrap, isTrue); // default on
+    await tester.tap(find.text('Word wrap'));
+    await tester.pumpAndSettle();
+    expect(controller.wordWrap, isFalse);
+  });
+
   testWidgets('hides the login switch when unsupported', (tester) async {
     await tester.pumpWidget(host(_FakeStartupService(isSupported: false)));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SwitchListTile), findsNothing);
+    // No login switch, but the word-wrap switch is still present.
+    expect(find.text('Start Margin when I log in'), findsNothing);
+    expect(find.text('Word wrap'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsOneWidget);
     // View dropdowns are still available.
     expect(find.byWidgetPredicate((w) => w is DropdownButton), findsNWidgets(2));
   });

@@ -15,6 +15,7 @@ enum TreeAction {
   renameFolder,
   setColor,
   openInFileManager,
+  openContainingFolder,
   deleteFolder,
   deleteNote,
 }
@@ -69,45 +70,21 @@ class FolderTreeView extends StatelessWidget {
   }
 
   List<Widget> _childrenOf(FolderNode folder, AppLocalizations l10n) => [
-        for (final child in folder.folders) _folderTile(child, l10n),
+        for (final child in folder.folders)
+          _FolderTile(
+            folder: child,
+            menuItems: _folderMenuItems(l10n),
+            menuTooltip: l10n.folderActions,
+            onAction: (a) => onFolderAction(child, a),
+            children: _childrenOf(child, l10n),
+          ),
         for (final note in folder.notes) _noteTile(note, l10n),
       ];
-
-  Widget _folderTile(FolderNode folder, AppLocalizations l10n) {
-    final color = colorFromHex(folder.color);
-    return ExpansionTile(
-      key: PageStorageKey(folder.path),
-      initiallyExpanded: true,
-      leading: Icon(
-        color != null ? Icons.folder : Icons.folder_outlined,
-        color: color,
-      ),
-      title: Builder(
-        builder: (context) => GestureDetector(
-          // Right-click on desktop opens the same menu.
-          onSecondaryTapDown: (details) => _showMenuAt(
-              context,
-              details.globalPosition,
-              _folderMenuItems(l10n),
-              (a) => onFolderAction(folder, a)),
-          child: Text(folder.name),
-        ),
-      ),
-      trailing: PopupMenuButton<TreeAction>(
-        icon: const Icon(Icons.more_vert),
-        tooltip: l10n.folderActions,
-        itemBuilder: (_) => _folderMenuItems(l10n),
-        onSelected: (a) => onFolderAction(folder, a),
-      ),
-      childrenPadding: const EdgeInsets.only(left: 12),
-      children: _childrenOf(folder, l10n),
-    );
-  }
 
   Widget _noteTile(NoteNode note, AppLocalizations l10n) {
     return Builder(
       builder: (context) => GestureDetector(
-        onSecondaryTapDown: (details) => _showMenuAt(
+        onSecondaryTapDown: (details) => _showTreeMenu(
             context,
             details.globalPosition,
             _noteMenuItems(l10n),
@@ -150,21 +127,98 @@ class FolderTreeView extends StatelessWidget {
       ];
 
   List<PopupMenuEntry<TreeAction>> _noteMenuItems(AppLocalizations l10n) => [
+        if (canRevealInFileManager)
+          PopupMenuItem(
+            value: TreeAction.openContainingFolder,
+            child: Text(l10n.openContainingFolder),
+          ),
         PopupMenuItem(value: TreeAction.deleteNote, child: Text(l10n.deleteNote)),
       ];
 
-  Future<void> _showMenuAt(
-    BuildContext context,
-    Offset position,
-    List<PopupMenuEntry<TreeAction>> items,
-    void Function(TreeAction) onSelected,
-  ) async {
-    final action = await showMenu<TreeAction>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-          position.dx, position.dy, position.dx, position.dy),
-      items: items,
+}
+
+/// A folder row with an explicit expand/collapse chevron beside its actions
+/// menu. The chevron matters because overriding [ExpansionTile.trailing] with
+/// the ⋮ menu removes the built-in rotating arrow — without it a collapsed
+/// folder is indistinguishable from an empty one.
+class _FolderTile extends StatefulWidget {
+  final FolderNode folder;
+  final List<Widget> children;
+  final List<PopupMenuEntry<TreeAction>> menuItems;
+  final String menuTooltip;
+  final void Function(TreeAction) onAction;
+
+  const _FolderTile({
+    required this.folder,
+    required this.children,
+    required this.menuItems,
+    required this.menuTooltip,
+    required this.onAction,
+  });
+
+  @override
+  State<_FolderTile> createState() => _FolderTileState();
+}
+
+class _FolderTileState extends State<_FolderTile> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = colorFromHex(widget.folder.color);
+    return ExpansionTile(
+      key: PageStorageKey(widget.folder.path),
+      initiallyExpanded: true,
+      onExpansionChanged: (v) => setState(() => _expanded = v),
+      leading: Icon(
+        color != null ? Icons.folder : Icons.folder_outlined,
+        color: color,
+      ),
+      title: GestureDetector(
+        // Right-click on desktop opens the same menu.
+        onSecondaryTapDown: (details) => _showTreeMenu(
+          context,
+          details.globalPosition,
+          widget.menuItems,
+          widget.onAction,
+        ),
+        child: Text(widget.folder.name),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedRotation(
+            // expand_more points down when open, rotates to point right (→)
+            // when collapsed.
+            turns: _expanded ? 0 : -0.25,
+            duration: const Duration(milliseconds: 150),
+            child: const Icon(Icons.expand_more, size: 20),
+          ),
+          PopupMenuButton<TreeAction>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: widget.menuTooltip,
+            itemBuilder: (_) => widget.menuItems,
+            onSelected: widget.onAction,
+          ),
+        ],
+      ),
+      childrenPadding: const EdgeInsets.only(left: 12),
+      children: widget.children,
     );
-    if (action != null) onSelected(action);
   }
+}
+
+Future<void> _showTreeMenu(
+  BuildContext context,
+  Offset position,
+  List<PopupMenuEntry<TreeAction>> items,
+  void Function(TreeAction) onSelected,
+) async {
+  final action = await showMenu<TreeAction>(
+    context: context,
+    position:
+        RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
+    items: items,
+  );
+  if (action != null) onSelected(action);
 }

@@ -29,15 +29,28 @@ bool _isExternalUrl(String target) {
 
 /// Opens [absolutePath] in the platform's file manager (Explorer, Finder, or
 /// the Linux default). No-op on unsupported platforms.
-Future<void> revealInFileManager(String absolutePath) async {
+///
+/// When [selectFile] is true, [absolutePath] is treated as a *file*: macOS
+/// reveals it highlighted (`open -R`), while Windows and Linux open the
+/// containing folder. (Explorer's `/select,` is avoided — it silently fails
+/// when the path contains spaces, which Folio paths often do.)
+Future<void> revealInFileManager(String absolutePath,
+    {bool selectFile = false}) async {
   if (!canRevealInFileManager) return;
   final (command, args) = switch (Platform.operatingSystem) {
-    'windows' => ('explorer', [absolutePath]),
-    'macos' => ('open', [absolutePath]),
-    _ => ('xdg-open', [absolutePath]),
+    'windows' => ('explorer', [selectFile ? _parentDir(absolutePath) : absolutePath]),
+    'macos' => ('open', selectFile ? ['-R', absolutePath] : [absolutePath]),
+    _ => ('xdg-open', [selectFile ? _parentDir(absolutePath) : absolutePath]),
   };
   // explorer.exe returns a non-zero exit code even on success, so ignore it.
   await Process.run(command, args);
+}
+
+/// The containing directory of [path] (used as the Linux "reveal" fallback).
+String _parentDir(String path) {
+  final norm = path.replaceAll('\\', '/');
+  final slash = norm.lastIndexOf('/');
+  return slash <= 0 ? path : path.substring(0, slash);
 }
 
 /// Opens [target] (a file path or a URL) with the OS default handler — the

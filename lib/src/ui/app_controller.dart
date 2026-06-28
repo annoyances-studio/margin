@@ -152,6 +152,9 @@ class AppController extends ChangeNotifier {
   /// Whether a run-at-login launch should start hidden in the tray (device-local).
   bool _startMinimized = false;
 
+  /// Whether the editor soft-wraps long lines (device-local; default true).
+  bool _wordWrap = true;
+
   bool _busy = false;
   String? _error;
 
@@ -199,6 +202,7 @@ class AppController extends ChangeNotifier {
   EditorViewMode get viewMode => _viewMode;
   bool get alwaysOnTop => _alwaysOnTop;
   bool get startMinimized => _startMinimized;
+  bool get wordWrap => _wordWrap;
   bool get isBusy => _busy;
   String? get error => _error;
 
@@ -218,6 +222,7 @@ class AppController extends ChangeNotifier {
               EditorViewMode.edit;
       _alwaysOnTop = await _settings.getAlwaysOnTop();
       _startMinimized = await _settings.getStartMinimized();
+      _wordWrap = await _settings.getWordWrap();
       _recentFolios = decodeRecentFolios(await _settings.getRecentFolios());
     } catch (_) {
       // Settings unavailable (e.g. tests): keep defaults.
@@ -307,6 +312,13 @@ class AppController extends ChangeNotifier {
   Future<void> setAlwaysOnTop(bool value) async {
     _alwaysOnTop = value;
     await _settings.setAlwaysOnTop(value);
+    notifyListeners();
+  }
+
+  /// Persists and updates the editor word-wrap preference.
+  Future<void> setWordWrap(bool value) async {
+    _wordWrap = value;
+    await _settings.setWordWrap(value);
     notifyListeners();
   }
 

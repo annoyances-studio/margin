@@ -59,14 +59,17 @@ void main() {
     expect(find.byType(NoteEditor), findsNothing);
   });
 
-  testWidgets('title shows the repo name with tree shown, note path when hidden',
+  testWidgets('title shows the note breadcrumb whether the tree is shown or hidden',
       (tester) async {
     final controller = await openWithNote(tester);
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('My Notes'), findsOneWidget);
+    // Breadcrumb is present with the tree shown (so a note inside a collapsed
+    // folder is still locatable)...
+    expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
 
+    // ...and remains when the tree is hidden.
     await tester.tap(find.byIcon(Icons.menu_open));
     await tester.pumpAndSettle();
     expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);

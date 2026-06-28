@@ -221,6 +221,7 @@ class _FolioScreenState extends State<FolioScreen> {
           onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
           onDownloadImage: controller.downloadImageAsAttachment,
+          wordWrap: controller.wordWrap,
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
@@ -414,11 +415,13 @@ class _FolioScreenState extends State<FolioScreen> {
   /// A trailing "*" when there are local changes not yet synced to the remote.
   String get _unsyncedMark => controller.hasUnsyncedChanges ? ' *' : '';
 
-  /// Wide title: Folio name, plus the note path when the tree is hidden.
+  /// Wide title: Folio name plus the open note's path. Shown even when the tree
+  /// is visible — a note inside a collapsed folder is otherwise invisible, so
+  /// the breadcrumb is the only reliable "where am I" cue.
   String _wideTitle() {
     final repo = controller.folioName;
     final notePath = controller.selectedNotePath;
-    if (!_showTree && notePath != null) {
+    if (notePath != null) {
       return '$repo / ${notePath.replaceAll('/', ' / ')}$_unsyncedMark';
     }
     return '$repo$_unsyncedMark';
@@ -473,6 +476,7 @@ class _FolioScreenState extends State<FolioScreen> {
       onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
       onSaveAttachment: controller.saveAttachmentForCurrentNote,
       onDownloadImage: controller.downloadImageAsAttachment,
+      wordWrap: controller.wordWrap,
     );
 
     if (!_showTree || tree == null) {
@@ -851,19 +855,26 @@ class _FolioScreenState extends State<FolioScreen> {
           l10n.deleteFolderBody,
         );
         if (confirmed) await controller.deleteFolder(folder.path);
+      case TreeAction.openContainingFolder:
       case TreeAction.deleteNote:
         break; // not applicable to folders
     }
   }
 
   Future<void> _handleNoteAction(NoteNode note, TreeAction action) async {
-    if (action == TreeAction.deleteNote) {
-      final l10n = _l10n;
-      final confirmed = await _confirmDelete(
-        l10n.deleteNoteTitle(note.title),
-        l10n.deleteNoteBody,
-      );
-      if (confirmed) await controller.deleteNote(note.path);
+    switch (action) {
+      case TreeAction.openContainingFolder:
+        final abs = controller.localAbsolutePath(note.path);
+        if (abs != null) await revealInFileManager(abs, selectFile: true);
+      case TreeAction.deleteNote:
+        final l10n = _l10n;
+        final confirmed = await _confirmDelete(
+          l10n.deleteNoteTitle(note.title),
+          l10n.deleteNoteBody,
+        );
+        if (confirmed) await controller.deleteNote(note.path);
+      default:
+        break; // other actions are folder-only
     }
   }
 

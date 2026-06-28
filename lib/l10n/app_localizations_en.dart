@@ -222,6 +222,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openInFileManager => 'Open in file manager';
 
   @override
+  String get openContainingFolder => 'Open containing folder';
+
+  @override
   String get folderName => 'Folder name';
 
   @override
@@ -276,4 +279,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startMinimized => 'Start minimized (in the tray)';
+
+  @override
+  String get wordWrap => 'Word wrap';
+
+  @override
+  String get wordWrapSubtitle =>
+      'Off: long lines scroll sideways (better for tables)';
 }

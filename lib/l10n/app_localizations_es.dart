@@ -224,6 +224,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get openInFileManager => 'Abrir en el explorador de archivos';
 
   @override
+  String get openContainingFolder => 'Abrir la carpeta que la contiene';
+
+  @override
   String get folderName => 'Nombre de la carpeta';
 
   @override
@@ -280,4 +283,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get startMinimized => 'Iniciar minimizado (en la bandeja)';
+
+  @override
+  String get wordWrap => 'Ajuste de línea';
+
+  @override
+  String get wordWrapSubtitle =>
+      'Desactivado: las líneas largas se desplazan en horizontal (mejor para tablas)';
 }

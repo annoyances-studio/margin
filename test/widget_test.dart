@@ -59,7 +59,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('My Notes'), findsOneWidget); // app bar title
+    // The new note is auto-selected, so the app-bar title is its breadcrumb.
+    expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget); // folder in tree
     expect(find.text('meeting'), findsOneWidget); // note in tree
   });

@@ -518,6 +518,12 @@ abstract class AppLocalizations {
   /// **'Open in file manager'**
   String get openInFileManager;
 
+  /// Note action: reveal the note's file highlighted in its folder (desktop).
+  ///
+  /// In en, this message translates to:
+  /// **'Open containing folder'**
+  String get openContainingFolder;
+
   /// No description provided for @folderName.
   ///
   /// In en, this message translates to:
@@ -619,6 +625,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start minimized (in the tray)'**
   String get startMinimized;
+
+  /// Settings toggle: soft-wrap long lines in the editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Word wrap'**
+  String get wordWrap;
+
+  /// Explains what turning word wrap off does.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: long lines scroll sideways (better for tables)'**
+  String get wordWrapSubtitle;
 }
 
 class _AppLocalizationsDelegate

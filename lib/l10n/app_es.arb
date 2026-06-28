@@ -77,6 +77,7 @@
   "renameEllipsis": "Renombrar…",
   "setColorEllipsis": "Establecer color…",
   "openInFileManager": "Abrir en el explorador de archivos",
+  "openContainingFolder": "Abrir la carpeta que la contiene",
   "folderName": "Nombre de la carpeta",
   "folderActions": "Acciones de carpeta",
   "noteActions": "Acciones de nota",
@@ -96,5 +97,7 @@
   "defaultViewForNotes": "Vista predeterminada para notas",
   "viewNoteSpecified": "Según la nota",
   "startAtLogin": "Iniciar Margin al iniciar sesión",
-  "startMinimized": "Iniciar minimizado (en la bandeja)"
+  "startMinimized": "Iniciar minimizado (en la bandeja)",
+  "wordWrap": "Ajuste de línea",
+  "wordWrapSubtitle": "Desactivado: las líneas largas se desplazan en horizontal (mejor para tablas)"
 }

@@ -39,10 +39,11 @@ class MarkdownPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     // A subtly distinct surface tone tells the rendered preview apart from the
     // raw editor at a glance (it reads as "rendered", not "editable").
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      color: theme.colorScheme.surfaceContainerLow,
       // SelectionArea gives proper cross-block text selection (flutter_markdown's
       // own `selectable:` only selects within a single block), plus a place to
       // attach the Special Copy action.
@@ -54,10 +55,31 @@ class MarkdownPreview extends StatelessWidget {
           physics: physics,
           extensionSet: md.ExtensionSet.gitHubFlavored,
           padding: const EdgeInsets.all(16),
+          styleSheet: _styleSheet(theme),
           sizedImageBuilder: _buildImage,
           onTapLink: (text, href, title) => _openLink(href),
         ),
       ),
+    );
+  }
+
+  /// Theme-derived styles, overriding flutter_markdown's defaults where they
+  /// don't adapt to the color scheme — notably the block quote, whose default
+  /// is a hardcoded light-blue box that renders white-on-light-blue (i.e.
+  /// unreadable) in dark mode. We use a subtle surface fill, on-surface text,
+  /// and a primary accent bar instead.
+  MarkdownStyleSheet _styleSheet(ThemeData theme) {
+    final scheme = theme.colorScheme;
+    return MarkdownStyleSheet.fromTheme(theme).copyWith(
+      blockquote: theme.textTheme.bodyMedium?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
+      blockquoteDecoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+        border: Border(left: BorderSide(color: scheme.primary, width: 4)),
+      ),
+      blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
     );
   }
 

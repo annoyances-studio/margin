@@ -13,6 +13,7 @@ void main() {
     WidgetTester tester, {
     required String body,
     String? imageBaseDir,
+    bool wordWrap = true,
   }) async {
     await tester.pumpWidget(
       localizedApp(
@@ -25,6 +26,7 @@ void main() {
               body: body,
               onChanged: (_) {},
               imageBaseDir: imageBaseDir,
+              wordWrap: wordWrap,
             ),
           ),
         ),
@@ -33,6 +35,25 @@ void main() {
     await tester.pump();
     return tester.widget<TextField>(find.byType(TextField)).controller!;
   }
+
+  Finder horizontalScroll() => find.byWidgetPredicate((w) =>
+      w is SingleChildScrollView && w.scrollDirection == Axis.horizontal);
+
+  testWidgets('word wrap on (default): no horizontal scroll', (tester) async {
+    await pumpEditor(tester, body: 'a very long line that would overflow ' * 5);
+    expect(horizontalScroll(), findsNothing);
+  });
+
+  testWidgets('word wrap off: editor scrolls horizontally', (tester) async {
+    await pumpEditor(
+      tester,
+      body: 'a very long line that would overflow the editor width ' * 5,
+      wordWrap: false,
+    );
+    // The field is hosted in a horizontal scroll view (and still editable).
+    expect(horizontalScroll(), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+  });
 
   testWidgets('no affordance until the caret enters a link', (tester) async {
     final controller =
@@ -73,6 +94,31 @@ void main() {
     controller.selection = const TextSelection.collapsed(offset: 0);
     await tester.pump();
     expect(find.byKey(const Key('linkAffordance')), findsNothing);
+  });
+
+  testWidgets('local attachment affordance offers "open containing folder"',
+      (tester) async {
+    // Tests run on a desktop host, so reveal-in-file-manager is supported.
+    final controller = await pumpEditor(
+      tester,
+      body: 'pic ![alt](_attachments/a.png) here',
+      imageBaseDir: '/repo/Work',
+    );
+    controller.selection = const TextSelection.collapsed(offset: 8);
+    await tester.pump();
+
+    expect(find.byTooltip('Open containing folder'), findsOneWidget);
+    tester.takeException(); // drain the missing-image load error
+  });
+
+  testWidgets('external links do not offer "open containing folder"',
+      (tester) async {
+    final controller =
+        await pumpEditor(tester, body: 'see [docs](https://example.com) end');
+    controller.selection = const TextSelection.collapsed(offset: 6);
+    await tester.pump();
+
+    expect(find.byTooltip('Open containing folder'), findsNothing);
   });
 
   testWidgets('image link shows the affordance with its target', (tester) async {
