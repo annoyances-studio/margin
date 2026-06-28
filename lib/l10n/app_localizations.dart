@@ -524,6 +524,12 @@ abstract class AppLocalizations {
   /// **'Open containing folder'**
   String get openContainingFolder;
 
+  /// Tooltip on the badge marking a folder that has a folder-level note.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder note (README.md)'**
+  String get openFolderNote;
+
   /// No description provided for @folderName.
   ///
   /// In en, this message translates to:

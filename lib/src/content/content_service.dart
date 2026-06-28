@@ -30,6 +30,12 @@ class ContentService {
   /// Extension that identifies note files.
   static const String noteExtension = '.md';
 
+  /// Reserved file name for a folder-level note. Surfaced by tapping the folder
+  /// (Obsidian/Notion style) rather than listed among the folder's notes, and
+  /// uses `README.md` so other tools (and Claude) render it as the folder's
+  /// description. Matched case-insensitively. Not applied at the root.
+  static const String folderNoteName = 'README.md';
+
   /// Per-folder metadata file name (also the root properties name).
   static const String propertiesFileName = 'properties.yaml';
 
@@ -56,6 +62,7 @@ class ContentService {
     final folders = <FolderNode>[];
     final notes = <NoteNode>[];
     var hasProperties = false;
+    var hasFolderNote = false;
 
     for (final entry in entries) {
       // Defend against a backend yielding the directory itself or a path that
@@ -82,14 +89,23 @@ class ContentService {
         }
         if (!entry.name.toLowerCase().endsWith(noteExtension)) continue;
         if (isRoot) continue; // no notes at the root
+        // A folder note is surfaced via the folder, not listed as a child note.
+        if (entry.name.toLowerCase() == folderNoteName.toLowerCase()) {
+          hasFolderNote = true;
+          continue;
+        }
         notes.add(NoteNode(path: entry.path, name: entry.name));
       }
     }
 
     // Hide an empty, unmarked leftover directory (keeps intentional empty
-    // folders, which carry a properties.yaml, and foreign markdown folders,
-    // which carry notes).
-    if (!isRoot && !hasProperties && notes.isEmpty && folders.isEmpty) {
+    // folders, which carry a properties.yaml, foreign markdown folders, which
+    // carry notes, and folders whose only content is a folder note).
+    if (!isRoot &&
+        !hasProperties &&
+        !hasFolderNote &&
+        notes.isEmpty &&
+        folders.isEmpty) {
       return null;
     }
 
@@ -111,6 +127,7 @@ class ContentService {
       folders: folders,
       notes: notes,
       color: color,
+      hasFolderNote: hasFolderNote,
     );
   }
 

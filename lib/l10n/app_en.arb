@@ -138,6 +138,8 @@
   "openInFileManager": "Open in file manager",
   "openContainingFolder": "Open containing folder",
   "@openContainingFolder": { "description": "Note action: reveal the note's file highlighted in its folder (desktop)." },
+  "openFolderNote": "Folder note (README.md)",
+  "@openFolderNote": { "description": "Tooltip on the badge marking a folder that has a folder-level note." },
   "folderName": "Folder name",
   "folderActions": "Folder actions",
   "noteActions": "Note actions",

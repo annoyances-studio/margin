@@ -101,6 +101,31 @@ void main() {
       expect(work.notes.first.title, 'meeting');
     });
 
+    test('README.md is a folder note: hidden from notes, flags the folder',
+        () async {
+      await backend.write('Work/properties.yaml', bytes('title: "Work"'));
+      await backend.write('Work/README.md', bytes('# About Work'));
+      await backend.write('Work/meeting.md', bytes('m'));
+
+      final root = await service.tree();
+      final work = root.folders.firstWhere((f) => f.name == 'Work');
+
+      // README is not listed as a child note...
+      expect(work.notes.map((n) => n.name), ['meeting.md']);
+      // ...but the folder is flagged as having a folder note.
+      expect(work.hasFolderNote, isTrue);
+    });
+
+    test('a folder whose only content is a folder note still shows', () async {
+      // No properties.yaml, no other notes — just the README.
+      await backend.write('Lore/README.md', bytes('# Lore'));
+
+      final root = await service.tree();
+      expect(root.folders.map((f) => f.name), ['Lore']);
+      expect(root.folders.single.hasFolderNote, isTrue);
+      expect(root.folders.single.notes, isEmpty);
+    });
+
     test('nests subfolders', () async {
       await backend.write('A/properties.yaml', bytes('title: "A"'));
       await backend.write('A/B/properties.yaml', bytes('title: "B"'));

@@ -538,6 +538,7 @@ class _FolioScreenState extends State<FolioScreen> {
                   },
                   onFolderAction: _handleFolderAction,
                   onNoteAction: _handleNoteAction,
+                  onOpenFolderNote: controller.openFolderNote,
                 ),
         ),
       ],

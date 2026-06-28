@@ -225,6 +225,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openContainingFolder => 'Open containing folder';
 
   @override
+  String get openFolderNote => 'Folder note (README.md)';
+
+  @override
   String get folderName => 'Folder name';
 
   @override

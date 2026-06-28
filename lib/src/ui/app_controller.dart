@@ -1267,6 +1267,33 @@ class AppController extends ChangeNotifier {
     _scheduleSync();
   }
 
+  /// Opens a folder's folder-level note (`README.md`), creating an empty one if
+  /// the folder doesn't have it yet. The root has no folder note (no `.md` at
+  /// the root), so this is a no-op there.
+  Future<void> openFolderNote(FolderNode folder) async {
+    if (folder.path.isEmpty) return;
+    final notePath = '${folder.path}/${ContentService.folderNoteName}';
+    if (!folder.hasFolderNote) {
+      await _run(() async {
+        final now = DateTime.now().toUtc();
+        await _content!.createNote(
+          folder.path,
+          ContentService.folderNoteName,
+          initial: Note(
+            frontmatter:
+                NoteFrontmatter(title: folder.name, created: now, updated: now),
+            body: '',
+          ),
+        );
+        await _reloadTree();
+      });
+      if (_error != null) return; // creation failed; error already surfaced
+      _scheduleSync();
+    }
+    await selectNote(
+        NoteNode(path: notePath, name: ContentService.folderNoteName));
+  }
+
   /// Sets (or clears, with null) a folder's accent color.
   Future<void> setFolderColor(String path, String? colorHex) async {
     await _run(() async {

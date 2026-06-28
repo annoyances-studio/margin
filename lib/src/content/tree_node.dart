@@ -26,12 +26,17 @@ class FolderNode extends TreeNode {
   /// properties), for a visual cue in the tree.
   final String? color;
 
+  /// Whether this folder has a folder-level note (a `README.md`), surfaced by
+  /// tapping the folder name rather than listed among [notes].
+  final bool hasFolderNote;
+
   const FolderNode({
     required super.path,
     required super.name,
     this.folders = const [],
     this.notes = const [],
     this.color,
+    this.hasFolderNote = false,
   });
 
   /// Whether this folder has no child folders and no notes.

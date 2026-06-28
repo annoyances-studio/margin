@@ -35,6 +35,10 @@ class FolderTreeView extends StatelessWidget {
   final void Function(FolderNode folder, TreeAction action) onFolderAction;
   final void Function(NoteNode note, TreeAction action) onNoteAction;
 
+  /// Opens (or creates) a folder's folder-level note — fired by tapping the
+  /// folder name.
+  final void Function(FolderNode folder) onOpenFolderNote;
+
   /// Scroll physics for the list. The mobile pages pass
   /// [AlwaysScrollableScrollPhysics] so a pull-to-refresh gesture works even
   /// when the tree is short enough to fit without scrolling.
@@ -46,6 +50,7 @@ class FolderTreeView extends StatelessWidget {
     required this.onNoteTap,
     required this.onFolderAction,
     required this.onNoteAction,
+    required this.onOpenFolderNote,
     this.selectedNotePath,
     this.canRevealInFileManager = false,
     this.physics,
@@ -76,6 +81,8 @@ class FolderTreeView extends StatelessWidget {
             menuItems: _folderMenuItems(l10n),
             menuTooltip: l10n.folderActions,
             onAction: (a) => onFolderAction(child, a),
+            onOpenNote: () => onOpenFolderNote(child),
+            folderNoteTooltip: l10n.openFolderNote,
             children: _childrenOf(child, l10n),
           ),
         for (final note in folder.notes) _noteTile(note, l10n),
@@ -147,6 +154,8 @@ class _FolderTile extends StatefulWidget {
   final List<PopupMenuEntry<TreeAction>> menuItems;
   final String menuTooltip;
   final void Function(TreeAction) onAction;
+  final VoidCallback onOpenNote;
+  final String folderNoteTooltip;
 
   const _FolderTile({
     required this.folder,
@@ -154,6 +163,8 @@ class _FolderTile extends StatefulWidget {
     required this.menuItems,
     required this.menuTooltip,
     required this.onAction,
+    required this.onOpenNote,
+    required this.folderNoteTooltip,
   });
 
   @override
@@ -175,6 +186,9 @@ class _FolderTileState extends State<_FolderTile> {
         color: color,
       ),
       title: GestureDetector(
+        // Tapping the name opens (or creates) the folder note; the chevron and
+        // the rest of the row still expand/collapse.
+        onTap: widget.onOpenNote,
         // Right-click on desktop opens the same menu.
         onSecondaryTapDown: (details) => _showTreeMenu(
           context,
@@ -182,7 +196,22 @@ class _FolderTileState extends State<_FolderTile> {
           widget.menuItems,
           widget.onAction,
         ),
-        child: Text(widget.folder.name),
+        child: Row(
+          children: [
+            Flexible(child: Text(widget.folder.name)),
+            if (widget.folder.hasFolderNote) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: widget.folderNoteTooltip,
+                child: Icon(
+                  Icons.sticky_note_2_outlined,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

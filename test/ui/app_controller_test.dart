@@ -109,6 +109,44 @@ void main() {
     expect(controller.localAbsolutePath('Work'), isNull);
   });
 
+  FolderNode folderNamed(FolderNode root, String name) =>
+      root.folders.firstWhere((f) => f.name == name);
+
+  test('openFolderNote creates README.md and opens it when absent', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Lore');
+
+    await controller.openFolderNote(folderNamed(controller.tree!, 'Lore'));
+
+    expect(controller.selectedNotePath, 'Lore/README.md');
+    expect(await backend.exists('Lore/README.md'), isTrue);
+    // The folder is now flagged, and README isn't listed as a child note.
+    final lore = folderNamed(controller.tree!, 'Lore');
+    expect(lore.hasFolderNote, isTrue);
+    expect(lore.notes.where((n) => n.name == 'README.md'), isEmpty);
+  });
+
+  test('openFolderNote opens an existing folder note without overwriting',
+      () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('Lore');
+    await controller.createFolder('Work');
+    await controller.createNote('other', folderPath: 'Work');
+
+    await controller.openFolderNote(folderNamed(controller.tree!, 'Lore'));
+    controller.updateBody('# Existing lore body');
+    await controller.save();
+
+    // Move to a different note, then re-open the (now existing) folder note:
+    // its body is read from disk, not reset.
+    await controller.selectNote(
+        folderNamed(controller.tree!, 'Work').notes.single);
+    await controller.openFolderNote(folderNamed(controller.tree!, 'Lore'));
+
+    expect(controller.selectedNotePath, 'Lore/README.md');
+    expect(controller.workingBody, contains('Existing lore body'));
+  });
+
   test('word-wrap preference defaults on, persists, and reloads', () async {
     final settings = InMemorySettingsStore();
     final c1 = AppController(settings: settings);

@@ -227,6 +227,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get openContainingFolder => 'Abrir la carpeta que la contiene';
 
   @override
+  String get openFolderNote => 'Nota de carpeta (README.md)';
+
+  @override
   String get folderName => 'Nombre de la carpeta';
 
   @override
