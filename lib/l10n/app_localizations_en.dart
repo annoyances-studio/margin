@@ -281,6 +281,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startMinimized => 'Start minimized (in the tray)';
 
   @override
+  String get dropToAttach => 'Drop to attach to this note';
+
+  @override
+  String get dropNeedsOpenNote => 'Open a note first to attach files';
+
+  @override
   String get wordWrap => 'Word wrap';
 
   @override

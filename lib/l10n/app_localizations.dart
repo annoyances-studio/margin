@@ -626,6 +626,18 @@ abstract class AppLocalizations {
   /// **'Start minimized (in the tray)'**
   String get startMinimized;
 
+  /// Overlay shown while dragging files over the editor; the drop will attach them.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop to attach to this note'**
+  String get dropToAttach;
+
+  /// Overlay shown while dragging files when no note is open to receive them.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a note first to attach files'**
+  String get dropNeedsOpenNote;
+
   /// Settings toggle: soft-wrap long lines in the editor.
   ///
   /// In en, this message translates to:

@@ -285,6 +285,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get startMinimized => 'Iniciar minimizado (en la bandeja)';
 
   @override
+  String get dropToAttach => 'Suelta para adjuntar a esta nota';
+
+  @override
+  String get dropNeedsOpenNote =>
+      'Abre una nota primero para adjuntar archivos';
+
+  @override
   String get wordWrap => 'Ajuste de línea';
 
   @override

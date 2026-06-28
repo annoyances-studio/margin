@@ -14,6 +14,7 @@ import '../desktop/startup_service.dart';
 import 'app_controller.dart';
 import 'color_hex.dart';
 import 'settings_dialog.dart';
+import 'widgets/attach_drop_target.dart';
 import 'widgets/folder_tree.dart';
 import 'widgets/markdown_preview.dart';
 import 'widgets/note_editor_pane.dart';
@@ -466,17 +467,21 @@ class _FolioScreenState extends State<FolioScreen> {
 
   Widget _wideContent() {
     final tree = controller.tree;
-    final editor = NoteEditorPane(
-      notePath: controller.selectedNotePath,
-      body: controller.workingBody,
-      onChanged: controller.updateBody,
-      mode: controller.viewMode,
-      revision: controller.editorRevision,
-      imageBaseDir: _imageBaseDir(),
-      onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
-      onSaveAttachment: controller.saveAttachmentForCurrentNote,
-      onDownloadImage: controller.downloadImageAsAttachment,
-      wordWrap: controller.wordWrap,
+    final editor = AttachDropTarget(
+      enabled: controller.selectedNotePath != null,
+      onAttach: controller.attachToCurrentNote,
+      child: NoteEditorPane(
+        notePath: controller.selectedNotePath,
+        body: controller.workingBody,
+        onChanged: controller.updateBody,
+        mode: controller.viewMode,
+        revision: controller.editorRevision,
+        imageBaseDir: _imageBaseDir(),
+        onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
+        onSaveAttachment: controller.saveAttachmentForCurrentNote,
+        onDownloadImage: controller.downloadImageAsAttachment,
+        wordWrap: controller.wordWrap,
+      ),
     );
 
     if (!_showTree || tree == null) {

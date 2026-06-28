@@ -610,6 +610,11 @@ Smaller items to tackle later:
 - Editor styling: render table pipes `|` in a distinct color and/or bold so raw
   Markdown tables are easier to scan (partial relief until the table grid; the
   word-wrap-off + this combo covers most of the table pain).
+- Attachment polish (drag-to-attach + the attach button, in `attachToCurrentNote`):
+  (a) label dragged files `[Dragged File]` / `![Dragged File]` for parity with
+  the pasted-image `[Pasted Image]`; (b) **collision-safe names** — append a
+  timestamp like the pasted-image path so dragging the same file repeatedly
+  yields distinct attachments instead of overwriting (no silent data loss).
 - Hide the search bar until the search logic is decided. It works for file
   names but is cumbersome; keep it out of the UI until the search story
   (index scope, deep/full-text, ranking) is settled.

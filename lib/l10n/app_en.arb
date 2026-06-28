@@ -168,6 +168,11 @@
   "startMinimized": "Start minimized (in the tray)",
   "@startMinimized": { "description": "Sub-option of run-at-login: launch hidden to the tray." },
 
+  "dropToAttach": "Drop to attach to this note",
+  "@dropToAttach": { "description": "Overlay shown while dragging files over the editor; the drop will attach them." },
+  "dropNeedsOpenNote": "Open a note first to attach files",
+  "@dropNeedsOpenNote": { "description": "Overlay shown while dragging files when no note is open to receive them." },
+
   "wordWrap": "Word wrap",
   "@wordWrap": { "description": "Settings toggle: soft-wrap long lines in the editor." },
   "wordWrapSubtitle": "Off: long lines scroll sideways (better for tables)",

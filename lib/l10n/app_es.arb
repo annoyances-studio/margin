@@ -98,6 +98,8 @@
   "viewNoteSpecified": "Según la nota",
   "startAtLogin": "Iniciar Margin al iniciar sesión",
   "startMinimized": "Iniciar minimizado (en la bandeja)",
+  "dropToAttach": "Suelta para adjuntar a esta nota",
+  "dropNeedsOpenNote": "Abre una nota primero para adjuntar archivos",
   "wordWrap": "Ajuste de línea",
   "wordWrapSubtitle": "Desactivado: las líneas largas se desplazan en horizontal (mejor para tablas)"
 }
