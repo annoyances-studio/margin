@@ -57,6 +57,10 @@ class NoteEditor extends StatefulWidget {
   /// instead of soft-wrapping — easier to read wide tables and code.
   final bool wordWrap;
 
+  /// Read-only mode (browsed plain folders): the text can be selected and
+  /// copied but not edited, and "Paste as Markdown" is hidden.
+  final bool readOnly;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -68,6 +72,7 @@ class NoteEditor extends StatefulWidget {
     this.onSaveAttachment,
     this.onDownloadImage,
     this.wordWrap = true,
+    this.readOnly = false,
   });
 
   @override
@@ -251,6 +256,7 @@ class _NoteEditorState extends State<NoteEditor> {
     return TextField(
       controller: _controller,
       onChanged: widget.onChanged,
+      readOnly: widget.readOnly,
       // Ctrl/Cmd held → click cursor, signalling links are followable.
       mouseCursor: _followModifierHeld
           ? SystemMouseCursors.click
@@ -260,18 +266,21 @@ class _NoteEditorState extends State<NoteEditor> {
       textAlignVertical: TextAlignVertical.top,
       style: const TextStyle(fontSize: 15, height: 1.45),
       // Add "Paste as Markdown" to the selection toolbar alongside the
-      // default actions (which keep pasting verbatim).
+      // default actions (which keep pasting verbatim) — but not when read-only.
       contextMenuBuilder: (context, editableState) {
         final l10n = AppLocalizations.of(context);
         final items = List<ContextMenuButtonItem>.from(
           editableState.contextMenuButtonItems,
-        )..add(ContextMenuButtonItem(
+        );
+        if (!widget.readOnly) {
+          items.add(ContextMenuButtonItem(
             label: l10n.pasteAsMarkdown,
             onPressed: () {
               ContextMenuController.removeAny();
               _pasteAsMarkdown();
             },
           ));
+        }
         if (widget.onSpecialCopy != null) {
           items.add(ContextMenuButtonItem(
             label: l10n.specialCopy,

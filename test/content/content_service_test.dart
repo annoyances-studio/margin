@@ -126,6 +126,30 @@ void main() {
       expect(root.folders.single.notes, isEmpty);
     });
 
+    test('browse mode keeps root notes and hides dot-folders', () async {
+      await backend.write('overview.md', bytes('# Overview'));
+      await backend.write('Chapters/one.md', bytes('1'));
+      await backend.write('.claude/settings.local.json', bytes('{}'));
+      await backend.write('.git/config', bytes('x'));
+
+      final browse = ContentService(backend, browse: true);
+      final root = await browse.tree();
+
+      // Root-level .md shows in browse mode (the managed rule is relaxed)...
+      expect(root.notes.map((n) => n.name), ['overview.md']);
+      // ...and .claude/.git are hidden as machinery.
+      expect(root.folders.map((f) => f.name), ['Chapters']);
+    });
+
+    test('the managed tree still rejects root notes', () async {
+      await backend.write('overview.md', bytes('# Overview'));
+      await backend.write('Chapters/one.md', bytes('1'));
+
+      final root = await service.tree(); // browse: false (default)
+      expect(root.notes, isEmpty);
+      expect(root.folders.map((f) => f.name), ['Chapters']);
+    });
+
     test('nests subfolders', () async {
       await backend.write('A/properties.yaml', bytes('title: "A"'));
       await backend.write('A/B/properties.yaml', bytes('title: "B"'));

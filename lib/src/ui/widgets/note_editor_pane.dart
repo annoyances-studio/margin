@@ -44,6 +44,9 @@ class NoteEditorPane extends StatelessWidget {
   /// Whether the editor soft-wraps long lines (false = horizontal scroll).
   final bool wordWrap;
 
+  /// Read-only mode (browsed plain folders): no editing, no paste-as-markdown.
+  final bool readOnly;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
@@ -56,6 +59,7 @@ class NoteEditorPane extends StatelessWidget {
     this.onSaveAttachment,
     this.onDownloadImage,
     this.wordWrap = true,
+    this.readOnly = false,
   });
 
   @override
@@ -74,6 +78,7 @@ class NoteEditorPane extends StatelessWidget {
       onSaveAttachment: onSaveAttachment,
       onDownloadImage: onDownloadImage,
       wordWrap: wordWrap,
+      readOnly: readOnly,
     );
     final preview = MarkdownPreview(
       data: body,

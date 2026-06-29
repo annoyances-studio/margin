@@ -175,6 +175,11 @@ class AppController extends ChangeNotifier {
   /// can be revealed in the OS file manager).
   bool get isLocalFolio => _folio?.backend is LocalFolderBackend;
 
+  /// Whether the open folder is a read-only **browsed** plain folder (no
+  /// managed `properties.yaml`). The UI suppresses every mutation in this mode
+  /// so a folder Margin didn't create is never written to.
+  bool get isBrowsing => _content?.browse ?? false;
+
   /// The absolute on-disk path for a repository-relative [path], or null if the
   /// repository is not on the local filesystem.
   String? localAbsolutePath(String path) {
@@ -378,7 +383,7 @@ class AppController extends ChangeNotifier {
   /// [record] adds the Folio to the recent list; the device-notes Folio passes
   /// false (it has its own permanent landing button).
   Future<void> openPath(String path, {bool record = true}) async {
-    await open(LocalFolderBackend(path));
+    await open(LocalFolderBackend(path), browseName: p.basename(path));
     if (hasFolio) {
       await _settings.setLastFolioType('local');
       await _settings.setLastFolioPath(path);
@@ -785,14 +790,34 @@ class AppController extends ChangeNotifier {
   }
 
   /// Opens an existing repository on [backend]. Exposed for tests.
-  Future<void> open(StorageBackend backend) async {
+  ///
+  /// A folder with no `properties.yaml` is not a managed Folio — it's opened in
+  /// read-only **browse** mode (a plain folder of Markdown, e.g. one Claude
+  /// generated). [browseName] names it for the title bar.
+  Future<void> open(StorageBackend backend, {String? browseName}) async {
     await _run(() async {
-      final repo = await Folio.open(backend);
-      _adopt(repo, ContentService(backend));
-      // Clean up empty folders left behind by deletions made outside the app
-      // (e.g. a sync from another device, where the OS sync client removed the
-      // files but left the empty directory). Best-effort.
-      await _pruneEmptyFolders();
+      late final Folio repo;
+      late final ContentService content;
+      var browse = false;
+      try {
+        repo = await Folio.open(backend);
+        content = ContentService(backend);
+      } on NotAMarginFolioException {
+        // Plain folder: validate it's actually there/readable before adopting
+        // browse mode, so a missing path errors cleanly instead of leaving a
+        // half-open Folio. Synthesize properties, write nothing, prune nothing.
+        await backend.list(''); // throws if the folder is gone/unreadable
+        repo = Folio.browse(backend, name: browseName ?? 'Notes');
+        content = ContentService(backend, browse: true);
+        browse = true;
+      }
+      _adopt(repo, content);
+      if (!browse) {
+        // Clean up empty folders left behind by deletions made outside the app
+        // (e.g. a sync from another device that removed files but left the
+        // directory). Best-effort, and never in read-only browse mode.
+        await _pruneEmptyFolders();
+      }
       await _reloadTree();
       await _restoreLastNote();
     });
@@ -1164,6 +1189,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> save() async {
+    if (isBrowsing) return; // browsed folders are read-only
     if (!_dirty || _currentNote == null || _selectedNotePath == null) return;
     await _run(_flushIfDirty);
     _scheduleSync();
@@ -1204,8 +1230,11 @@ class AppController extends ChangeNotifier {
   Future<void> setViewMode(EditorViewMode mode) async {
     _viewMode = mode;
     notifyListeners();
+    // Don't persist the view in browse mode — it would write a sidecar into a
+    // folder Margin doesn't own.
     if (_viewPolicy == DefaultViewPolicy.noteSpecified &&
-        _selectedNotePath != null) {
+        _selectedNotePath != null &&
+        !isBrowsing) {
       try {
         await _content!.setNoteView(_selectedNotePath!, mode.id);
       } catch (_) {
@@ -1272,6 +1301,8 @@ class AppController extends ChangeNotifier {
   /// the root), so this is a no-op there.
   Future<void> openFolderNote(FolderNode folder) async {
     if (folder.path.isEmpty) return;
+    // Browsing is read-only: open an existing folder note, but never create one.
+    if (isBrowsing && !folder.hasFolderNote) return;
     final notePath = '${folder.path}/${ContentService.folderNoteName}';
     if (!folder.hasFolderNote) {
       await _run(() async {

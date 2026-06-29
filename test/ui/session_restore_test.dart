@@ -54,8 +54,8 @@ void main() {
     expect(await settings.getLastFolioPath(), isNull);
   });
 
-  test('restore forgets a path that is no longer a valid repository', () async {
-    await settings.setLastFolioPath(tempDir.path); // empty dir, no repo
+  test('restore forgets a path that no longer exists', () async {
+    await settings.setLastFolioPath('${tempDir.path}/gone'); // never created
     final controller = AppController(settings: settings);
     addTearDown(controller.dispose);
 
@@ -63,6 +63,20 @@ void main() {
 
     expect(controller.hasFolio, isFalse);
     expect(await settings.getLastFolioPath(), isNull);
+  });
+
+  test('restore reopens a remembered plain folder in browse mode', () async {
+    // An existing folder with no properties.yaml is no longer discarded — it
+    // reopens read-only in browse mode (same as the user opening it).
+    await settings.setLastFolioPath(tempDir.path);
+    final controller = AppController(settings: settings);
+    addTearDown(controller.dispose);
+
+    await controller.restoreLastFolio();
+
+    expect(controller.hasFolio, isTrue);
+    expect(controller.isBrowsing, isTrue);
+    expect(await settings.getLastFolioPath(), tempDir.path);
   });
 
   test('reopens the last note when it still exists', () async {

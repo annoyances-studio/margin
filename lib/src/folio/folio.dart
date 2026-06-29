@@ -62,6 +62,26 @@ class Folio {
     return Folio._(backend, properties);
   }
 
+  /// Adopts [backend] as a **browsed** folder: a plain folder of Markdown that
+  /// is not a managed Folio (it has no `properties.yaml`). Properties are
+  /// synthesized in memory and **never written**, so the folder stays exactly
+  /// as the user (or Claude) left it. Browse mode is read-only.
+  static Folio browse(StorageBackend backend, {required String name}) {
+    final now = DateTime.now().toUtc();
+    return Folio._(
+      backend,
+      FolioProperties(
+        schemaVersion: FolioProperties.currentSchemaVersion,
+        // Transient id — browse mode has no cache/sync that needs a stable one.
+        id: 'browse',
+        name: name,
+        created: now,
+        updated: now,
+        appVersion: marginAppVersion,
+      ),
+    );
+  }
+
   /// Creates a new Folio on [backend], writing a fresh root
   /// `properties.yaml` with a generated id.
   ///

@@ -114,13 +114,13 @@ class _FolioScreenState extends State<FolioScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: _viewModeControl(),
           ),
-          if (controller.selectedNotePath != null)
+          if (controller.selectedNotePath != null && !controller.isBrowsing)
             IconButton(
               tooltip: _l10n.attachFile,
               icon: const Icon(Icons.attach_file),
               onPressed: _attachFile,
             ),
-          _saveAction(),
+          if (!controller.isBrowsing) _saveAction(),
           if (controller.syncError != null) _syncRetryAction(),
           _overflowMenu(),
         ],
@@ -223,6 +223,7 @@ class _FolioScreenState extends State<FolioScreen> {
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
           onDownloadImage: controller.downloadImageAsAttachment,
           wordWrap: controller.wordWrap,
+          readOnly: controller.isBrowsing,
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
@@ -468,7 +469,7 @@ class _FolioScreenState extends State<FolioScreen> {
   Widget _wideContent() {
     final tree = controller.tree;
     final editor = AttachDropTarget(
-      enabled: controller.selectedNotePath != null,
+      enabled: controller.selectedNotePath != null && !controller.isBrowsing,
       onAttach: controller.attachToCurrentNote,
       child: NoteEditorPane(
         notePath: controller.selectedNotePath,
@@ -481,6 +482,7 @@ class _FolioScreenState extends State<FolioScreen> {
         onSaveAttachment: controller.saveAttachmentForCurrentNote,
         onDownloadImage: controller.downloadImageAsAttachment,
         wordWrap: controller.wordWrap,
+        readOnly: controller.isBrowsing,
       ),
     );
 
@@ -532,6 +534,7 @@ class _FolioScreenState extends State<FolioScreen> {
                       scrollable ? const AlwaysScrollableScrollPhysics() : null,
                   canRevealInFileManager:
                       canRevealInFileManager && controller.isLocalFolio,
+                  readOnly: controller.isBrowsing,
                   onNoteTap: (note) {
                     controller.selectNote(note);
                     onNoteSelected?.call();
@@ -754,12 +757,13 @@ class _FolioScreenState extends State<FolioScreen> {
                 if (abs != null) revealInFileManager(abs);
               },
             ),
-          IconButton(
-            tooltip: _l10n.newTopLevelFolder,
-            icon: const Icon(Icons.create_new_folder_outlined),
-            visualDensity: VisualDensity.compact,
-            onPressed: _promptNewRootFolder,
-          ),
+          if (!controller.isBrowsing)
+            IconButton(
+              tooltip: _l10n.newTopLevelFolder,
+              icon: const Icon(Icons.create_new_folder_outlined),
+              visualDensity: VisualDensity.compact,
+              onPressed: _promptNewRootFolder,
+            ),
         ],
       ),
     );

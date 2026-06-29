@@ -31,6 +31,10 @@ class FolderTreeView extends StatelessWidget {
 
   /// Whether to offer "Open in file manager" (local desktop repositories only).
   final bool canRevealInFileManager;
+
+  /// Read-only mode (browsed plain folder): the per-item menus offer only
+  /// non-mutating actions (reveal in file manager), never new/rename/delete.
+  final bool readOnly;
   final ValueChanged<NoteNode> onNoteTap;
   final void Function(FolderNode folder, TreeAction action) onFolderAction;
   final void Function(NoteNode note, TreeAction action) onNoteAction;
@@ -53,6 +57,7 @@ class FolderTreeView extends StatelessWidget {
     required this.onOpenFolderNote,
     this.selectedNotePath,
     this.canRevealInFileManager = false,
+    this.readOnly = false,
     this.physics,
   });
 
@@ -116,21 +121,30 @@ class FolderTreeView extends StatelessWidget {
   }
 
   List<PopupMenuEntry<TreeAction>> _folderMenuItems(AppLocalizations l10n) => [
-        PopupMenuItem(value: TreeAction.newNote, child: Text(l10n.newNote)),
-        PopupMenuItem(
-            value: TreeAction.newSubfolder, child: Text(l10n.newSubfolder)),
-        PopupMenuItem(
-            value: TreeAction.renameFolder, child: Text(l10n.renameEllipsis)),
-        PopupMenuItem(
-            value: TreeAction.setColor, child: Text(l10n.setColorEllipsis)),
-        if (canRevealInFileManager)
+        // Browsed plain folders are read-only: offer only reveal-in-manager.
+        if (readOnly) ...[
+          if (canRevealInFileManager)
+            PopupMenuItem(
+              value: TreeAction.openInFileManager,
+              child: Text(l10n.openInFileManager),
+            ),
+        ] else ...[
+          PopupMenuItem(value: TreeAction.newNote, child: Text(l10n.newNote)),
           PopupMenuItem(
-            value: TreeAction.openInFileManager,
-            child: Text(l10n.openInFileManager),
-          ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-            value: TreeAction.deleteFolder, child: Text(l10n.deleteFolder)),
+              value: TreeAction.newSubfolder, child: Text(l10n.newSubfolder)),
+          PopupMenuItem(
+              value: TreeAction.renameFolder, child: Text(l10n.renameEllipsis)),
+          PopupMenuItem(
+              value: TreeAction.setColor, child: Text(l10n.setColorEllipsis)),
+          if (canRevealInFileManager)
+            PopupMenuItem(
+              value: TreeAction.openInFileManager,
+              child: Text(l10n.openInFileManager),
+            ),
+          const PopupMenuDivider(),
+          PopupMenuItem(
+              value: TreeAction.deleteFolder, child: Text(l10n.deleteFolder)),
+        ],
       ];
 
   List<PopupMenuEntry<TreeAction>> _noteMenuItems(AppLocalizations l10n) => [
@@ -139,9 +153,10 @@ class FolderTreeView extends StatelessWidget {
             value: TreeAction.openContainingFolder,
             child: Text(l10n.openContainingFolder),
           ),
-        PopupMenuItem(value: TreeAction.deleteNote, child: Text(l10n.deleteNote)),
+        if (!readOnly)
+          PopupMenuItem(
+              value: TreeAction.deleteNote, child: Text(l10n.deleteNote)),
       ];
-
 }
 
 /// A folder row with an explicit expand/collapse chevron beside its actions

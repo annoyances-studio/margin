@@ -25,7 +25,16 @@ class ContentService {
   final StorageBackend backend;
   final ContentCodec codec;
 
-  const ContentService(this.backend, {this.codec = const IdentityCodec()});
+  /// Browse mode: a plain (non-managed) folder opened read-only. Relaxes the
+  /// "no `.md` at the root" rule (foreign folders keep files at the top level)
+  /// and is the signal the rest of the app uses to suppress any writes.
+  final bool browse;
+
+  const ContentService(
+    this.backend, {
+    this.codec = const IdentityCodec(),
+    this.browse = false,
+  });
 
   /// Extension that identifies note files.
   static const String noteExtension = '.md';
@@ -80,6 +89,8 @@ class ContentService {
       }
       if (entry.isDirectory) {
         if (entry.name == attachmentsDirName) continue;
+        // Hide machinery/dotfolders (.claude, .git, …) — never content.
+        if (entry.name.startsWith('.')) continue;
         final child = await _buildFolder(entry.path, entry.name);
         if (child != null) folders.add(child);
       } else {
@@ -88,9 +99,13 @@ class ContentService {
           continue;
         }
         if (!entry.name.toLowerCase().endsWith(noteExtension)) continue;
-        if (isRoot) continue; // no notes at the root
-        // A folder note is surfaced via the folder, not listed as a child note.
-        if (entry.name.toLowerCase() == folderNoteName.toLowerCase()) {
+        // Managed Folios forbid notes at the root; a browsed plain folder keeps
+        // its top-level files (overview.md, README.md, …).
+        if (isRoot && !browse) continue;
+        // A folder note is surfaced via the folder, not listed as a child note
+        // (but the root has no folder tile, so a root README stays a normal
+        // note in browse mode).
+        if (!isRoot && entry.name.toLowerCase() == folderNoteName.toLowerCase()) {
           hasFolderNote = true;
           continue;
         }
