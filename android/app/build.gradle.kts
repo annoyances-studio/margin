@@ -6,7 +6,10 @@ plugins {
 
 android {
     namespace = "com.lordofthedummies.margin"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned above flutter.compileSdkVersion: several plugins (file_selector,
+    // flutter_secure_storage, shared_preferences, url_launcher — bumped when
+    // desktop_drop was added) require compiling against Android SDK 36.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

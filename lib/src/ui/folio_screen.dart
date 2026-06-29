@@ -114,6 +114,12 @@ class _FolioScreenState extends State<FolioScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: _viewModeControl(),
           ),
+          if (controller.selectedNotePath != null)
+            IconButton(
+              tooltip: _l10n.backlinks,
+              icon: const Icon(Icons.hub_outlined),
+              onPressed: () => _showBacklinks(context),
+            ),
           if (controller.selectedNotePath != null && !controller.isBrowsing)
             IconButton(
               tooltip: _l10n.attachFile,
@@ -872,6 +878,56 @@ class _FolioScreenState extends State<FolioScreen> {
       case TreeAction.deleteNote:
         break; // not applicable to folders
     }
+  }
+
+  /// Shows the notes that link to the open note (incoming references); tapping
+  /// one navigates to it.
+  Future<void> _showBacklinks(BuildContext context) async {
+    final notePath = controller.selectedNotePath;
+    if (notePath == null) return;
+    final links = await controller.backlinksFor(notePath);
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.backlinks),
+          content: SizedBox(
+            width: 360,
+            child: links.isEmpty
+                ? Text(l10n.noBacklinks)
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 360),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final n in links)
+                          ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.description_outlined),
+                            title: Text(n.title),
+                            subtitle: n.path.contains('/')
+                                ? Text(n.path.substring(0, n.path.lastIndexOf('/')))
+                                : null,
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              controller.selectNote(n);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.close),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _handleNoteAction(NoteNode note, TreeAction action) async {

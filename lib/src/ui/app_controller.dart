@@ -34,6 +34,7 @@ import '../sync/sync_state_store.dart';
 import '../sync/transient_error.dart';
 import 'clipboard_service.dart';
 import 'editor_view_mode.dart';
+import 'widgets/markdown_editing_controller.dart' show findMarkdownLinks;
 import 'link_target.dart';
 
 /// Drives the UI: owns the open repository, the folder tree, the selected note
@@ -821,7 +822,25 @@ class AppController extends ChangeNotifier {
       }
       await _reloadTree();
       await _restoreLastNote();
+      // A freshly opened browsed folder lands on its overview (CLAUDE.md /
+      // README.md at the root) so the reader gets oriented.
+      if (browse && _selectedNotePath == null) await _selectOverviewNote();
     });
+  }
+
+  /// Selects a browsed folder's overview note — root `CLAUDE.md`, else root
+  /// `README.md` — when one exists. Best-effort.
+  Future<void> _selectOverviewNote() async {
+    final tree = _tree;
+    if (tree == null) return;
+    for (final wanted in const ['claude.md', 'readme.md']) {
+      for (final note in tree.notes) {
+        if (note.name.toLowerCase() == wanted) {
+          await selectNote(note);
+          return;
+        }
+      }
+    }
   }
 
   /// Creates a new repository on [backend]. Exposed for tests.
@@ -1021,8 +1040,13 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Builds the in-memory search index from the sidecars, once, until the tree
-  /// changes (which nulls it). Tolerates unreadable sidecars (uses the filename).
+  /// Builds the in-memory search index once, until the tree changes (which
+  /// nulls it).
+  ///
+  /// Managed Folios index the tiny sidecars (title/tags/file name) — fast, no
+  /// note bodies read. Browsed plain folders have no sidecars, so they index
+  /// the **full text** of each note (the "deep search" you need to find a note
+  /// by its content). Tolerates unreadable files (falls back to the file name).
   Future<void> _ensureSearchIndex() async {
     if (_searchIndex != null) return;
     final tree = _tree;
@@ -1031,23 +1055,33 @@ class AppController extends ChangeNotifier {
       _searchIndex = const [];
       return;
     }
+    final deep = content.browse;
     final entries = <_NoteIndexEntry>[];
     Future<void> walk(FolderNode folder) async {
       for (final note in folder.notes) {
         var title = note.title;
         var tags = const <String>[];
-        try {
-          final props = await content.readNoteProperties(note.path);
-          if (props.title != null && props.title!.isNotEmpty) {
-            title = props.title!;
+        var body = '';
+        if (deep) {
+          try {
+            body = (await content.readNote(note.path)).body;
+          } catch (_) {
+            // Unreadable note -> file name only.
           }
-          tags = props.tags;
-        } catch (_) {
-          // Unreadable sidecar -> fall back to the file-name title.
+        } else {
+          try {
+            final props = await content.readNoteProperties(note.path);
+            if (props.title != null && props.title!.isNotEmpty) {
+              title = props.title!;
+            }
+            tags = props.tags;
+          } catch (_) {
+            // Unreadable sidecar -> fall back to the file-name title.
+          }
         }
         entries.add(_NoteIndexEntry(
           note: note,
-          haystack: '$title ${tags.join(' ')} ${note.name}'.toLowerCase(),
+          haystack: '$title ${tags.join(' ')} ${note.name} $body'.toLowerCase(),
         ));
       }
       for (final sub in folder.folders) {
@@ -1175,38 +1209,97 @@ class AppController extends ChangeNotifier {
       return;
     }
 
-    // Decode percent-escapes (%20 → space); fall back to literal on malformed.
-    String decoded;
-    try {
-      decoded = Uri.decodeFull(raw);
-    } catch (_) {
-      decoded = raw;
-    }
-    // Drop any #anchor for path resolution.
-    final hash = decoded.indexOf('#');
-    final pathPart = hash >= 0 ? decoded.substring(0, hash) : decoded;
-
     final folder = _currentNoteFolder();
-    if (folder != null && pathPart.isNotEmpty) {
-      final rel = p.posix.normalize(
-          folder.isEmpty ? pathPart : p.posix.join(folder, pathPart));
+    final rel = folder == null ? null : _resolveNoteLink(folder, raw);
+    if (rel != null) {
       // A sibling note we can open in-app (stays inside the Folio).
-      if (!rel.startsWith('..') &&
-          rel.toLowerCase().endsWith(ContentService.noteExtension)) {
-        try {
-          if (await _folio!.backend.exists(rel)) {
-            await selectNote(NoteNode(path: rel, name: rel.split('/').last));
-            return;
-          }
-        } catch (_) {
-          // Fall through to opening with the OS.
+      try {
+        if (await _folio!.backend.exists(rel)) {
+          await selectNote(NoteNode(path: rel, name: rel.split('/').last));
+          return;
         }
+      } catch (_) {
+        // Fall through to opening with the OS.
       }
     }
 
     // Not an in-Folio note: hand the local file to the OS.
     final resolved = resolveLinkTarget(raw, localAbsolutePath(folder ?? ''));
     if (resolved != null) await openWithDefaultApp(resolved);
+  }
+
+  /// Resolves a Markdown link [target] from a note in [fromFolder] (repo-
+  /// relative folder) to the repo-relative path of an in-Folio `.md` note, or
+  /// null if it isn't one (external URL, a non-`.md` file, or it escapes the
+  /// Folio root). Used by both link-following and backlink building.
+  String? _resolveNoteLink(String fromFolder, String target) {
+    final raw = target.trim();
+    if (raw.isEmpty || isExternalUrl(raw)) return null;
+    String decoded;
+    try {
+      decoded = Uri.decodeFull(raw); // %20 → space
+    } catch (_) {
+      decoded = raw;
+    }
+    final hash = decoded.indexOf('#'); // drop any #anchor
+    final pathPart = hash >= 0 ? decoded.substring(0, hash) : decoded;
+    if (pathPart.isEmpty) return null;
+    final rel = p.posix
+        .normalize(fromFolder.isEmpty ? pathPart : p.posix.join(fromFolder, pathPart));
+    if (rel.startsWith('..') ||
+        !rel.toLowerCase().endsWith(ContentService.noteExtension)) {
+      return null;
+    }
+    return rel;
+  }
+
+  /// Reverse link graph (target note path -> notes that link to it), built lazily
+  /// and invalidated on tree change. Null until first built.
+  Map<String, List<NoteNode>>? _backlinks;
+
+  /// The notes that link to [notePath] (a relative `.md` link resolving to it).
+  /// Builds the graph on first use; cached until the tree changes.
+  Future<List<NoteNode>> backlinksFor(String notePath) async {
+    await _ensureBacklinks();
+    return _backlinks?[notePath] ?? const [];
+  }
+
+  Future<void> _ensureBacklinks() async {
+    if (_backlinks != null) return;
+    final tree = _tree;
+    final content = _content;
+    if (tree == null || content == null) {
+      _backlinks = const {};
+      return;
+    }
+    final map = <String, List<NoteNode>>{};
+    Future<void> walk(FolderNode folder) async {
+      for (final note in folder.notes) {
+        final String body;
+        try {
+          body = (await content.readNote(note.path)).body;
+        } catch (_) {
+          continue; // unreadable -> contributes no links
+        }
+        final from = note.path.contains('/')
+            ? note.path.substring(0, note.path.lastIndexOf('/'))
+            : '';
+        final seen = <String>{};
+        for (final link in findMarkdownLinks(body)) {
+          final target = _resolveNoteLink(from, link.target);
+          // De-dupe repeated links to the same note; skip self-links.
+          if (target != null && target != note.path && seen.add(target)) {
+            (map[target] ??= <NoteNode>[]).add(note);
+          }
+        }
+      }
+      for (final sub in folder.folders) {
+        await walk(sub);
+      }
+    }
+
+    await walk(tree);
+    _backlinks = map;
   }
 
   /// Reads a note-relative image source from disk (for HTML embedding); null for
@@ -1451,6 +1544,7 @@ class AppController extends ChangeNotifier {
   Future<void> _reloadTree() async {
     _tree = await _content!.tree();
     _searchIndex = null; // notes changed -> rebuild the search index on demand
+    _backlinks = null; // and the backlink graph
   }
 
   /// Reselects the last opened note if it still exists; otherwise leaves no

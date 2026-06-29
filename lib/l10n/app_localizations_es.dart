@@ -230,6 +230,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get openFolderNote => 'Nota de carpeta (README.md)';
 
   @override
+  String get backlinks => 'Retroenlaces';
+
+  @override
+  String get noBacklinks => 'Todavía ninguna nota enlaza aquí.';
+
+  @override
   String get folderName => 'Nombre de la carpeta';
 
   @override

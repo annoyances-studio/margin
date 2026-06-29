@@ -228,6 +228,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openFolderNote => 'Folder note (README.md)';
 
   @override
+  String get backlinks => 'Backlinks';
+
+  @override
+  String get noBacklinks => 'No notes link here yet.';
+
+  @override
   String get folderName => 'Folder name';
 
   @override

@@ -71,6 +71,17 @@ void main() {
     expect(controller.viewMode, EditorViewMode.preview);
   });
 
+  test('opening a browsed folder lands on its overview (CLAUDE.md/README.md)',
+      () async {
+    await write('CLAUDE.md', '# Project');
+    await write('README.md', '# Readme');
+    await write('Chapters/one.md', '# One');
+    await controller.openPath(temp.path);
+
+    // CLAUDE.md wins over README.md as the overview.
+    expect(controller.selectedNotePath, 'CLAUDE.md');
+  });
+
   test('a relative .md link navigates to the sibling note in-app', () async {
     await write('Chapters/one.md', '# One\n\nSee [two](two.md) and [up](../top.md).');
     await write('Chapters/two.md', '# Two');
@@ -99,6 +110,31 @@ void main() {
     // Parent-relative link from two.md back up to the root note.
     await controller.openLink('../top.md');
     expect(controller.selectedNotePath, 'top.md');
+  });
+
+  test('backlinks lists the notes that link to the open note', () async {
+    await write('Chapters/one.md', '# One\n\nSee [hero](../people/hero.md).');
+    await write('Chapters/two.md', '# Two\n\nAlso [hero](../people/hero.md).');
+    await write('people/hero.md', '# Hero');
+    await write('people/other.md', '# Other'); // links to nothing
+    await controller.openPath(temp.path);
+
+    final back = await controller.backlinksFor('people/hero.md');
+    expect(back.map((n) => n.path).toSet(),
+        {'Chapters/one.md', 'Chapters/two.md'});
+
+    // A note nobody references has no backlinks.
+    expect(await controller.backlinksFor('people/other.md'), isEmpty);
+  });
+
+  test('deep (full-text) search matches note body content in browse mode',
+      () async {
+    await write('a.md', '# Alpha\n\nThe harbor city of Carsonne is busy.');
+    await write('b.md', '# Beta\n\nMountains and rivers.');
+    await controller.openPath(temp.path);
+
+    await controller.setSearchQuery('harbor city');
+    expect(controller.searchResults.map((n) => n.name), ['a.md']);
   });
 
   test('browse mode writes nothing to the folder (no sidecars/properties)',

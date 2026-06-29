@@ -79,6 +79,8 @@
   "openInFileManager": "Abrir en el explorador de archivos",
   "openContainingFolder": "Abrir la carpeta que la contiene",
   "openFolderNote": "Nota de carpeta (README.md)",
+  "backlinks": "Retroenlaces",
+  "noBacklinks": "Todavía ninguna nota enlaza aquí.",
   "folderName": "Nombre de la carpeta",
   "folderActions": "Acciones de carpeta",
   "noteActions": "Acciones de nota",

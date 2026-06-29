@@ -530,6 +530,18 @@ abstract class AppLocalizations {
   /// **'Folder note (README.md)'**
   String get openFolderNote;
 
+  /// App-bar action / dialog title: notes that link to the open note.
+  ///
+  /// In en, this message translates to:
+  /// **'Backlinks'**
+  String get backlinks;
+
+  /// Shown in the backlinks dialog when nothing references the open note.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes link here yet.'**
+  String get noBacklinks;
+
   /// No description provided for @folderName.
   ///
   /// In en, this message translates to:
