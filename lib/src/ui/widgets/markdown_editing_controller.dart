@@ -20,10 +20,14 @@ class MarkdownEditingController extends TextEditingController {
     required bool withComposing,
   }) {
     final base = style ?? DefaultTextStyle.of(context).style;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return buildMarkdownTextSpan(
       text,
       base,
       linkColor: Theme.of(context).colorScheme.primary,
+      // Orange table pipes stand out from blue links and read well on both
+      // backgrounds (lighter on dark, deeper on light).
+      tableColor: dark ? const Color(0xFFFFB74D) : const Color(0xFFE65100),
     );
   }
 }
@@ -86,8 +90,14 @@ List<MarkdownLink> findMarkdownLinks(String text) => [
 /// Invariant: the concatenation of every child span's text equals [text]
 /// exactly (markers included), so the [TextField]'s cursor and selection stay
 /// correct. Marker characters are dimmed; the content they wrap is styled.
-TextSpan buildMarkdownTextSpan(String text, TextStyle base, {Color? linkColor}) {
+TextSpan buildMarkdownTextSpan(
+  String text,
+  TextStyle base, {
+  Color? linkColor,
+  Color? tableColor,
+}) {
   final link = linkColor ?? const Color(0xFF1565C0);
+  final pipe = tableColor ?? const Color(0xFFE65100);
   final children = <InlineSpan>[];
   final lines = text.split('\n');
   var fenced = false;
@@ -107,13 +117,57 @@ TextSpan buildMarkdownTextSpan(String text, TextStyle base, {Color? linkColor}) 
     }
 
     final lineStyle = _blockStyle(line, base);
-    _appendInlineSpans(children, line, lineStyle, link);
+    if (_isTableRow(line)) {
+      _appendTableRow(children, line, lineStyle, link, pipe);
+    } else {
+      _appendInlineSpans(children, line, lineStyle, link);
+    }
     if (suffix.isNotEmpty) {
       children.add(TextSpan(text: suffix, style: lineStyle));
     }
   }
 
   return TextSpan(style: base, children: children);
+}
+
+/// Whether [line] looks like a GFM table row — conventionally each row starts
+/// with a pipe (`| a | b |`). A strong, low-false-positive signal that keeps
+/// stray prose pipes ("rock | roll") from being colored.
+bool _isTableRow(String line) => line.trimLeft().startsWith('|');
+
+/// Emits a table row with its `|` separators highlighted ([pipeColor] + bold)
+/// so the grid stands out, while cell text still gets normal inline styling
+/// (links keep [linkColor]). Preserves the exact text (every character ends up
+/// in some span).
+void _appendTableRow(
+  List<InlineSpan> out,
+  String line,
+  TextStyle lineStyle,
+  Color linkColor,
+  Color pipeColor,
+) {
+  final pipeStyle = lineStyle.copyWith(
+    color: pipeColor,
+    fontWeight: FontWeight.bold,
+  );
+  var i = 0;
+  while (i < line.length) {
+    if (line[i] == '|') {
+      var j = i;
+      while (j < line.length && line[j] == '|') {
+        j++;
+      }
+      out.add(TextSpan(text: line.substring(i, j), style: pipeStyle));
+      i = j;
+    } else {
+      var j = i;
+      while (j < line.length && line[j] != '|') {
+        j++;
+      }
+      _appendInlineSpans(out, line.substring(i, j), lineStyle, linkColor);
+      i = j;
+    }
+  }
 }
 
 /// Determines the per-line block style (headings, block quotes, else base).

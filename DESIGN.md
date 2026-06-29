@@ -607,9 +607,16 @@ Smaller items to tackle later:
   open note's breadcrumb into the OS window title (currently just "Margin");
   move the folder expand/collapse chevron to the *left* of the name (less busy,
   symmetric) rather than beside the ⋮ menu.
-- Editor styling: render table pipes `|` in a distinct color and/or bold so raw
-  Markdown tables are easier to scan (partial relief until the table grid; the
-  word-wrap-off + this combo covers most of the table pain).
+- Editor styling: table pipes `|` are now bold + orange (with word-wrap-off)
+  — **done**, and in daily use this + word-wrap covers the table pain well, so
+  the editable **table grid is parked** (revisit only if a real need shows up).
+- Configurable colors / editable themes (later): the editor accent colors
+  (links blue, table pipes orange) are hardcoded; expose them through a theme
+  the user can edit. Foundation for broader theming. Includes: a **theme-mode
+  switch** (System / Dark / Light) instead of always following the OS; and
+  optional **per-Folio themes** via a `theme.yaml` in the Folio, so different
+  Folios can carry different accent colors as a subtle "which Folio am I in"
+  cue.
 - Attachment label polish: dragged files insert `![]()` / `[name]()`; give
   them a `[Dragged File]` label for parity with the pasted-image `[Pasted
   Image]`. (Collision-safety is already handled — `addAttachment` de-duplicates

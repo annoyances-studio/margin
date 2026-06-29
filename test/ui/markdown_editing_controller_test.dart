@@ -54,6 +54,8 @@ void main() {
         'an image ![alt](pics/a.png) here',
         'empty target []() and no-alt ![](b.jpg)',
         'two [one](a) and [two](b) links',
+        '| Name | Role |\n| --- | --- |\n| Yuu | lead |',
+        '| **bold cell** | [link](u) |',
       ];
       for (final sample in samples) {
         final span = buildMarkdownTextSpan(sample, base);
@@ -108,6 +110,34 @@ void main() {
       // The URL/markers are not painted in the link colour.
       final url = _leaves(span).where((e) => e.$1.contains('https://x.y'));
       expect(url.every((e) => e.$2?.color != linkColor), isTrue);
+    });
+
+    test('table pipes use the table color + bold; cell links keep link color',
+        () {
+      const linkColor = Color(0xFF1565C0);
+      const tableColor = Color(0xFFE65100);
+      final span = buildMarkdownTextSpan(
+        '| [docs](u) | Role |',
+        base,
+        linkColor: linkColor,
+        tableColor: tableColor,
+      );
+      final pipes = _leaves(span).where((e) =>
+          e.$1.contains('|') &&
+          e.$2?.color == tableColor &&
+          e.$2?.fontWeight == FontWeight.bold);
+      expect(pipes, isNotEmpty);
+      // A link inside a cell still uses the (distinct) link color.
+      final link = _leaves(span).where((e) => e.$1 == 'docs');
+      expect(link.every((e) => e.$2?.color == linkColor), isTrue);
+    });
+
+    test('a lone prose pipe is not treated as a table', () {
+      const tableColor = Color(0xFFE65100);
+      final span = buildMarkdownTextSpan('rock | roll music', base,
+          tableColor: tableColor);
+      // No leading pipe → not a table row → no table-colored pipe.
+      expect(_leaves(span).where((e) => e.$2?.color == tableColor), isEmpty);
     });
 
     test('asterisks inside a link target are not treated as italic', () {
