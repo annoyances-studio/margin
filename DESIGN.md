@@ -603,6 +603,8 @@ Smaller items to tackle later:
 - Live tree refresh when files change on disk externally.
 - Quick word-wrap toggle reachable from the editor toolbar (not just Settings),
   for flipping it per-note while reading wide tables.
+- Resizable tree panel: a draggable divider to set the sidebar width (clamped
+  to a sensible min/max), persisted like the other device-local prefs.
 - Cosmetic polish (parked): smaller breadcrumb font in the app bar; mirror the
   open note's breadcrumb into the OS window title (currently just "Margin");
   move the folder expand/collapse chevron to the *left* of the name (less busy,

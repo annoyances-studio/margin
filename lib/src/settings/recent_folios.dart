@@ -4,9 +4,9 @@
 
 import 'dart:convert';
 
-/// How many recent Folios the app remembers. Deliberately 1 for now — the
-/// storage and UI are list-shaped so raising this is a one-line change.
-const int kMaxRecentFolios = 1;
+/// How many recent Folios the app remembers — in practice a "quick Folio
+/// switch" list on the landing screen.
+const int kMaxRecentFolios = 8;
 
 /// A remembered way back into a Folio — everything needed to reconnect
 /// *except* secrets (WebDAV passwords and OAuth tokens stay in the OS

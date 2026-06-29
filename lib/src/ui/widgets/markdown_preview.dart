@@ -29,12 +29,17 @@ class MarkdownPreview extends StatelessWidget {
   /// Opens the formatted-copy chooser ("Special Copy"). Null hides the item.
   final VoidCallback? onSpecialCopy;
 
+  /// Follows a tapped link [target] (a sibling `.md` opens in-app, else via the
+  /// OS). When null, falls back to opening the resolved target directly.
+  final void Function(String target)? onOpenLink;
+
   const MarkdownPreview({
     super.key,
     required this.data,
     this.imageBaseDir,
     this.physics,
     this.onSpecialCopy,
+    this.onOpenLink,
   });
 
   @override
@@ -107,6 +112,10 @@ class MarkdownPreview extends StatelessWidget {
 
   void _openLink(String? href) {
     if (href == null) return;
+    if (onOpenLink != null) {
+      onOpenLink!(href);
+      return;
+    }
     final target = resolveLinkTarget(href, imageBaseDir);
     if (target != null) openWithDefaultApp(target);
   }

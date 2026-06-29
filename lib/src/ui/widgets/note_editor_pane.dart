@@ -47,6 +47,9 @@ class NoteEditorPane extends StatelessWidget {
   /// Read-only mode (browsed plain folders): no editing, no paste-as-markdown.
   final bool readOnly;
 
+  /// Follows a link target (sibling `.md` in-app, else via the OS).
+  final void Function(String target)? onOpenLink;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
@@ -60,6 +63,7 @@ class NoteEditorPane extends StatelessWidget {
     this.onDownloadImage,
     this.wordWrap = true,
     this.readOnly = false,
+    this.onOpenLink,
   });
 
   @override
@@ -79,11 +83,13 @@ class NoteEditorPane extends StatelessWidget {
       onDownloadImage: onDownloadImage,
       wordWrap: wordWrap,
       readOnly: readOnly,
+      onOpenLink: onOpenLink,
     );
     final preview = MarkdownPreview(
       data: body,
       imageBaseDir: imageBaseDir,
       onSpecialCopy: onSpecialCopy,
+      onOpenLink: onOpenLink,
     );
 
     switch (mode) {

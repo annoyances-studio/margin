@@ -61,6 +61,10 @@ class NoteEditor extends StatefulWidget {
   /// copied but not edited, and "Paste as Markdown" is hidden.
   final bool readOnly;
 
+  /// Follows a link [target] (a sibling `.md` opens in-app, else via the OS).
+  /// When null, the editor falls back to opening the resolved target directly.
+  final void Function(String target)? onOpenLink;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -73,6 +77,7 @@ class NoteEditor extends StatefulWidget {
     this.onDownloadImage,
     this.wordWrap = true,
     this.readOnly = false,
+    this.onOpenLink,
   });
 
   @override
@@ -174,6 +179,10 @@ class _NoteEditorState extends State<NoteEditor> {
   }
 
   void _openLink(MarkdownLink link) {
+    if (widget.onOpenLink != null) {
+      widget.onOpenLink!(link.target);
+      return;
+    }
     final target = resolveLinkTarget(link.target, widget.imageBaseDir);
     if (target != null && canOpenTargets) openWithDefaultApp(target);
   }
@@ -367,7 +376,11 @@ class _NoteEditorState extends State<NoteEditor> {
             left: 8,
             right: 8,
             bottom: 8,
-            child: _LinkAffordance(link: link, baseDir: widget.imageBaseDir),
+            child: _LinkAffordance(
+              link: link,
+              baseDir: widget.imageBaseDir,
+              onOpenLink: widget.onOpenLink,
+            ),
           ),
       ],
     );
@@ -383,11 +396,12 @@ class _NoteEditorState extends State<NoteEditor> {
 class _LinkAffordance extends StatelessWidget {
   final MarkdownLink link;
   final String? baseDir;
+  final void Function(String target)? onOpenLink;
 
   /// Height reserved for an image preview — ~30% taller than the plain row.
   static const double _imageHeight = 72;
 
-  const _LinkAffordance({required this.link, this.baseDir});
+  const _LinkAffordance({required this.link, this.baseDir, this.onOpenLink});
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +457,9 @@ class _LinkAffordance extends StatelessWidget {
                 ),
               if (canOpen)
                 TextButton.icon(
-                  onPressed: () => openWithDefaultApp(resolved),
+                  onPressed: () => onOpenLink != null
+                      ? onOpenLink!(link.target)
+                      : openWithDefaultApp(resolved),
                   icon: const Icon(Icons.open_in_new, size: 18),
                   label: Text(l10n.open),
                 ),

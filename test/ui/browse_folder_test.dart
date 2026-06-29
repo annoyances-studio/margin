@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:margin/src/content/tree_node.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/editor_view_mode.dart';
 
@@ -60,6 +61,44 @@ void main() {
     await controller.openPath(temp.path);
     expect(controller.hasFolio, isTrue);
     expect(controller.isBrowsing, isFalse);
+  });
+
+  test('browse mode opens notes in preview by default', () async {
+    await write('overview.md', '# Overview');
+    await controller.openPath(temp.path);
+    await controller.selectNote(
+        controller.tree!.notes.firstWhere((n) => n.name == 'overview.md'));
+    expect(controller.viewMode, EditorViewMode.preview);
+  });
+
+  test('a relative .md link navigates to the sibling note in-app', () async {
+    await write('Chapters/one.md', '# One\n\nSee [two](two.md) and [up](../top.md).');
+    await write('Chapters/two.md', '# Two');
+    await write('top.md', '# Top');
+    await controller.openPath(temp.path);
+
+    NoteNode find(String name) {
+      NoteNode? hit;
+      void walk(FolderNode f) {
+        for (final n in f.notes) {
+          if (n.name == name) hit = n;
+        }
+        f.folders.forEach(walk);
+      }
+
+      walk(controller.tree!);
+      return hit!;
+    }
+
+    await controller.selectNote(find('one.md'));
+
+    // Sibling link (same folder).
+    await controller.openLink('two.md');
+    expect(controller.selectedNotePath, 'Chapters/two.md');
+
+    // Parent-relative link from two.md back up to the root note.
+    await controller.openLink('../top.md');
+    expect(controller.selectedNotePath, 'top.md');
   });
 
   test('browse mode writes nothing to the folder (no sidecars/properties)',

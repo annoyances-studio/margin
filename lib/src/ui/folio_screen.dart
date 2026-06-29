@@ -224,6 +224,7 @@ class _FolioScreenState extends State<FolioScreen> {
           onDownloadImage: controller.downloadImageAsAttachment,
           wordWrap: controller.wordWrap,
           readOnly: controller.isBrowsing,
+          onOpenLink: controller.openLink,
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
@@ -233,6 +234,7 @@ class _FolioScreenState extends State<FolioScreen> {
                   imageBaseDir: _imageBaseDir(),
                   physics: const AlwaysScrollableScrollPhysics(),
                   onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
+                  onOpenLink: controller.openLink,
                 ),
               ),
       ],
@@ -483,6 +485,7 @@ class _FolioScreenState extends State<FolioScreen> {
         onDownloadImage: controller.downloadImageAsAttachment,
         wordWrap: controller.wordWrap,
         readOnly: controller.isBrowsing,
+        onOpenLink: controller.openLink,
       ),
     );
 

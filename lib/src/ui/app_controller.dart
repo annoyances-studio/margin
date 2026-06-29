@@ -15,6 +15,7 @@ import '../content/content_service.dart';
 import '../content/markdown_convert.dart';
 import '../content/tree_node.dart';
 import '../credentials/credential_store.dart';
+import '../desktop/file_reveal.dart';
 import '../folio/note.dart';
 import '../folio/note_properties.dart';
 import '../folio/folio.dart';
@@ -1162,6 +1163,52 @@ class AppController extends ChangeNotifier {
     return slash < 0 ? '' : notePath.substring(0, slash);
   }
 
+  /// Follows a Markdown link [target] from the open note. A relative link to a
+  /// sibling `.md` note in the same Folio opens that note **in-app** (so a
+  /// worldbuilding/doc graph is navigable); an external URL or any other local
+  /// file opens with the OS default handler.
+  Future<void> openLink(String target) async {
+    final raw = target.trim();
+    if (raw.isEmpty) return;
+    if (isExternalUrl(raw)) {
+      await openWithDefaultApp(raw);
+      return;
+    }
+
+    // Decode percent-escapes (%20 → space); fall back to literal on malformed.
+    String decoded;
+    try {
+      decoded = Uri.decodeFull(raw);
+    } catch (_) {
+      decoded = raw;
+    }
+    // Drop any #anchor for path resolution.
+    final hash = decoded.indexOf('#');
+    final pathPart = hash >= 0 ? decoded.substring(0, hash) : decoded;
+
+    final folder = _currentNoteFolder();
+    if (folder != null && pathPart.isNotEmpty) {
+      final rel = p.posix.normalize(
+          folder.isEmpty ? pathPart : p.posix.join(folder, pathPart));
+      // A sibling note we can open in-app (stays inside the Folio).
+      if (!rel.startsWith('..') &&
+          rel.toLowerCase().endsWith(ContentService.noteExtension)) {
+        try {
+          if (await _folio!.backend.exists(rel)) {
+            await selectNote(NoteNode(path: rel, name: rel.split('/').last));
+            return;
+          }
+        } catch (_) {
+          // Fall through to opening with the OS.
+        }
+      }
+    }
+
+    // Not an in-Folio note: hand the local file to the OS.
+    final resolved = resolveLinkTarget(raw, localAbsolutePath(folder ?? ''));
+    if (resolved != null) await openWithDefaultApp(resolved);
+  }
+
   /// Reads a note-relative image source from disk (for HTML embedding); null for
   /// external/unresolvable sources.
   Future<Uint8List?> _readLocalImage(String src) async {
@@ -1259,6 +1306,9 @@ class AppController extends ChangeNotifier {
 
   /// Resolves which view the open note should use, per the policy.
   Future<EditorViewMode> _resolveViewMode() async {
+    // Browsed (read-only) folders open in Preview — rendered reading makes more
+    // sense than a read-only source view. The user can still switch.
+    if (isBrowsing) return EditorViewMode.preview;
     final forced = _viewPolicy.forcedMode;
     if (forced != null) return forced;
     final notePath = _selectedNotePath;
