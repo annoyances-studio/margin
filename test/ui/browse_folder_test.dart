@@ -137,6 +137,37 @@ void main() {
     expect(controller.searchResults.map((n) => n.name), ['a.md']);
   });
 
+  test('refreshTree picks up files added on disk after open', () async {
+    await write('Chapters/one.md', '# One');
+    await controller.openPath(temp.path);
+    expect(controller.tree!.folders.expand((f) => f.notes).map((n) => n.name),
+        ['one.md']);
+
+    // Claude adds a file while the folder is open.
+    await write('Chapters/two.md', '# Two');
+    await controller.refreshTree();
+
+    expect(
+      controller.tree!.folders
+          .expand((f) => f.notes)
+          .map((n) => n.name)
+          .toSet(),
+      {'one.md', 'two.md'},
+    );
+  });
+
+  test('refreshTree reloads the open note\'s body from disk', () async {
+    await write('a.md', '# A\n\noriginal');
+    await controller.openPath(temp.path);
+    await controller.selectNote(
+        controller.tree!.notes.firstWhere((n) => n.name == 'a.md'));
+    expect(controller.workingBody, contains('original'));
+
+    await write('a.md', '# A\n\nrewritten by Claude');
+    await controller.refreshTree();
+    expect(controller.workingBody, contains('rewritten by Claude'));
+  });
+
   test('browse mode writes nothing to the folder (no sidecars/properties)',
       () async {
     await write('overview.md', '# Overview\n\nbody');

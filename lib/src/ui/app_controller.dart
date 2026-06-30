@@ -656,6 +656,29 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Rebuilds the tree from disk to pick up changes made outside the app (e.g.
+  /// Claude adding or editing files in the folder while it's open). The open
+  /// note is reloaded too — unless it has unsaved edits, which are never
+  /// clobbered — and cleared if it vanished on disk. (A stop-gap until live
+  /// file-watching; for remote Folios, "Sync now" remains the way to pull.)
+  Future<void> refreshTree() async {
+    if (!hasFolio) return;
+    await _run(() async {
+      await _reloadTree();
+      final notePath = _selectedNotePath;
+      if (notePath == null || _dirty) return;
+      if (await _folio!.backend.exists(notePath)) {
+        await _openNote(
+            NoteNode(path: notePath, name: notePath.split('/').last));
+        _editorRevision++; // force the editor to reload the fresh body
+      } else {
+        _selectedNotePath = null;
+        _currentNote = null;
+        _workingBody = '';
+      }
+    });
+  }
+
   /// Best-effort cleanup of recursively-empty directories in the working
   /// backend (e.g. folders left behind after notes were deleted outside the
   /// app). Folders marked by a `properties.yaml` are preserved. Never fails a

@@ -530,6 +530,12 @@ abstract class AppLocalizations {
   /// **'Folder note (README.md)'**
   String get openFolderNote;
 
+  /// App-bar action: rebuild the tree to pick up files changed outside the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh (reload from disk)'**
+  String get refreshTree;
+
   /// App-bar action / dialog title: notes that link to the open note.
   ///
   /// In en, this message translates to:

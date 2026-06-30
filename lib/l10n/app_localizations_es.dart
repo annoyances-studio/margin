@@ -230,6 +230,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get openFolderNote => 'Nota de carpeta (README.md)';
 
   @override
+  String get refreshTree => 'Actualizar (recargar del disco)';
+
+  @override
   String get backlinks => 'Retroenlaces';
 
   @override

@@ -140,6 +140,8 @@
   "@openContainingFolder": { "description": "Note action: reveal the note's file highlighted in its folder (desktop)." },
   "openFolderNote": "Folder note (README.md)",
   "@openFolderNote": { "description": "Tooltip on the badge marking a folder that has a folder-level note." },
+  "refreshTree": "Refresh (reload from disk)",
+  "@refreshTree": { "description": "App-bar action: rebuild the tree to pick up files changed outside the app." },
   "backlinks": "Backlinks",
   "@backlinks": { "description": "App-bar action / dialog title: notes that link to the open note." },
   "noBacklinks": "No notes link here yet.",

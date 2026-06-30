@@ -114,6 +114,11 @@ class _FolioScreenState extends State<FolioScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: _viewModeControl(),
           ),
+          IconButton(
+            tooltip: _l10n.refreshTree,
+            icon: const Icon(Icons.refresh),
+            onPressed: () => controller.refreshTree(),
+          ),
           if (controller.selectedNotePath != null)
             IconButton(
               tooltip: _l10n.backlinks,

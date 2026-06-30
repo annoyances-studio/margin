@@ -228,6 +228,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openFolderNote => 'Folder note (README.md)';
 
   @override
+  String get refreshTree => 'Refresh (reload from disk)';
+
+  @override
   String get backlinks => 'Backlinks';
 
   @override
