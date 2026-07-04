@@ -9,6 +9,7 @@ import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/folio_screen.dart';
 import 'package:margin/src/ui/widgets/markdown_preview.dart';
 import 'package:margin/src/ui/widgets/note_editor.dart';
+import 'package:margin/src/ui/widgets/note_editor_pane.dart';
 
 import '../support/test_app.dart';
 
@@ -73,6 +74,32 @@ void main() {
     await tester.tap(find.byIcon(Icons.menu_open));
     await tester.pumpAndSettle();
     expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
+  });
+
+  testWidgets('preview is keyed by note (resets scroll) but not by body edits',
+      (tester) async {
+    Widget pane(String notePath, String body) => localizedApp(Scaffold(
+          body: NoteEditorPane(
+            notePath: notePath,
+            body: body,
+            onChanged: (_) {},
+            mode: EditorViewMode.preview,
+          ),
+        ));
+
+    await tester.pumpWidget(pane('a.md', 'one'));
+    final keyA = tester.widget<MarkdownPreview>(find.byType(MarkdownPreview)).key;
+
+    // Same note, edited body (e.g. split-view typing) -> same key (scroll kept).
+    await tester.pumpWidget(pane('a.md', 'one edited'));
+    final keyAEdited =
+        tester.widget<MarkdownPreview>(find.byType(MarkdownPreview)).key;
+    expect(keyAEdited, keyA);
+
+    // Different note -> different key (fresh preview at the top).
+    await tester.pumpWidget(pane('b.md', 'two'));
+    final keyB = tester.widget<MarkdownPreview>(find.byType(MarkdownPreview)).key;
+    expect(keyB, isNot(keyA));
   });
 
   testWidgets('overflow menu offers always-on-top, settings, and close',

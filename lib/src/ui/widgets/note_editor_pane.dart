@@ -86,6 +86,9 @@ class NoteEditorPane extends StatelessWidget {
       onOpenLink: onOpenLink,
     );
     final preview = MarkdownPreview(
+      // Keyed by note (not revision) so switching notes starts a fresh preview
+      // at the top, while editing the same note in split view keeps its scroll.
+      key: ValueKey('preview:$notePath'),
       data: body,
       imageBaseDir: imageBaseDir,
       onSpecialCopy: onSpecialCopy,

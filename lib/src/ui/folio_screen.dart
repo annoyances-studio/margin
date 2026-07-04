@@ -241,6 +241,7 @@ class _FolioScreenState extends State<FolioScreen> {
             ? Center(child: Text(_l10n.selectNoteToPreview))
             : _pullToSync(
                 MarkdownPreview(
+                  key: ValueKey('preview:${controller.selectedNotePath}'),
                   data: controller.workingBody,
                   imageBaseDir: _imageBaseDir(),
                   physics: const AlwaysScrollableScrollPhysics(),
