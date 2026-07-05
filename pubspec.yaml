@@ -71,6 +71,20 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+# Launcher icon generation (run: dart run flutter_launcher_icons). Android only
+# for now — the source art is 256px, fine for Android mipmaps + adaptive; iOS/
+# desktop want a 1024px source, regenerate those when we do iOS. The adaptive
+# foreground is the full square (cream matches the background, so the squircle
+# mask is seamless and the bracket-dot sits inside the safe zone).
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "design/icon/png_b/M1-flat-v1-256.png"
+  adaptive_icon_background: "#EEEAD7"
+  adaptive_icon_foreground: "design/icon/png_b/M1-flat-v1-256.png"
+  min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

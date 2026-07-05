@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Network access for the cloud backends (OneDrive Graph, WebDAV) and
+         remote image download. Declared here so release builds have it too —
+         the debug/profile manifests add it for those variants only. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="margin"
         android:name="${applicationName}"
