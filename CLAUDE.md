@@ -34,8 +34,16 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
   - Analyze: `flutter analyze`
   - Test: `flutter test` (full suite is ~280+ tests and must stay green)
   - Regenerate localizations after editing `lib/l10n/*.arb`: `flutter gen-l10n`
-  - Windows build: `flutter build windows --release` → `build\windows\x64\runner\Release\` (zip the **whole folder**, not just the exe)
-  - Android: `flutter build apk --release` (+ the OneDrive `--dart-define`s below)
+  - Build outputs (binary is named `margin` on every desktop platform; app id
+    `com.lordofthedummies.margin` everywhere). **Paths differ per platform —
+    Flutter fixes them; to distribute, take the whole folder/bundle shown:**
+    - Windows: `flutter build windows --release` → `build\windows\x64\runner\Release\` (the folder: `margin.exe` + DLLs + `data\`)
+    - Linux: `flutter build linux --release` → `build/linux/x64/release/bundle/` (the bundle: `margin` + `lib/` + `data/`) — **needs a Linux host or CI**
+    - macOS: `flutter build macos --release` → `build/macos/Build/Products/Release/margin.app` — **needs a macOS host or CI**
+    - Android: `flutter build apk --release` (+ the OneDrive `--dart-define`s below) → `build/app/outputs/flutter-apk/app-release.apk`
+    - iOS: via CI on a macOS runner (roadmap).
+  - Only Windows + Android build on this Windows machine; macOS/Linux/iOS need
+    their OS or CI (scaffolding for all now exists via `flutter create`).
 - **`LNK1104: cannot open file 'margin.exe'`** on a Windows build = the running
   app holds the binary. Fix: `Stop-Process -Name margin -Force` (it autosaves on
   focus-loss) then rebuild.

@@ -155,3 +155,13 @@ See also the `release-roadmap` memory.
 - **Windows distribution** — leaning GitHub Releases over the Microsoft Store to
   start.
 - **Mobile layout polish** — slide-over tree and the Android/iOS build hardening.
+- **Verify macOS + Linux desktop builds** — scaffolding now exists (`flutter
+  create`, binary `margin`, id `com.lordofthedummies.margin`), but neither has
+  been built; both need their OS or a CI runner. CI can also collect all
+  platforms' outputs into a uniform `dist/` (the per-platform build paths differ;
+  see CLAUDE.md).
+- **macOS file access under App Sandbox** — the generated macOS runner enables
+  App Sandbox, which blocks reading arbitrary folders (companion mode's whole
+  point). For direct distribution, relax the sandbox entitlement; for the App
+  Store, use security-scoped bookmarks (same family as the iOS document-picker
+  problem).
