@@ -1,15 +1,37 @@
-# Margin
+# Margin•
 
-A multiplatform note-taking application. Plain Markdown files in a folder you
-control, synced across desktop and mobile through pluggable storage backends.
+Plain Markdown notes in a folder you own — and a calm reader for any folder of
+Markdown you already have. Multiplatform (Flutter), no lock-in, no code
+execution, no plugins.
 
-Margin is a ground-up rework of an abandoned 2006-era .NET notepad project
-(NotesWriter). It shares nothing with that codebase beyond lineage and intent.
+Margin is the first app from [Annoyances Studio](https://github.com/annoyances-studio) —
+small apps that fix day-to-day annoyances. This one started with "reading my own
+Markdown is annoying."
+
+It's a ground-up rework of an abandoned 2006-era .NET notepad (NotesWriter),
+sharing nothing with that codebase beyond lineage and intent.
+
+## What it does
+
+- **Your notes, your files.** Notes are plain `.md` files in a folder you
+  control — edit them here or in any other tool. No database, no lock-in.
+- **Companion mode.** Open *any* plain Markdown folder read-only — documentation,
+  a wiki, a Claude-generated project — with in-app `.md` link navigation,
+  backlinks, full-text search, and folder overviews. Works on local folders and
+  on shared cloud folders (OneDrive / WebDAV).
+- **Sync that stays yours.** Pluggable storage backends (local folder, WebDAV,
+  OneDrive) with clone-then-sync and offline-first; a conflict keeps both copies
+  rather than overwriting.
+- **Reads and writes like Markdown should.** Live-styled editor, rendered
+  preview, tables, attachments (paste / drag / download), rich bidirectional
+  copy-paste, folder notes (`README.md`).
 
 ## Status
 
-Design phase. No application code yet. See [DESIGN.md](DESIGN.md) for the full
-specification.
+Feature-complete for daily use. Builds and runs on **Windows** and **Android**;
+**macOS / Linux** desktop scaffolding is in place (build on those hosts or via
+CI); **iOS** is planned. Remaining work is tracked in [BACKLOG.md](BACKLOG.md),
+and the architecture and rationale live in [DESIGN.md](DESIGN.md).
 
 ## Principles
 
