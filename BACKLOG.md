@@ -145,6 +145,14 @@ See also the `release-roadmap` memory.
 - `[larger]` **GitHub CI for builds** — matrix on hosted runners (windows +
   ubuntu-for-APK + macos-for-iOS). The path to an **iOS build**. OneDrive
   `--dart-define`s go in as (public) workflow vars.
+- **Package-name decision (before first Play upload — then permanent).** Studio
+  brand is **annoyanc** (`annoyanc.com` available ~$10); studio namespace
+  `com.annoyanc.*`. Margin is currently `com.lordofthedummies.margin` and not yet
+  published, so its applicationId can still change. If moving it to
+  `com.annoyanc.margin`, **batch with the keystore + Entra pass** below — both
+  the package and the new signing hash change the OneDrive redirect URI
+  `msauth://<pkg>/<hash>`, so do them together (one Entra reconfig). Package id
+  is a namespace, not a domain, and is invisible to users (they see "Margin•").
 - **Release keystore decision** (Android) — release APKs are debug-signed on
   purpose for the Entra/OneDrive signature hash; Play needs a real key (re-
   register its SHA in Entra, or use Play App Signing). Also gates CI signing.
