@@ -147,9 +147,10 @@ See also the `release-roadmap` memory.
   `--dart-define`s go in as (public) workflow vars.
 - **Package-name decision — OPEN (must settle before first Play upload; then
   permanent).** Current id `com.lordofthedummies.margin` (a domain the user
-  owns); Margin isn't on Play yet so it can still change freely. A studio brand
-  is *being explored* (candidate: `annoyanc`, with `annoyanc.com` available
-  ~$10 → namespace `com.annoyanc.*`) but NOT decided. Constraints to weigh when
+  owns); Margin isn't on Play yet so it can still change freely. A "day-to-day
+  annoyance" studio brand is *being explored*; name NOT decided (`annoyanc`
+  rejected — reads cheap; prefer a real word, no vowel-dropping). Domain is
+  decoupled from the namespace, so pick the name first. Constraints to weigh when
   it's time: package id is a namespace (not a verified domain) and invisible to
   users (they see "Margin•"); apps needn't share one namespace. If Margin's id
   ever changes, batch it with the keystore + Entra pass below — both the package
