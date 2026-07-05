@@ -145,16 +145,14 @@ See also the `release-roadmap` memory.
 - `[larger]` **GitHub CI for builds** — matrix on hosted runners (windows +
   ubuntu-for-APK + macos-for-iOS). The path to an **iOS build**. OneDrive
   `--dart-define`s go in as (public) workflow vars.
-- **Package-name decision — OPEN (must settle before first Play upload; then
-  permanent).** Current id `com.lordofthedummies.margin` (a domain the user
-  owns); Margin isn't on Play yet so it can still change freely. A "day-to-day
-  annoyance" studio brand is *being explored*; name NOT decided (`annoyanc`
-  rejected — reads cheap; prefer a real word, no vowel-dropping). Domain is
-  decoupled from the namespace, so pick the name first. Constraints to weigh when
-  it's time: package id is a namespace (not a verified domain) and invisible to
-  users (they see "Margin•"); apps needn't share one namespace. If Margin's id
-  ever changes, batch it with the keystore + Entra pass below — both the package
-  and the new signing hash rewrite the OneDrive redirect URI `msauth://<pkg>/<hash>`.
+- **Move Margin to `studio.annoyances.margin` before first Play upload.** Studio
+  brand is decided — **Annoyances Studio** (domain `annoyances.studio`), namespace
+  `studio.annoyances.*`. Margin currently ships `com.lordofthedummies.margin` and
+  isn't on Play yet, so the id can still change (permanent after first upload).
+  **Batch the change with the keystore + Entra pass below** — both the new package
+  and the new signing hash rewrite the OneDrive redirect URI `msauth://<pkg>/<hash>`,
+  so do them together (one Entra reconfig). Package id is invisible to users (they
+  see "Margin•").
 - **Release keystore decision** (Android) — release APKs are debug-signed on
   purpose for the Entra/OneDrive signature hash; Play needs a real key (re-
   register its SHA in Entra, or use Play App Signing). Also gates CI signing.
