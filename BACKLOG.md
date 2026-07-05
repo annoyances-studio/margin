@@ -51,6 +51,12 @@ arbitrary folders via `dart:io`).
   OneDrive **in-app folder browser** (below) would make picking a folder to
   browse easier than typing a path; and recursive tree listing over Graph is one
   API call per folder — fine for now, optimize if big trees feel slow.
+- **Render embedded images through the backend** — the preview resolves images
+  to a local file path (`_imageBaseDir` → `localAbsolutePath`), so `![](pic.png)`
+  in a note **doesn't render when browsing a remote (or future zip) folder**
+  (no file on disk). Read the bytes via the backend and use `Image.memory`
+  (cached) when there's no local path. Prerequisite for great remote/bundle
+  reading.
 - `[larger]` **Android SAF / document-picker + content-URI backend** — to browse
   a *local* Android folder shared into the app. A different access model than
   the `dart:io`-based `LocalFolderBackend`; Android-specific and bigger.
@@ -116,6 +122,24 @@ arbitrary folders via `dart:io`).
 - **Dragged-file label** — dragged attachments insert `![]()` / `[name]()`; give
   them a `[Dragged File]` label for parity with `[Pasted Image]`. (Collision-
   safety already handled by `addAttachment` de-duplication.)
+
+## Reader & distribution (ideas)
+
+Both fit the existing seams cleanly — browse mode is already the reader, and
+`StorageBackend` is already the extension point.
+
+- **Zip / archive container backend** — a read-only `StorageBackend` over a
+  `.zip` of plain Markdown (via `package:archive`), opened by browse mode. Lets
+  docs ship as one portable, versionable file instead of a loose folder — still
+  no proprietary format, just a zip of `.md`. Read-only fits browse mode exactly.
+  Depends on **render images through the backend** (above), since bundled images
+  aren't files on disk. Could pair with an **export** ("publish this folder as a
+  `.md` bundle") for the app-ships-help use case.
+- **Light read-only reader build** — a slim build/flavor that compiles out
+  editing, sync, and the cloud backends, leaving just "open a folder (or bundle)
+  and read." A drop-in **help/documentation viewer other apps could embed or
+  point users at** (docs-as-Markdown). Positioning: Margin-the-editor vs
+  Margin-the-reader from one codebase.
 
 ## Platform, release & CI
 
