@@ -1,7 +1,10 @@
 # CLAUDE.md — Margin
 
 Operational guide for Claude working in this repo. Deep architecture/rationale
-lives in `DESIGN.md`; this file is the practical "how to work here" + gotchas.
+lives in `DESIGN.md`; the to-do list (not-yet-built work) lives in `BACKLOG.md`
+(read its top for how to maintain it — add items when the user parks something,
+delete them when they ship); this file is the practical "how to work here" +
+gotchas.
 
 ## What this is
 
@@ -111,9 +114,12 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
 
 ## Current status
 
-Feature-complete enough for daily use: local/device/WebDAV/OneDrive backends,
+Feature-complete for daily use: local/device/WebDAV/OneDrive backends,
 clone-then-sync + offline-first, rich bidirectional copy/paste (incl. image
-download/attach), note search, run-at-login (+start minimized). All on `main`,
-binaries build for Windows + Android. Open backlog: landing "Recent Folios" +
-consolidated open/connect button, OneDrive in-app folder browser, optional
-full-text "deep search".
+download/attach), note search, run-at-login (+start minimized), drag-to-attach,
+folder notes (README.md), table-pipe styling, and **companion mode** — read-only
+browsing of any plain Markdown folder (in-app `.md` link navigation, deep search,
+backlinks, overview-on-open, manual Refresh). All on `main`, binaries build for
+Windows + Android. **Remaining work is tracked in `BACKLOG.md`** — highlights:
+SFTP backend, conflict surfacing, mobile companion (via OneDrive), note Rename,
+move/copy, CI → iOS build, publishing.

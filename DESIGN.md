@@ -576,69 +576,7 @@ from the working backend (run on open and after sync). A directory holding any
 file — including its `properties.yaml` marker — is never pruned, so folders you
 created on purpose survive even when empty.
 
-## Open items
-
-- Mobile layout (slide-over tree) and the Android/iOS builds.
-- **SFTP/SSH backend** — the main missing backend (local folder, WebDAV, and
-  OneDrive prototype cloud are shipped). Password + SSH-key auth via `dartssh2`.
-- Attachments: per-folder `_attachments/` is in place; the "clean up unused"
-  scan is still to do.
-- Further mobile cloud providers (Google Drive, Dropbox): OneDrive is the
-  shipped prototype; the rest are a later per-provider effort over OAuth +
-  provider REST, still built-in (no plugins) behind the same `StorageBackend`.
-
 ## Backlog
 
-Smaller items to tackle later:
-
-- Paste handling: **partly done** — rich bidirectional copy/paste works (win32
-  CF_HTML on Windows, incl. image download/attach). Remaining: HTML/RTF →
-  Markdown fidelity, and formatted paste on non-Windows platforms (plain only).
-- Widen the folder right-click hit area to the whole row (currently the label).
-- Landing (`OpenFolioScreen`) UX: a "Recent Folios" list, a consolidated
-  open/connect button instead of separate per-backend entry points, and a
-  rethought "New Folio" flow (today a local-only Create button; creating a
-  Folio on a remote backend happens implicitly through connect).
-- Editor styling for links `[text](url)`, list bullets, and task checkboxes.
-- Live tree refresh when files change on disk externally.
-- Quick word-wrap toggle reachable from the editor toolbar (not just Settings),
-  for flipping it per-note while reading wide tables.
-- Resizable tree panel: a draggable divider to set the sidebar width (clamped
-  to a sensible min/max), persisted like the other device-local prefs.
-- Cosmetic polish (parked): smaller breadcrumb font in the app bar; mirror the
-  open note's breadcrumb into the OS window title (currently just "Margin");
-  move the folder expand/collapse chevron to the *left* of the name (less busy,
-  symmetric) rather than beside the ⋮ menu.
-- Editor styling: table pipes `|` are now bold + orange (with word-wrap-off)
-  — **done**, and in daily use this + word-wrap covers the table pain well, so
-  the editable **table grid is parked** (revisit only if a real need shows up).
-- Configurable colors / editable themes (later): the editor accent colors
-  (links blue, table pipes orange) are hardcoded; expose them through a theme
-  the user can edit. Foundation for broader theming. Includes: a **theme-mode
-  switch** (System / Dark / Light) instead of always following the OS; and
-  optional **per-Folio themes** via a `theme.yaml` in the Folio, so different
-  Folios can carry different accent colors as a subtle "which Folio am I in"
-  cue.
-- Attachment label polish: dragged files insert `![]()` / `[name]()`; give
-  them a `[Dragged File]` label for parity with the pasted-image `[Pasted
-  Image]`. (Collision-safety is already handled — `addAttachment` de-duplicates
-  to `name-1.ext`, so repeated drags never overwrite.)
-- Hide the search bar until the search logic is decided. It works for file
-  names but is cumbersome; keep it out of the UI until the search story
-  (index scope, deep/full-text, ranking) is settled.
-- Add **Rename** to the note actions (context menu). Must move the `.md.yaml`
-  sidecar together with the note — same rule as the future move/copy work.
-- Consider stylizing the app name as `margin•` or `margin.` — a text
-  rendering of the icon. Would touch the landing title, window title, and
-  About; the `appName` l10n key is the single source.
-- Desktop typography: the overall font size may be too large — try a slightly
-  denser scale on desktop (keep mobile as is).
-- Ctrl+Scroll zoom on desktop: live text scaling (likely a settings-persisted
-  scale factor applied at the `MaterialApp` level). Pairs with the denser
-  default — zoom makes a denser default safe to ship.
-- OneDrive in-app folder browser: the connect dialog takes a typed folder path
-  (PoC-simple); replace with a visual picker over the Graph API (list child
-  folders, navigate, create). Same dialog could later serve WebDAV.
-- Bare-image paste on macOS/Linux/iOS: `readImage()` is implemented for
-  Android (method channel) and Windows (CF_DIB/PNG via win32); the other
-  platforms still return null and fall back to text.
+The to-do list — everything not built yet — lives in **`BACKLOG.md`** (with
+instructions for maintaining it). This file keeps the architecture and rationale.
