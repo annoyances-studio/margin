@@ -16,7 +16,7 @@ void main() {
     await tester.pumpWidget(const MarginApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Margin'), findsOneWidget);
+    expect(find.text('Margin•'), findsOneWidget);
     expect(find.text("Open this device's notes"), findsOneWidget);
     expect(find.text('Open a Folio'), findsOneWidget);
 

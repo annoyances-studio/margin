@@ -4,7 +4,7 @@
          the debug/profile manifests add it for those variants only. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="margin"
+        android:label="Margin•"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

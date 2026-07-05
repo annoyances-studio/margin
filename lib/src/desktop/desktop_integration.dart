@@ -26,7 +26,7 @@ Future<void> initDesktopWindow({bool startMinimized = false}) async {
     size: Size(1100, 720),
     minimumSize: Size(640, 480),
     center: true,
-    title: 'Margin',
+    title: 'Margin•',
   );
   await windowManager.waitUntilReadyToShow(options, () async {
     if (startMinimized) return; // stay hidden in the tray
@@ -84,7 +84,7 @@ class DesktopTray with TrayListener, WindowListener {
     trayManager.addListener(this);
     try {
       await trayManager.setIcon(Platform.isWindows ? _iconWindows : _iconOther);
-      await trayManager.setToolTip('Margin');
+      await trayManager.setToolTip('Margin•');
       await trayManager.setContextMenu(Menu(items: [
         MenuItem(key: 'show', label: 'Show Margin'),
         MenuItem.separator(),

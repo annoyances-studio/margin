@@ -9,7 +9,7 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get appName => 'Margin';
+  String get appName => 'Margin•';
 
   @override
   String get tagline => 'Notas Markdown en una carpeta que tú controlas.';

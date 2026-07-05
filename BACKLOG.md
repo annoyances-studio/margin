@@ -116,9 +116,6 @@ arbitrary folders via `dart:io`).
   "Margin"); smaller breadcrumb font in the app bar.
 - Move the folder **expand/collapse chevron to the left** of the name (less busy,
   symmetric) rather than beside the ⋮ menu.
-- **App-name styling** — render as `margin•` or `margin.` (a text form of the
-  icon). Touches landing title, window title, About; `appName` l10n key is the
-  single source.
 - **Dragged-file label** — dragged attachments insert `![]()` / `[name]()`; give
   them a `[Dragged File]` label for parity with `[Pasted Image]`. (Collision-
   safety already handled by `addAttachment` de-duplication.)

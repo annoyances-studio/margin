@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// The application name.
   ///
   /// In en, this message translates to:
-  /// **'Margin'**
+  /// **'Margin•'**
   String get appName;
 
   /// Landing-screen subtitle.

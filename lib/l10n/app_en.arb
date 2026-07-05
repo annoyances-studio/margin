@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
 
-  "appName": "Margin",
+  "appName": "Margin•",
   "@appName": { "description": "The application name." },
 
   "tagline": "Plain Markdown notes in a folder you control.",
