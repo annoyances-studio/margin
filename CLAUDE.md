@@ -20,7 +20,8 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
   working-directory path may still say `...imagina-noteswriter...` — **ignore
   that; the real repo is `C:\Code\margin`**. If you ever see two repos, this is
   the one.
-- Git remote: `origin = https://github.com/danmarce/margin-app.git`, branch `main`.
+- Git remote: `origin = https://github.com/annoyances-studio/margin.git`, branch `main`
+  (moved from `danmarce/margin-app` when Annoyances Studio was created).
 - Commit/push only when the user asks. End commit messages with:
   `Co-Authored-By: Claude <model> <noreply@anthropic.com>`.
 
