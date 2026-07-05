@@ -14,6 +14,8 @@
   "connectOneDrive": "Conectar OneDrive",
   "oneDriveFolderLabel": "Carpeta en tu OneDrive",
   "oneDriveFolderHelp": "Se crea si aún no existe.",
+  "browseReadOnly": "Explorar en solo lectura",
+  "browseReadOnlyHelp": "Lee una carpeta compartida sin modificarla",
   "serverUrl": "URL del servidor",
   "username": "Usuario",
   "password": "Contraseña",

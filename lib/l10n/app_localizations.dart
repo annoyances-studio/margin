@@ -176,6 +176,18 @@ abstract class AppLocalizations {
   /// **'Created if it doesn\'t exist yet.'**
   String get oneDriveFolderHelp;
 
+  /// Checkbox in the connect dialogs: open the folder read-only (companion mode) instead of a managed Folio.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse read-only'**
+  String get browseReadOnly;
+
+  /// Subtitle explaining the browse-read-only checkbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Read a shared folder without changing it'**
+  String get browseReadOnlyHelp;
+
   /// No description provided for @serverUrl.
   ///
   /// In en, this message translates to:

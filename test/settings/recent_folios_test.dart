@@ -31,6 +31,15 @@ void main() {
     ]));
     expect(decoded.single.user, isNull);
     expect(decoded.single.id, isNull);
+    expect(decoded.single.browse, isFalse); // default
+  });
+
+  test('the browse flag round-trips', () {
+    final decoded = decodeRecentFolios(encodeRecentFolios([
+      const RecentFolio(
+          type: 'onedrive', location: 'Shared/Notes', name: 'Notes', browse: true),
+    ]));
+    expect(decoded.single.browse, isTrue);
   });
 
   test('decode tolerates garbage and wrong shapes', () {

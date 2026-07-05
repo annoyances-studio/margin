@@ -292,16 +292,26 @@ class AppController extends ChangeNotifier {
           notifyListeners();
           return;
         }
-        await openWebDav(recent.location, recent.user ?? '', password,
-            knownId: recent.id);
+        if (recent.browse) {
+          await browseWebDav(recent.location, recent.user ?? '', password);
+        } else {
+          await openWebDav(recent.location, recent.user ?? '', password,
+              knownId: recent.id);
+        }
       case 'onedrive':
-        await openOneDrive(recent.location, knownId: recent.id);
+        if (recent.browse) {
+          if (!await signInOneDrive()) return; // error already surfaced
+          await browseOneDrive(recent.location);
+        } else {
+          await openOneDrive(recent.location, knownId: recent.id);
+        }
       default:
         if (!await Directory(recent.location).exists()) {
           _error = 'This Folio\'s folder is missing: ${recent.location}';
           notifyListeners();
           return;
         }
+        // A local browsed folder (no properties.yaml) is auto-detected by open().
         await openPath(recent.location);
     }
   }
@@ -432,6 +442,83 @@ class AppController extends ChangeNotifier {
         name: folioName,
         user: username,
         id: _folioId,
+      ));
+    }
+  }
+
+  /// Opens a plain **remote** folder (WebDAV/OneDrive) read-only in browse mode
+  /// — reads directly over the network, no clone/sync, writes nothing. This is
+  /// companion mode for a shared cloud folder, and the only way to browse a
+  /// folder on mobile (no local folder picker there). Works over any backend.
+  Future<void> openRemoteBrowse(
+    StorageBackend remote, {
+    required String name,
+  }) async {
+    await _run(() async {
+      await remote.list(''); // reachable? (throws -> surfaced as [error])
+      _adopt(
+        Folio.browse(remote, name: name),
+        ContentService(remote, browse: true),
+      );
+      await _reloadTree();
+      if (_selectedNotePath == null) await _selectOverviewNote();
+    });
+  }
+
+  /// The last path segment of a remote [location] (URL or Graph path), for the
+  /// browsed folder's display name.
+  String _remoteBasename(String location) {
+    final trimmed = location.replaceAll(RegExp(r'/+$'), '');
+    final slash = trimmed.lastIndexOf('/');
+    final name = slash >= 0 ? trimmed.substring(slash + 1) : trimmed;
+    return name.isEmpty ? 'Notes' : name;
+  }
+
+  /// Browses a WebDAV folder read-only (companion mode). Stores the password in
+  /// the keystore so the recent entry can reconnect.
+  Future<void> browseWebDav(String url, String username, String password) async {
+    final StorageBackend backend;
+    try {
+      backend = WebDavBackend(
+        baseUrl: Uri.parse(url),
+        username: username,
+        password: password,
+        client: _httpClientFactory(),
+      );
+    } catch (e) {
+      _error = 'Invalid server URL: $e';
+      notifyListeners();
+      return;
+    }
+    await openRemoteBrowse(backend, name: _remoteBasename(url));
+    if (hasFolio) {
+      await _credentials.write(_webDavCredKey(url, username), password);
+      _recordRecent(RecentFolio(
+        type: 'webdav',
+        location: url,
+        name: folioName,
+        user: username,
+        browse: true,
+      ));
+    }
+  }
+
+  /// Browses a OneDrive folder read-only (companion mode). Assumes
+  /// [signInOneDrive] already succeeded.
+  Future<void> browseOneDrive(String rootPath) async {
+    final auth = _buildOneDriveAuth();
+    final backend = OneDriveBackend(
+      rootPath: rootPath,
+      accessToken: auth.accessToken,
+      client: _httpClientFactory(),
+    );
+    await openRemoteBrowse(backend, name: _remoteBasename(rootPath));
+    if (hasFolio) {
+      _recordRecent(RecentFolio(
+        type: 'onedrive',
+        location: rootPath,
+        name: folioName,
+        browse: true,
       ));
     }
   }

@@ -48,6 +48,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get oneDriveFolderHelp => 'Created if it doesn\'t exist yet.';
 
   @override
+  String get browseReadOnly => 'Browse read-only';
+
+  @override
+  String get browseReadOnlyHelp => 'Read a shared folder without changing it';
+
+  @override
   String get serverUrl => 'Server URL';
 
   @override

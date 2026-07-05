@@ -2,10 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/src/content/tree_node.dart';
+import 'package:margin/src/storage/memory_backend.dart';
 import 'package:margin/src/ui/app_controller.dart';
 import 'package:margin/src/ui/editor_view_mode.dart';
 
@@ -166,6 +169,30 @@ void main() {
     await write('a.md', '# A\n\nrewritten by Claude');
     await controller.refreshTree();
     expect(controller.workingBody, contains('rewritten by Claude'));
+  });
+
+  test('openRemoteBrowse opens a remote plain folder read-only', () async {
+    // A remote backend (stand-in for WebDAV/OneDrive) with plain notes, no
+    // properties.yaml — the "shared cloud folder" case.
+    final remote = MemoryBackend();
+    Uint8List b(String s) => Uint8List.fromList(utf8.encode(s));
+    await remote.write('README.md', b('# Shared Project'));
+    await remote.write('Chapters/one.md', b('# One'));
+
+    await controller.openRemoteBrowse(remote, name: 'Shared');
+
+    expect(controller.isBrowsing, isTrue);
+    expect(controller.canSync, isFalse); // direct read, no sync peer
+    expect(controller.folioName, 'Shared');
+    // Root README shows (browse) and the subfolder note is reachable.
+    expect(controller.tree!.notes.map((n) => n.name), contains('README.md'));
+    // Lands on the overview.
+    expect(controller.selectedNotePath, 'README.md');
+    // Read-only: save is a no-op.
+    controller.updateBody('should not persist');
+    await controller.save();
+    expect(String.fromCharCodes(await remote.read('README.md')),
+        '# Shared Project');
   });
 
   test('browse mode writes nothing to the folder (no sidecars/properties)',

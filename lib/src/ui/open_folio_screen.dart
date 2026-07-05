@@ -223,52 +223,73 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
     final url = TextEditingController();
     final user = TextEditingController();
     final pass = TextEditingController();
+    var browse = false;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
         final l10n = AppLocalizations.of(context);
-        return AlertDialog(
-          title: Text(l10n.connectWebDav),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: url,
-                autofocus: true,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(labelText: l10n.serverUrl),
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: Text(l10n.connectWebDav),
+            content: SizedBox(
+              width: 340,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: url,
+                    autofocus: true,
+                    keyboardType: TextInputType.url,
+                    decoration: InputDecoration(labelText: l10n.serverUrl),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: user,
+                    decoration: InputDecoration(labelText: l10n.username),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: pass,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: l10n.password),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    dense: true,
+                    value: browse,
+                    onChanged: (v) => setState(() => browse = v ?? false),
+                    title: Text(l10n.browseReadOnly),
+                    subtitle: Text(l10n.browseReadOnlyHelp),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: user,
-                decoration: InputDecoration(labelText: l10n.username),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l10n.cancel),
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: pass,
-                obscureText: true,
-                decoration: InputDecoration(labelText: l10n.password),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(browse ? l10n.openFolio : l10n.connect),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l10n.connect),
-            ),
-          ],
         );
       },
     );
 
     if (confirmed == true && url.text.trim().isNotEmpty) {
       // Password intentionally not trimmed (it may contain spaces).
-      await controller.openWebDav(url.text.trim(), user.text.trim(), pass.text);
+      if (browse) {
+        await controller.browseWebDav(
+            url.text.trim(), user.text.trim(), pass.text);
+      } else {
+        await controller.openWebDav(
+            url.text.trim(), user.text.trim(), pass.text);
+      }
     }
   }
 
@@ -281,57 +302,84 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
 
     final choice = await _promptOneDriveFolder(context);
     if (choice == null) return;
-    await controller.openOneDrive(choice.folder, name: choice.name);
+    if (choice.browse) {
+      await controller.browseOneDrive(choice.folder);
+    } else {
+      await controller.openOneDrive(choice.folder, name: choice.name);
+    }
   }
 
-  /// Asks for the OneDrive folder (created if missing) and the Folio name.
-  /// A typed path keeps the PoC simple; a visual folder browser can come later.
-  Future<({String folder, String name})?> _promptOneDriveFolder(
+  /// Asks for the OneDrive folder and (for a managed Folio) its name, or a
+  /// read-only browse. A typed path keeps the PoC simple; a visual folder
+  /// browser can come later.
+  Future<({String folder, String name, bool browse})?> _promptOneDriveFolder(
     BuildContext context,
   ) {
     final folder = TextEditingController(text: 'Apps/Margin/Notes');
     final name = TextEditingController(text: 'My Notes');
-    return showDialog<({String folder, String name})>(
+    var browse = false;
+    return showDialog<({String folder, String name, bool browse})>(
       context: context,
       builder: (context) {
         final l10n = AppLocalizations.of(context);
-        return AlertDialog(
-          title: Text(l10n.connectOneDrive),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: folder,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: l10n.oneDriveFolderLabel,
-                  helperText: l10n.oneDriveFolderHelp,
-                ),
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: Text(l10n.connectOneDrive),
+            content: SizedBox(
+              width: 340,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: folder,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.oneDriveFolderLabel,
+                      helperText: l10n.oneDriveFolderHelp,
+                    ),
+                  ),
+                  // The name only applies to a managed Folio.
+                  if (!browse) ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: name,
+                      decoration:
+                          InputDecoration(labelText: l10n.folioNameLabel),
+                    ),
+                  ],
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    dense: true,
+                    value: browse,
+                    onChanged: (v) => setState(() => browse = v ?? false),
+                    title: Text(l10n.browseReadOnly),
+                    subtitle: Text(l10n.browseReadOnlyHelp),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: name,
-                decoration: InputDecoration(labelText: l10n.folioNameLabel),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final f = folder.text.trim();
+                  if (f.isEmpty) return;
+                  Navigator.of(context).pop((
+                    folder: f,
+                    name: name.text.trim().isEmpty
+                        ? 'My Notes'
+                        : name.text.trim(),
+                    browse: browse,
+                  ));
+                },
+                child: Text(browse ? l10n.openFolio : l10n.connect),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final f = folder.text.trim();
-                if (f.isEmpty) return;
-                Navigator.of(context).pop((
-                  folder: f,
-                  name: name.text.trim().isEmpty ? 'My Notes' : name.text.trim(),
-                ));
-              },
-              child: Text(l10n.connect),
-            ),
-          ],
         );
       },
     );

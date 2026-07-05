@@ -40,6 +40,11 @@
   "oneDriveFolderHelp": "Created if it doesn't exist yet.",
   "@oneDriveFolderHelp": { "description": "Helper text under the OneDrive folder field." },
 
+  "browseReadOnly": "Browse read-only",
+  "@browseReadOnly": { "description": "Checkbox in the connect dialogs: open the folder read-only (companion mode) instead of a managed Folio." },
+  "browseReadOnlyHelp": "Read a shared folder without changing it",
+  "@browseReadOnlyHelp": { "description": "Subtitle explaining the browse-read-only checkbox." },
+
   "serverUrl": "Server URL",
   "username": "Username",
   "password": "Password",

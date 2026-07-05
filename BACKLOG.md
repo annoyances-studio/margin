@@ -46,11 +46,11 @@ Companion mode ships on desktop. Making it work on **mobile** is an *access*
 gap, not a logic gap (the browse logic is platform-agnostic; mobile can't reach
 arbitrary folders via `dart:io`).
 
-- **[recommended] Browse a plain folder in the cloud (OneDrive first).** Extend
-  the OneDrive path so it can open a *plain* folder read-only (no
-  `properties.yaml`) — the browse fallback currently lives in the local `open()`
-  path only. Gives mobile companion mode over any synced/shared cloud folder,
-  reusing the existing OAuth/backend, no SAF needed. Medium effort.
+- Cloud browse is shipped (OneDrive + WebDAV, via the "Browse read-only" toggle
+  in each connect dialog; reads directly, no clone/sync). Follow-ups: the
+  OneDrive **in-app folder browser** (below) would make picking a folder to
+  browse easier than typing a path; and recursive tree listing over Graph is one
+  API call per folder — fine for now, optimize if big trees feel slow.
 - `[larger]` **Android SAF / document-picker + content-URI backend** — to browse
   a *local* Android folder shared into the app. A different access model than
   the `dart:io`-based `LocalFolderBackend`; Android-specific and bigger.

@@ -49,6 +49,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get oneDriveFolderHelp => 'Se crea si aún no existe.';
 
   @override
+  String get browseReadOnly => 'Explorar en solo lectura';
+
+  @override
+  String get browseReadOnlyHelp => 'Lee una carpeta compartida sin modificarla';
+
+  @override
   String get serverUrl => 'URL del servidor';
 
   @override

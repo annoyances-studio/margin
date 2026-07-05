@@ -32,12 +32,17 @@ class RecentFolio {
   /// offline-first; null for local Folios.
   final String? id;
 
+  /// Whether this entry is a read-only **browsed** plain folder (companion
+  /// mode) rather than a managed Folio. Reopened via the browse path.
+  final bool browse;
+
   const RecentFolio({
     required this.type,
     required this.location,
     required this.name,
     this.user,
     this.id,
+    this.browse = false,
   });
 
   /// Two entries point at the same Folio when type and location match.
@@ -50,6 +55,7 @@ class RecentFolio {
         'name': name,
         if (user != null) 'user': user,
         if (id != null) 'id': id,
+        if (browse) 'browse': true,
       };
 
   static RecentFolio? fromJson(dynamic json) {
@@ -63,6 +69,7 @@ class RecentFolio {
       name: json['name'] is String ? json['name'] as String : location,
       user: json['user'] is String ? json['user'] as String : null,
       id: json['id'] is String ? json['id'] as String : null,
+      browse: json['browse'] == true,
     );
   }
 }
