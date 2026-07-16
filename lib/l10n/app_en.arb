@@ -189,5 +189,23 @@
   "wordWrap": "Word wrap",
   "@wordWrap": { "description": "Settings toggle: soft-wrap long lines in the editor." },
   "wordWrapSubtitle": "Off: long lines scroll sideways (better for tables)",
-  "@wordWrapSubtitle": { "description": "Explains what turning word wrap off does." }
+  "@wordWrapSubtitle": { "description": "Explains what turning word wrap off does." },
+
+  "findInNote": "Find in note",
+  "@findInNote": { "description": "Tooltip/label for the in-note find feature (Ctrl+F)." },
+  "findHint": "Find",
+  "@findHint": { "description": "Placeholder in the in-note find field." },
+  "findNextMatch": "Next match (Enter)",
+  "@findNextMatch": { "description": "Tooltip for the find bar's next-match button." },
+  "findPreviousMatch": "Previous match (Shift+Enter)",
+  "@findPreviousMatch": { "description": "Tooltip for the find bar's previous-match button." },
+  "findMatchCount": "{current} of {total}",
+  "@findMatchCount": {
+    "description": "Find bar hit counter, e.g. '3 of 12'.",
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "findNoMatches": "No results",
+  "@findNoMatches": { "description": "Find bar counter text when the query matches nothing." },
+  "findCaseSensitive": "Match case",
+  "@findCaseSensitive": { "description": "Tooltip for the find bar's case-sensitivity toggle." }
 }

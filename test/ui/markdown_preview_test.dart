@@ -24,7 +24,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final style = tester.widget<Markdown>(find.byType(Markdown)).styleSheet!;
+    final style =
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).styleSheet!;
     final decoration = style.blockquoteDecoration as BoxDecoration;
     // Our override adds a left accent border; flutter_markdown's default has
     // none (just a filled light-blue box). The text color is scheme-derived so

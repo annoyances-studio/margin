@@ -13,6 +13,19 @@ import 'package:flutter/material.dart';
 class MarkdownEditingController extends TextEditingController {
   MarkdownEditingController({super.text});
 
+  List<TextRange> _highlights = const [];
+  int _activeHighlight = -1;
+
+  /// Sets the find-match ranges to paint behind the text ([ranges]) and which
+  /// of them is the active one ([active], an index into [ranges] or -1). Kept
+  /// separate from the raw text so highlighting never alters what is saved.
+  /// Triggers a repaint via the inherited listener notification.
+  void setHighlights(List<TextRange> ranges, int active) {
+    _highlights = ranges;
+    _activeHighlight = active;
+    notifyListeners();
+  }
+
   @override
   TextSpan buildTextSpan({
     required BuildContext context,
@@ -20,15 +33,107 @@ class MarkdownEditingController extends TextEditingController {
     required bool withComposing,
   }) {
     final base = style ?? DefaultTextStyle.of(context).style;
+    final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return buildMarkdownTextSpan(
+    final span = buildMarkdownTextSpan(
       text,
       base,
-      linkColor: Theme.of(context).colorScheme.primary,
+      linkColor: scheme.primary,
       // Orange table pipes stand out from blue links and read well on both
       // backgrounds (lighter on dark, deeper on light).
       tableColor: dark ? const Color(0xFFFFB74D) : const Color(0xFFE65100),
     );
+    if (_highlights.isEmpty) return span;
+    return applyHighlights(
+      span,
+      _highlights,
+      _activeHighlight,
+      // All hits get a soft wash; the active hit a stronger one, so it reads as
+      // "this is the one" without moving the caret.
+      matchColor: scheme.tertiary.withValues(alpha: 0.30),
+      activeColor: scheme.tertiary.withValues(alpha: 0.60),
+    );
+  }
+}
+
+/// Overlays background highlights on the flat span list produced by
+/// [buildMarkdownTextSpan], splitting spans at match boundaries so each
+/// character in a [TextRange] gets a coloured background. [active] is the index
+/// (into [ranges]) of the emphasised match, or -1.
+///
+/// Preserves the text exactly (the concatenation of the emitted spans equals
+/// the input), so the field's cursor and selection stay correct.
+TextSpan applyHighlights(
+  TextSpan root,
+  List<TextRange> ranges,
+  int active, {
+  required Color matchColor,
+  required Color activeColor,
+}) {
+  final out = <InlineSpan>[];
+  var offset = 0;
+  for (final child in root.children ?? const <InlineSpan>[]) {
+    if (child is! TextSpan || child.text == null) {
+      out.add(child);
+      continue;
+    }
+    final text = child.text!;
+    _emitHighlighted(
+      out,
+      text,
+      offset,
+      child.style,
+      ranges,
+      active,
+      matchColor,
+      activeColor,
+    );
+    offset += text.length;
+  }
+  return TextSpan(style: root.style, children: out);
+}
+
+/// Emits [text] (which starts at absolute offset [base]) as one or more spans,
+/// giving any characters inside a [ranges] entry a highlighted background.
+void _emitHighlighted(
+  List<InlineSpan> out,
+  String text,
+  int base,
+  TextStyle? style,
+  List<TextRange> ranges,
+  int active,
+  Color matchColor,
+  Color activeColor,
+) {
+  var i = 0;
+  while (i < text.length) {
+    final absolute = base + i;
+    // Is this character inside a match?
+    var coveringIndex = -1;
+    for (var r = 0; r < ranges.length; r++) {
+      if (absolute >= ranges[r].start && absolute < ranges[r].end) {
+        coveringIndex = r;
+        break;
+      }
+    }
+    if (coveringIndex < 0) {
+      // Plain run up to the next match start (or end of this span).
+      var next = text.length;
+      for (final r in ranges) {
+        final localStart = r.start - base;
+        if (localStart > i && localStart < next) next = localStart;
+      }
+      out.add(TextSpan(text: text.substring(i, next), style: style));
+      i = next;
+    } else {
+      final localEnd = (ranges[coveringIndex].end - base).clamp(0, text.length);
+      final color = coveringIndex == active ? activeColor : matchColor;
+      out.add(TextSpan(
+        text: text.substring(i, localEnd),
+        style: (style ?? const TextStyle()).copyWith(backgroundColor: color),
+      ));
+      i = localEnd;
+    }
   }
 }
 

@@ -107,5 +107,12 @@
   "dropToAttach": "Suelta para adjuntar a esta nota",
   "dropNeedsOpenNote": "Abre una nota primero para adjuntar archivos",
   "wordWrap": "Ajuste de línea",
-  "wordWrapSubtitle": "Desactivado: las líneas largas se desplazan en horizontal (mejor para tablas)"
+  "wordWrapSubtitle": "Desactivado: las líneas largas se desplazan en horizontal (mejor para tablas)",
+  "findInNote": "Buscar en la nota",
+  "findHint": "Buscar",
+  "findNextMatch": "Siguiente coincidencia (Intro)",
+  "findPreviousMatch": "Coincidencia anterior (Mayús+Intro)",
+  "findMatchCount": "{current} de {total}",
+  "findNoMatches": "Sin resultados",
+  "findCaseSensitive": "Distinguir mayúsculas"
 }

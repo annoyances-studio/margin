@@ -310,4 +310,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get wordWrapSubtitle =>
       'Off: long lines scroll sideways (better for tables)';
+
+  @override
+  String get findInNote => 'Find in note';
+
+  @override
+  String get findHint => 'Find';
+
+  @override
+  String get findNextMatch => 'Next match (Enter)';
+
+  @override
+  String get findPreviousMatch => 'Previous match (Shift+Enter)';
+
+  @override
+  String findMatchCount(int current, int total) {
+    return '$current of $total';
+  }
+
+  @override
+  String get findNoMatches => 'No results';
+
+  @override
+  String get findCaseSensitive => 'Match case';
 }

@@ -685,6 +685,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Off: long lines scroll sideways (better for tables)'**
   String get wordWrapSubtitle;
+
+  /// Tooltip/label for the in-note find feature (Ctrl+F).
+  ///
+  /// In en, this message translates to:
+  /// **'Find in note'**
+  String get findInNote;
+
+  /// Placeholder in the in-note find field.
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get findHint;
+
+  /// Tooltip for the find bar's next-match button.
+  ///
+  /// In en, this message translates to:
+  /// **'Next match (Enter)'**
+  String get findNextMatch;
+
+  /// Tooltip for the find bar's previous-match button.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match (Shift+Enter)'**
+  String get findPreviousMatch;
+
+  /// Find bar hit counter, e.g. '3 of 12'.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String findMatchCount(int current, int total);
+
+  /// Find bar counter text when the query matches nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get findNoMatches;
+
+  /// Tooltip for the find bar's case-sensitivity toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Match case'**
+  String get findCaseSensitive;
 }
 
 class _AppLocalizationsDelegate

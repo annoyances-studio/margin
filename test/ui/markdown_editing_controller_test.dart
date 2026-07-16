@@ -187,4 +187,70 @@ void main() {
       expect(_flatten(buildMarkdownTextSpan(text, base)), text);
     });
   });
+
+  group('applyHighlights', () {
+    const matchColor = Color(0x30FF0000);
+    const activeColor = Color(0x60FF0000);
+
+    TextSpan highlight(String text, List<TextRange> ranges, int active) =>
+        applyHighlights(
+          buildMarkdownTextSpan(text, base),
+          ranges,
+          active,
+          matchColor: matchColor,
+          activeColor: activeColor,
+        );
+
+    test('preserves the text exactly when overlaying highlights', () {
+      const text = '# Title\nfind the word find again, **find** bold';
+      const ranges = [
+        TextRange(start: 8, end: 12), // first "find"
+        TextRange(start: 22, end: 26), // second "find"
+      ];
+      expect(_flatten(highlight(text, ranges, 0)), text);
+    });
+
+    test('paints the active match distinctly from the others', () {
+      // "ab ab ab" → three "ab" matches at 0,3,6.
+      const text = 'ab ab ab';
+      const ranges = [
+        TextRange(start: 0, end: 2),
+        TextRange(start: 3, end: 5),
+        TextRange(start: 6, end: 8),
+      ];
+      final leaves = _leaves(highlight(text, ranges, 1));
+      final active =
+          leaves.where((e) => e.$2?.backgroundColor == activeColor).toList();
+      final inactive =
+          leaves.where((e) => e.$2?.backgroundColor == matchColor).toList();
+      // Exactly one active "ab", two inactive.
+      expect(active.map((e) => e.$1), ['ab']);
+      expect(inactive.map((e) => e.$1), ['ab', 'ab']);
+    });
+
+    test('no ranges leaves the span untouched', () {
+      const text = 'plain **bold** text';
+      final span = highlight(text, const [], -1);
+      expect(_flatten(span), text);
+      expect(
+        _leaves(span).where((e) => e.$2?.backgroundColor != null),
+        isEmpty,
+      );
+    });
+
+    test('highlights a match that spans a style boundary', () {
+      // "o **w" straddles plain text, the dimmed **markers, and bold content.
+      const text = 'hello **world** ok';
+      const needle = 'o **w';
+      final at = text.indexOf(needle);
+      final ranges = [TextRange(start: at, end: at + needle.length)];
+      final span = highlight(text, ranges, 0);
+      expect(_flatten(span), text);
+      final painted = _leaves(span)
+          .where((e) => e.$2?.backgroundColor == activeColor)
+          .map((e) => e.$1)
+          .join();
+      expect(painted, needle);
+    });
+  });
 }

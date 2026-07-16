@@ -315,4 +315,27 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get wordWrapSubtitle =>
       'Desactivado: las líneas largas se desplazan en horizontal (mejor para tablas)';
+
+  @override
+  String get findInNote => 'Buscar en la nota';
+
+  @override
+  String get findHint => 'Buscar';
+
+  @override
+  String get findNextMatch => 'Siguiente coincidencia (Intro)';
+
+  @override
+  String get findPreviousMatch => 'Coincidencia anterior (Mayús+Intro)';
+
+  @override
+  String findMatchCount(int current, int total) {
+    return '$current de $total';
+  }
+
+  @override
+  String get findNoMatches => 'Sin resultados';
+
+  @override
+  String get findCaseSensitive => 'Distinguir mayúsculas';
 }

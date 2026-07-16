@@ -81,22 +81,22 @@ arbitrary folders via `dart:io`).
 
 ## Editor & viewing (continued)
 
-- **Find-in-note (Ctrl+F).** We have cross-note search; there's no
-  find-within-the-open-note (need felt in companion mode). Agreed design that
-  dodges the `flutter_markdown` render wall — **one find engine over the note
-  text, behaviour per view:**
-  - **Editor / split:** search **+ highlight** in the editor. Buildable and
-    clean — `MarkdownEditingController` already builds spans, so add match
-    highlight spans + next/prev + count + scroll-to-selection. Split view targets
-    the editor pane.
-  - **Preview:** search only, **no render change**, just "position" to the match.
-    Preview has no caret and flutter_markdown won't give a match's rendered
-    position, so position via, best-to-worst: (1) set the preview's existing
-    `SelectionArea` selection to the match range (native highlight + scrolls into
-    view, in place) — **spike first**, arbitrary-range programmatic selection
-    isn't a well-trodden API; (2) caret hand-off — move the editor caret so
-    switching to editor/split lands on it; (3) approximate scroll
-    (`matchOffset/totalLen × extent`). No markdown-mark injection.
+- **Find-in-note follow-ups.** Ctrl+F find shipped on desktop (one engine over
+  the note text: editor/split highlight all matches + reveal the active one;
+  preview highlights the active match in place — a sentinel-wrapped `mark`
+  element via a custom inline syntax/builder — and scrolls it exactly into view;
+  case toggle; Enter/Shift+Enter/Esc; a view-mode change resets find). Still to do:
+  - **Mobile entry point** — no Ctrl+F on phones; add a find affordance and
+    coordinate across the separate editor/preview pages (find lives in the
+    desktop `NoteEditorPane`, which the phone layout doesn't use for preview).
+  - **Preview highlight edge cases** — inline code spans ARE highlighted (custom
+    `code` builder), but injection is still skipped (match counts, no
+    highlight/scroll) when it crosses a line/block boundary or sits inside a
+    ``` fenced block (rendered on a separate scrollable path). Only the *active*
+    match is highlighted in preview (the editor shows all). Preview uses
+    `MarkdownBody` in an owned scroll view so every block is built and any match
+    can be revealed — revisit if huge notes feel slow (loses list virtualization).
+  - Optional niceties: whole-word / regex, and replace.
 
 ## Tree & navigation
 

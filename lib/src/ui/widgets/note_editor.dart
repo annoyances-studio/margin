@@ -11,6 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../content/markdown_convert.dart';
 import '../../desktop/file_reveal.dart';
 import '../clipboard_service.dart';
+import '../find/find_session.dart';
 import '../link_target.dart';
 import 'markdown_editing_controller.dart';
 
@@ -65,6 +66,11 @@ class NoteEditor extends StatefulWidget {
   /// When null, the editor falls back to opening the resolved target directly.
   final void Function(String target)? onOpenLink;
 
+  /// In-note find (Ctrl+F). When non-null, matches are highlighted in the field
+  /// and the active match is scrolled into view. The editor also feeds its live
+  /// text to the session so matches track edits.
+  final FindSession? find;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -78,6 +84,7 @@ class NoteEditor extends StatefulWidget {
     this.wordWrap = true,
     this.readOnly = false,
     this.onOpenLink,
+    this.find,
   });
 
   @override
@@ -101,11 +108,32 @@ class _NoteEditorState extends State<NoteEditor> {
   /// Horizontal scroll position for the no-wrap layout.
   final ScrollController _hScroll = ScrollController();
 
+  /// The field's own vertical scroll — owned here so find can reveal a match
+  /// without stealing focus from the find bar.
+  final ScrollController _vScroll = ScrollController();
+
+  /// Last measured wrap-mode text width, used to lay out an off-screen painter
+  /// that locates a match's vertical position for scroll-to-reveal.
+  double _viewportWidth = 0;
+
+  /// Cached layout for scroll-to-reveal, reused across next/prev while the text
+  /// and width are unchanged so rapid navigation stays responsive.
+  TextPainter? _revealPainter;
+  String? _revealPainterText;
+  double? _revealPainterWidth;
+  TextScaler? _revealPainterScaler;
+
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_refreshActiveLink);
+    _controller.addListener(_onEditorChanged);
     HardwareKeyboard.instance.addHandler(_onKeyEvent);
+    widget.find?.addListener(_onFind);
+    // Apply any highlights the session already holds (find opened before this
+    // editor mounted, e.g. switching notes with find active).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onFind();
+    });
   }
 
   /// Tracks the Ctrl/Cmd modifier so the cursor can reflect "follow link" mode.
@@ -127,14 +155,94 @@ class _NoteEditorState extends State<NoteEditor> {
         _controller.text != widget.body) {
       _controller.text = widget.body;
     }
+    if (oldWidget.find != widget.find) {
+      oldWidget.find?.removeListener(_onFind);
+      widget.find?.addListener(_onFind);
+      _onFind();
+    }
   }
 
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
+    widget.find?.removeListener(_onFind);
+    _revealPainter?.dispose();
     _hScroll.dispose();
+    _vScroll.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Fires on every text/selection change: keeps the link affordance current
+  /// and feeds the live text to find so matches track edits precisely.
+  void _onEditorChanged() {
+    _refreshActiveLink();
+    widget.find?.setText(_controller.text);
+  }
+
+  /// Reacts to find state: repaint the field's match highlights and reveal the
+  /// active match. Setting highlights never touches the stored text.
+  void _onFind() {
+    final session = widget.find;
+    if (session == null) return;
+    _controller.setHighlights(session.matches, session.activeIndex);
+    _revealActive();
+  }
+
+  /// Scrolls the field so the active match is on screen, without requiring the
+  /// field to have focus (find keeps it). Locates the match by laying out an
+  /// off-screen painter with the same styled spans and width the field uses —
+  /// an approximation that is more than good enough to bring the line into view.
+  ///
+  /// The painter is cached (text + width don't change while navigating), so
+  /// rapid next/prev stays responsive; and the target is deterministic (the
+  /// match always lands ~30% down) rather than "skip if already visible", which
+  /// made fast navigation feel like it wasn't keeping up.
+  void _revealActive() {
+    final match = widget.find?.activeMatch;
+    if (match == null || !mounted) return;
+    if (!_vScroll.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _revealActive();
+      });
+      return;
+    }
+    final text = _controller.text;
+    final width =
+        (widget.wordWrap && _viewportWidth > 0) ? _viewportWidth : double.infinity;
+    // Match the field's own layout as closely as possible so the located line
+    // is accurate at any width: the same effective base style the TextField
+    // resolves (theme bodyLarge + the field's explicit style) and the same text
+    // scaler. A mismatch wraps differently and the error compounds over lines —
+    // which is why a narrow window drifted more than a wide one.
+    final scaler = MediaQuery.textScalerOf(context);
+    if (_revealPainter == null ||
+        _revealPainterText != text ||
+        _revealPainterWidth != width ||
+        _revealPainterScaler != scaler) {
+      final base = (Theme.of(context).textTheme.bodyLarge ?? const TextStyle())
+          .merge(const TextStyle(fontSize: 15, height: 1.45));
+      _revealPainter?.dispose();
+      _revealPainter = TextPainter(
+        text: buildMarkdownTextSpan(text, base),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout(maxWidth: width);
+      _revealPainterText = text;
+      _revealPainterWidth = width;
+      _revealPainterScaler = scaler;
+    }
+    final start = match.start.clamp(0, text.length);
+    final dy =
+        _revealPainter!.getOffsetForCaret(TextPosition(offset: start), Rect.zero).dy;
+    final pos = _vScroll.position;
+    final viewport = pos.viewportDimension;
+    final target = (dy - viewport * 0.3).clamp(0.0, pos.maxScrollExtent);
+    _vScroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+    );
   }
 
   /// Recomputes which link (if any) the caret currently sits inside, and
@@ -264,6 +372,7 @@ class _NoteEditorState extends State<NoteEditor> {
     final l10n = AppLocalizations.of(context);
     return TextField(
       controller: _controller,
+      scrollController: _vScroll,
       onChanged: widget.onChanged,
       readOnly: widget.readOnly,
       // Ctrl/Cmd held → click cursor, signalling links are followable.
@@ -366,7 +475,14 @@ class _NoteEditorState extends State<NoteEditor> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: widget.wordWrap
-                  ? _editorField(context)
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Remember the wrap width so find can locate a match's
+                        // vertical position off-screen for scroll-to-reveal.
+                        _viewportWidth = constraints.maxWidth;
+                        return _editorField(context);
+                      },
+                    )
                   : _noWrapEditor(context),
             ),
           ),
