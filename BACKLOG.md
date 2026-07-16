@@ -79,6 +79,20 @@ arbitrary folders via `dart:io`).
 - **Paste fidelity** — HTML/RTF → Markdown fidelity, and formatted paste on
   non-Windows platforms (currently plain text off-Windows).
 
+## Editor & viewing (continued)
+
+- **Find-in-note (Ctrl+F) — in the rendered *preview*.** We have cross-note
+  search; there's no find-within-the-open-note, and the need is felt in
+  companion mode where you read the *preview*, not the source. `flutter_markdown`
+  gives no substring-highlight or scroll-to-match hook, so this is a real
+  feature, not a quick add. Phasing: **v1** highlight all matches in the preview
+  (inject highlight marks into the Markdown + a custom render builder; works for
+  prose, matches straddling `**bold**`/`[links]`/`` `code` `` may not highlight)
+  + a match count; **v2** current-match cycling + auto-scroll (inline spans have
+  no render object to `ensureVisible` — likely needs a different markdown
+  renderer) and cross-formatting matches. Source/editor find-with-highlight is
+  the easy fallback if the preview path proves too costly.
+
 ## Tree & navigation
 
 - **Note Rename** action (context menu) — must move the `.md.yaml` sidecar with
