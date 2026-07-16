@@ -81,17 +81,22 @@ arbitrary folders via `dart:io`).
 
 ## Editor & viewing (continued)
 
-- **Find-in-note (Ctrl+F) — in the rendered *preview*.** We have cross-note
-  search; there's no find-within-the-open-note, and the need is felt in
-  companion mode where you read the *preview*, not the source. `flutter_markdown`
-  gives no substring-highlight or scroll-to-match hook, so this is a real
-  feature, not a quick add. Phasing: **v1** highlight all matches in the preview
-  (inject highlight marks into the Markdown + a custom render builder; works for
-  prose, matches straddling `**bold**`/`[links]`/`` `code` `` may not highlight)
-  + a match count; **v2** current-match cycling + auto-scroll (inline spans have
-  no render object to `ensureVisible` — likely needs a different markdown
-  renderer) and cross-formatting matches. Source/editor find-with-highlight is
-  the easy fallback if the preview path proves too costly.
+- **Find-in-note (Ctrl+F).** We have cross-note search; there's no
+  find-within-the-open-note (need felt in companion mode). Agreed design that
+  dodges the `flutter_markdown` render wall — **one find engine over the note
+  text, behaviour per view:**
+  - **Editor / split:** search **+ highlight** in the editor. Buildable and
+    clean — `MarkdownEditingController` already builds spans, so add match
+    highlight spans + next/prev + count + scroll-to-selection. Split view targets
+    the editor pane.
+  - **Preview:** search only, **no render change**, just "position" to the match.
+    Preview has no caret and flutter_markdown won't give a match's rendered
+    position, so position via, best-to-worst: (1) set the preview's existing
+    `SelectionArea` selection to the match range (native highlight + scrolls into
+    view, in place) — **spike first**, arbitrary-range programmatic selection
+    isn't a well-trodden API; (2) caret hand-off — move the editor caret so
+    switching to editor/split lands on it; (3) approximate scroll
+    (`matchOffset/totalLen × extent`). No markdown-mark injection.
 
 ## Tree & navigation
 
