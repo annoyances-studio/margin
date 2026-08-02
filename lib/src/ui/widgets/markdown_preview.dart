@@ -4,7 +4,9 @@
 
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -77,6 +79,25 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
   /// still mounted and has a context to reveal.
   final ScrollController _scroll = ScrollController();
 
+  /// Destination of the link currently hovered, shown in a status strip and
+  /// used to switch the cursor to a click cursor. A [ValueNotifier] (not
+  /// setState) so hovering only rebuilds the strip + the cursor region, never
+  /// the Markdown itself.
+  final ValueNotifier<String?> _hoveredLink = ValueNotifier(null);
+
+  /// Anchors the render-tree walk used to find the link under the pointer.
+  final GlobalKey _bodyKey = GlobalKey();
+
+  /// Link display-text → destination, parsed from the source (memoized per
+  /// data). Links render natively (overriding the `a` builder breaks
+  /// flutter_markdown's link-handler stack), so hover resolves the href by
+  /// matching the hovered span's text back to the source.
+  Map<String, String>? _linkHrefs;
+  String? _linkHrefsForData;
+
+  /// Last pointer position a hover hit-test ran for, to skip tiny moves.
+  Offset? _lastHoverAt;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +116,7 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
   @override
   void dispose() {
     widget.find?.removeListener(_onFind);
+    _hoveredLink.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -144,9 +166,10 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
     final match = widget.find?.isVisible == true ? widget.find!.activeMatch : null;
     final highlighted = _highlightedData();
 
+    final styleSheet = _styleSheet(theme);
     var data = widget.data;
     List<md.InlineSyntax> inlineSyntaxes = const [];
-    Map<String, MarkdownElementBuilder> builders = const {};
+    final builders = <String, MarkdownElementBuilder>{};
 
     if (highlighted != null && match != null) {
       // Reuse the key while the same match stays active (rebuilds keep the same
@@ -157,13 +180,11 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
       data = highlighted;
       final highlightColor = theme.colorScheme.tertiary.withValues(alpha: 0.60);
       inlineSyntaxes = [_MarkInlineSyntax()];
-      builders = {
-        // `mark` catches matches in normal text; `code` catches matches inside
-        // inline code spans (where inline syntaxes don't run, so the sentinels
-        // arrive as literal text in the element for this builder to split).
-        'mark': _HighlightBuilder(_markKey!, highlightColor),
-        'code': _InlineCodeBuilder(_markKey!, highlightColor),
-      };
+      // `mark` catches matches in normal text; `code` catches matches inside
+      // inline code spans (where inline syntaxes don't run, so the sentinels
+      // arrive as literal text in the element for this builder to split).
+      builders['mark'] = _HighlightBuilder(_markKey!, highlightColor);
+      builders['code'] = _InlineCodeBuilder(_markKey!, highlightColor);
       _scheduleReveal(match.start);
     } else {
       _markKey = null;
@@ -174,27 +195,99 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
     // raw editor at a glance (it reads as "rendered", not "editable").
     return Material(
       color: theme.colorScheme.surfaceContainerLow,
-      // SelectionArea gives proper cross-block text selection (flutter_markdown's
-      // own `selectable:` only selects within a single block), plus a place to
-      // attach the Special Copy action.
-      child: SelectionArea(
-        contextMenuBuilder: _buildSelectionMenu,
-        // MarkdownBody (all blocks built) inside our own scroll view, rather
-        // than the scrolling Markdown (which lazily builds children) — so a
-        // match anywhere in the note is mounted and can be scrolled into view.
-        child: SingleChildScrollView(
-          controller: _scroll,
-          physics: widget.physics,
-          padding: const EdgeInsets.all(16),
-          child: MarkdownBody(
-            data: data,
-            selectable: false, // SelectionArea owns selection now
-            extensionSet: md.ExtensionSet.gitHubFlavored,
-            inlineSyntaxes: inlineSyntaxes,
-            builders: builders,
-            styleSheet: _styleSheet(theme),
-            sizedImageBuilder: _buildImage,
-            onTapLink: (text, href, title) => _openLink(href),
+      child: Stack(
+        children: [
+          // SelectionArea gives proper cross-block text selection
+          // (flutter_markdown's own `selectable:` only selects within a single
+          // block), plus a place to attach the Special Copy action.
+          Positioned.fill(
+            child: SelectionArea(
+              contextMenuBuilder: _buildSelectionMenu,
+              // Cursor + hover detection live here (not per-link): a link
+              // widget can't override the `a` builder without breaking
+              // flutter_markdown's link handling, so we hit-test the rendered
+              // text on hover instead. Over a link → click cursor + destination
+              // strip; elsewhere → the text cursor. Only this region rebuilds
+              // on hover (the child MarkdownBody is passed through untouched).
+              child: ValueListenableBuilder<String?>(
+                valueListenable: _hoveredLink,
+                child: SingleChildScrollView(
+                  key: _bodyKey,
+                  controller: _scroll,
+                  physics: widget.physics,
+                  padding: const EdgeInsets.all(16),
+                  // MarkdownBody (all blocks built) so a match anywhere is
+                  // mounted and can be revealed.
+                  child: MarkdownBody(
+                    data: data,
+                    selectable: false, // SelectionArea owns selection now
+                    extensionSet: md.ExtensionSet.gitHubFlavored,
+                    inlineSyntaxes: inlineSyntaxes,
+                    builders: builders,
+                    styleSheet: styleSheet,
+                    sizedImageBuilder: _buildImage,
+                    onTapLink: (text, href, title) => _openLink(href),
+                  ),
+                ),
+                builder: (context, hovered, child) => MouseRegion(
+                  cursor: hovered == null
+                      ? SystemMouseCursors.text
+                      : SystemMouseCursors.click,
+                  onHover: _onHover,
+                  onExit: (_) {
+                    _lastHoverAt = null;
+                    _hoveredLink.value = null;
+                  },
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+          // Browser-style status strip: the hovered link's destination.
+          Positioned(
+            left: 8,
+            bottom: 8,
+            right: 8,
+            child: ValueListenableBuilder<String?>(
+              valueListenable: _hoveredLink,
+              builder: (context, dest, _) =>
+                  dest == null ? const SizedBox.shrink() : _linkStatus(theme, dest),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The hovered-link destination strip, aligned bottom-left and click-through.
+  Widget _linkStatus(ThemeData theme, String dest) {
+    return Align(
+      alignment: Alignment.bottomLeft,
+      child: IgnorePointer(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 520),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.inverseSurface.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.link, size: 14, color: theme.colorScheme.onInverseSurface),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  dest,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: theme.colorScheme.onInverseSurface,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -268,6 +361,88 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
     }
     final target = resolveLinkTarget(href, widget.imageBaseDir);
     if (target != null) openWithDefaultApp(target);
+  }
+
+  /// A readable "where this goes" label for a link — the target itself (a
+  /// sibling `.md` path or a URL), percent-decoded for legibility.
+  String _destinationLabel(String href) {
+    try {
+      return Uri.decodeFull(href);
+    } catch (_) {
+      return href;
+    }
+  }
+
+  /// On hover, resolve whether the pointer is over a link and publish its
+  /// destination (drives the status strip and the cursor). Skips near-identical
+  /// positions so a big note doesn't hit-test on every pixel of movement.
+  void _onHover(PointerHoverEvent event) {
+    final at = event.position;
+    final last = _lastHoverAt;
+    if (last != null && (at - last).distanceSquared < 16) return; // ~4px
+    _lastHoverAt = at;
+    final href = _linkAt(at);
+    final label = href == null ? null : _destinationLabel(href);
+    if (_hoveredLink.value != label) _hoveredLink.value = label;
+  }
+
+  /// The href of the link under the global point [global], or null. Walks the
+  /// rendered paragraphs, finds the span at the point, and — if it carries a tap
+  /// recognizer (i.e. it's a link) and the point is actually on its glyphs —
+  /// maps its text back to the source href.
+  String? _linkAt(Offset global) {
+    final root = _bodyKey.currentContext?.findRenderObject();
+    if (root is! RenderBox) return null;
+    String? found;
+    void visit(RenderObject node) {
+      if (found != null) return;
+      if (node is RenderParagraph) {
+        final local = node.globalToLocal(global);
+        final size = node.size;
+        if (local.dx >= 0 &&
+            local.dy >= 0 &&
+            local.dx <= size.width &&
+            local.dy <= size.height) {
+          final pos = node.getPositionForOffset(local);
+          final span = node.text.getSpanForPosition(pos);
+          if (span is TextSpan && span.recognizer is TapGestureRecognizer) {
+            // Confirm the point is horizontally over the character, not the
+            // trailing space `getPositionForOffset` snapped to the nearest link
+            // char. Horizontal only — a tight glyph box is shorter than the
+            // line, so checking dy too made small vertical moves flicker.
+            final len = node.text.toPlainText().length;
+            final end = (pos.offset + 1).clamp(0, len);
+            final boxes = node.getBoxesForSelection(
+              TextSelection(baseOffset: pos.offset, extentOffset: end),
+            );
+            final onText = boxes.isEmpty ||
+                boxes.any((b) {
+                  final r = b.toRect();
+                  return local.dx >= r.left - 2 && local.dx <= r.right + 2;
+                });
+            if (onText) found = _hrefForText(span.toPlainText());
+          }
+        }
+      }
+      node.visitChildren(visit);
+    }
+
+    visit(root);
+    return found;
+  }
+
+  /// Maps a link's display text to its source href (first match wins). Parsed
+  /// from [widget.data] and memoized until the note changes.
+  String? _hrefForText(String text) {
+    if (_linkHrefsForData != widget.data) {
+      final map = <String, String>{};
+      for (final m in RegExp(r'\[([^\]\n]*)\]\(([^)\s]+)').allMatches(widget.data)) {
+        map.putIfAbsent(m.group(1)!, () => m.group(2)!);
+      }
+      _linkHrefs = map;
+      _linkHrefsForData = widget.data;
+    }
+    return _linkHrefs?[text];
   }
 
   Widget _buildImage(MarkdownImageConfig config) {

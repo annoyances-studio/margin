@@ -33,6 +33,61 @@ void main() {
     return null;
   }
 
+  test('back/forward navigate note history', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('F');
+    await controller.createNote('a', folderPath: 'F');
+    await controller.createNote('b', folderPath: 'F');
+    await controller.createNote('c', folderPath: 'F');
+    final a = findNote(controller.tree!, 'a')!;
+    final b = findNote(controller.tree!, 'b')!;
+    final c = findNote(controller.tree!, 'c')!;
+
+    // Fresh Folio: nothing to go back to.
+    expect(controller.canGoBack, isFalse);
+    expect(controller.canGoForward, isFalse);
+
+    await controller.selectNote(a);
+    await controller.selectNote(b);
+    await controller.selectNote(c);
+    expect(controller.selectedNotePath, c.path);
+    expect(controller.canGoBack, isTrue);
+    expect(controller.canGoForward, isFalse);
+
+    await controller.goBack(); // -> b
+    expect(controller.selectedNotePath, b.path);
+    expect(controller.canGoForward, isTrue);
+    await controller.goBack(); // -> a
+    expect(controller.selectedNotePath, a.path);
+
+    await controller.goForward(); // -> b
+    expect(controller.selectedNotePath, b.path);
+
+    // Navigating fresh from here drops the forward history (c).
+    await controller.selectNote(a);
+    expect(controller.selectedNotePath, a.path);
+    expect(controller.canGoForward, isFalse);
+  });
+
+  test('deleting a note drops it from history', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('F');
+    await controller.createNote('a', folderPath: 'F');
+    await controller.createNote('b', folderPath: 'F');
+    final a = findNote(controller.tree!, 'a')!;
+    final b = findNote(controller.tree!, 'b')!;
+
+    await controller.selectNote(a);
+    await controller.selectNote(b);
+    await controller.deleteNote(a.path);
+
+    // Walking all the way back must never land on the deleted note.
+    while (controller.canGoBack) {
+      await controller.goBack();
+      expect(controller.selectedNotePath, isNot(a.path));
+    }
+  });
+
   test('create opens a repository and loads an (empty) tree', () async {
     await controller.create(backend, 'My Notes');
     expect(controller.hasFolio, isTrue);

@@ -333,4 +333,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get findCaseSensitive => 'Match case';
+
+  @override
+  String get navigateBack => 'Back';
+
+  @override
+  String get navigateForward => 'Forward';
 }

@@ -727,6 +727,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Match case'**
   String get findCaseSensitive;
+
+  /// Tooltip for the navigate-back button (previous note in history).
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get navigateBack;
+
+  /// Tooltip for the navigate-forward button (next note in history).
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get navigateForward;
 }
 
 class _AppLocalizationsDelegate

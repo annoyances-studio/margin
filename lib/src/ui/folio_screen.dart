@@ -110,6 +110,17 @@ class _FolioScreenState extends State<FolioScreen> {
         ),
         title: Text(_wideTitle()),
         actions: [
+          IconButton(
+            tooltip: _l10n.navigateBack,
+            icon: const Icon(Icons.arrow_back),
+            onPressed: controller.canGoBack ? () => controller.goBack() : null,
+          ),
+          IconButton(
+            tooltip: _l10n.navigateForward,
+            icon: const Icon(Icons.arrow_forward),
+            onPressed:
+                controller.canGoForward ? () => controller.goForward() : null,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: _viewModeControl(),
@@ -498,6 +509,7 @@ class _FolioScreenState extends State<FolioScreen> {
         wordWrap: controller.wordWrap,
         readOnly: controller.isBrowsing,
         onOpenLink: controller.openLink,
+        onNavigateBack: () => controller.goBack(),
       ),
     );
 

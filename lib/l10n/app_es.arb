@@ -114,5 +114,7 @@
   "findPreviousMatch": "Coincidencia anterior (Mayús+Intro)",
   "findMatchCount": "{current} de {total}",
   "findNoMatches": "Sin resultados",
-  "findCaseSensitive": "Distinguir mayúsculas"
+  "findCaseSensitive": "Distinguir mayúsculas",
+  "navigateBack": "Atrás",
+  "navigateForward": "Adelante"
 }

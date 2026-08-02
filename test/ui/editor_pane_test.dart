@@ -230,6 +230,26 @@ void main() {
     expect(find.textContaining('\u{E000}'), findsNothing);
   });
 
+  testWidgets('Backspace navigates back in preview mode', (tester) async {
+    final controller = await openWithNote(tester); // creates Work/meeting
+    await controller.createNote('other', folderPath: 'Work');
+    // Explicit navigation records history (creating a note does not).
+    await controller
+        .selectNote(const NoteNode(path: 'Work/meeting.md', name: 'meeting.md'));
+    expect(controller.selectedNotePath, 'Work/meeting.md');
+    expect(controller.canGoBack, isTrue);
+
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    // Switch to Preview, then Backspace should go back a note.
+    await tester.tap(find.byIcon(Icons.visibility_outlined));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pumpAndSettle();
+    expect(controller.selectedNotePath, 'Work/other.md');
+  });
+
   testWidgets('overflow menu offers always-on-top, settings, and close',
       (tester) async {
     final controller = await openWithNote(tester);

@@ -338,4 +338,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get findCaseSensitive => 'Distinguir mayúsculas';
+
+  @override
+  String get navigateBack => 'Atrás';
+
+  @override
+  String get navigateForward => 'Adelante';
 }

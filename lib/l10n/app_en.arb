@@ -207,5 +207,10 @@
   "findNoMatches": "No results",
   "@findNoMatches": { "description": "Find bar counter text when the query matches nothing." },
   "findCaseSensitive": "Match case",
-  "@findCaseSensitive": { "description": "Tooltip for the find bar's case-sensitivity toggle." }
+  "@findCaseSensitive": { "description": "Tooltip for the find bar's case-sensitivity toggle." },
+
+  "navigateBack": "Back",
+  "@navigateBack": { "description": "Tooltip for the navigate-back button (previous note in history)." },
+  "navigateForward": "Forward",
+  "@navigateForward": { "description": "Tooltip for the navigate-forward button (next note in history)." }
 }

@@ -139,6 +139,13 @@ class AppController extends ChangeNotifier {
   String _workingBody = '';
   bool _dirty = false;
 
+  /// Browser-style navigation history over opened notes (paths). [selectNote]
+  /// pushes the current note onto [_backStack] and clears [_forwardStack];
+  /// [goBack]/[goForward] move between them without recording. Cleared when a
+  /// Folio is adopted or closed.
+  final List<String> _backStack = [];
+  final List<String> _forwardStack = [];
+
   /// Bumped when the working body is changed programmatically (e.g. inserting
   /// an attachment) so the editor widget reloads from it.
   int _editorRevision = 0;
@@ -967,6 +974,8 @@ class AppController extends ChangeNotifier {
     _content = null;
     _tree = null;
     _selectedNotePath = null;
+    _backStack.clear();
+    _forwardStack.clear();
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
@@ -991,8 +1000,42 @@ class AppController extends ChangeNotifier {
 
   // --- navigation ---
 
-  Future<void> selectNote(NoteNode note) async {
+  /// True when there's a previous/next note to return to via [goBack]/[goForward].
+  bool get canGoBack => _backStack.isNotEmpty;
+  bool get canGoForward => _forwardStack.isNotEmpty;
+
+  /// Returns to the previously opened note (browser-style). No-op if the history
+  /// is empty.
+  Future<void> goBack() async {
+    if (_backStack.isEmpty) return;
+    final target = _backStack.removeLast();
+    if (_selectedNotePath != null) _forwardStack.add(_selectedNotePath!);
+    await selectNote(
+      NoteNode(path: target, name: target.split('/').last),
+      record: false,
+    );
+  }
+
+  /// Re-opens the note stepped back from. No-op if there's nothing ahead.
+  Future<void> goForward() async {
+    if (_forwardStack.isEmpty) return;
+    final target = _forwardStack.removeLast();
+    if (_selectedNotePath != null) _backStack.add(_selectedNotePath!);
+    await selectNote(
+      NoteNode(path: target, name: target.split('/').last),
+      record: false,
+    );
+  }
+
+  /// Opens [note]. Normal navigation ([record] true) pushes the current note
+  /// onto the back history and drops the forward history; [goBack]/[goForward]
+  /// pass [record] false so they don't rewrite the history they're walking.
+  Future<void> selectNote(NoteNode note, {bool record = true}) async {
     if (note.path == _selectedNotePath) return;
+    if (record && _selectedNotePath != null) {
+      _backStack.add(_selectedNotePath!);
+      _forwardStack.clear();
+    }
     final hadUnsavedEdits = _dirty;
     try {
       // A pending edit is a write — flush it through the op-queue so it stays
@@ -1607,6 +1650,9 @@ class AppController extends ChangeNotifier {
   Future<void> deleteNote(String path) async {
     await _run(() async {
       await _content!.deleteNote(path);
+      // Drop the gone note from history so Back/Forward never land on it.
+      _backStack.removeWhere((p) => p == path);
+      _forwardStack.removeWhere((p) => p == path);
       if (_selectedNotePath == path) {
         _selectedNotePath = null;
         _currentNote = null;
@@ -1621,6 +1667,10 @@ class AppController extends ChangeNotifier {
   Future<void> deleteFolder(String path) async {
     await _run(() async {
       await _content!.deleteFolder(path);
+      // Drop any history entries that lived under the deleted folder.
+      bool underFolder(String p) => p == path || p.startsWith('$path/');
+      _backStack.removeWhere(underFolder);
+      _forwardStack.removeWhere(underFolder);
       // If the open note lived inside the deleted folder, clear it.
       final selected = _selectedNotePath;
       if (selected != null &&
@@ -1641,6 +1691,8 @@ class AppController extends ChangeNotifier {
     _folio = repo;
     _content = content;
     _selectedNotePath = null;
+    _backStack.clear();
+    _forwardStack.clear();
     _currentNote = null;
     _workingBody = '';
     _dirty = false;

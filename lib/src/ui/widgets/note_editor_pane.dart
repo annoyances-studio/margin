@@ -53,6 +53,10 @@ class NoteEditorPane extends StatefulWidget {
   /// Follows a link target (sibling `.md` in-app, else via the OS).
   final void Function(String target)? onOpenLink;
 
+  /// Navigates back in note history. In preview mode (no text field to edit),
+  /// Backspace triggers it — a reader-friendly "go back" like a browser.
+  final VoidCallback? onNavigateBack;
+
   const NoteEditorPane({
     super.key,
     required this.notePath,
@@ -67,6 +71,7 @@ class NoteEditorPane extends StatefulWidget {
     this.wordWrap = true,
     this.readOnly = false,
     this.onOpenLink,
+    this.onNavigateBack,
   });
 
   @override
@@ -171,6 +176,12 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true):
             _openFind,
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _openFind,
+        // Preview only (there's no text field to edit): Backspace goes back,
+        // browser-style. Never bound in editor/split, where it deletes text.
+        if (widget.mode == EditorViewMode.preview &&
+            widget.onNavigateBack != null)
+          const SingleActivator(LogicalKeyboardKey.backspace):
+              widget.onNavigateBack!,
       },
       child: Focus(
         focusNode: _paneFocus,

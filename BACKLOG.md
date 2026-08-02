@@ -100,6 +100,22 @@ arbitrary folders via `dart:io`).
 
 ## Tree & navigation
 
+- **Back/forward follow-ups** — history nav shipped on desktop (app-bar arrows,
+  browser-style stack over opened notes; cleared per Folio, prunes deleted
+  paths). To do: a **mobile entry point** (the phone bar is crowded; Android
+  system Back currently backgrounds the app), and maybe keyboard shortcuts
+  (Alt+←/→) + mouse back/forward buttons.
+- **Preview link destination** — hovering a preview link shows its destination
+  in a bottom status strip and switches to a click cursor. Implemented WITHOUT a
+  custom `a` builder on purpose: registering one leaves flutter_markdown's link
+  handler unpopped (its pop is in an `else if` skipped when a builder exists),
+  so the stale recognizer attaches to all following text — clicking plain text
+  then navigates. So links render natively (correct taps/flow) and hover is
+  resolved by hit-testing the rendered paragraphs for a link span, mapping its
+  text back to the source href. Follow-ups: hit-test runs on pointer move
+  (throttled ~4px) — watch perf on huge notes; href lookup is by link *text*, so
+  two links with identical text resolve to the first; and a find match inside
+  link text still isn't highlighted.
 - **Note Rename** action (context menu) — must move the `.md.yaml` sidecar with
   the note. Prerequisite for conflict resolution.
 - `[larger]` **Move / copy notes & folders** — drag-to-move, Ctrl-drag-to-
