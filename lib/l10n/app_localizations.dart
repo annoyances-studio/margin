@@ -739,6 +739,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forward'**
   String get navigateForward;
+
+  /// Label/tooltip for the go-to-line feature (Ctrl+G).
+  ///
+  /// In en, this message translates to:
+  /// **'Go to line'**
+  String get goToLine;
+
+  /// Placeholder in the go-to-line field, showing the total line count.
+  ///
+  /// In en, this message translates to:
+  /// **'Line ({count})'**
+  String goToLineHint(int count);
 }
 
 class _AppLocalizationsDelegate

@@ -212,5 +212,13 @@
   "navigateBack": "Back",
   "@navigateBack": { "description": "Tooltip for the navigate-back button (previous note in history)." },
   "navigateForward": "Forward",
-  "@navigateForward": { "description": "Tooltip for the navigate-forward button (next note in history)." }
+  "@navigateForward": { "description": "Tooltip for the navigate-forward button (next note in history)." },
+
+  "goToLine": "Go to line",
+  "@goToLine": { "description": "Label/tooltip for the go-to-line feature (Ctrl+G)." },
+  "goToLineHint": "Line ({count})",
+  "@goToLineHint": {
+    "description": "Placeholder in the go-to-line field, showing the total line count.",
+    "placeholders": { "count": { "type": "int" } }
+  }
 }

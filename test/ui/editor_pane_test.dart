@@ -250,6 +250,30 @@ void main() {
     expect(controller.selectedNotePath, 'Work/other.md');
   });
 
+  testWidgets('Ctrl+G jumps the editor selection to a line', (tester) async {
+    final controller = await openWithNote(tester);
+    controller.updateBody('l1\nl2\nl3\nl4\nl5');
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('goToLineField')), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('goToLineField')), '3');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    // The bar closed and the editor selected line 3.
+    expect(find.byKey(const Key('goToLineField')), findsNothing);
+    final field =
+        tester.widget<TextField>(find.byKey(const Key('noteEditorField')));
+    final sel = field.controller!.selection;
+    expect(field.controller!.text.substring(sel.start, sel.end), 'l3');
+  });
+
   testWidgets('overflow menu offers always-on-top, settings, and close',
       (tester) async {
     final controller = await openWithNote(tester);

@@ -63,6 +63,12 @@ arbitrary folders via `dart:io`).
 
 ## Editor & viewing
 
+- **Line-number gutter (editor)** — optional companion to the shipped go-to-line
+  (Ctrl+G): a toggleable left gutter numbering source lines, so a line Claude
+  cites is visible without jumping. Deferred for the pixel-alignment work (the
+  gutter must track the field's wrapped-line Y exactly — same TextPainter
+  machinery as find's reveal, but a gutter is stared at so drift shows). Desktop,
+  opt-in.
 - **Quick word-wrap toggle** in the editor toolbar (not just Settings), for
   flipping it per-note while reading wide tables.
 - `[parked]` **Editable table grid** — pipe coloring + word-wrap-off covers the

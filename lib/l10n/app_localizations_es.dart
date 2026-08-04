@@ -344,4 +344,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get navigateForward => 'Adelante';
+
+  @override
+  String get goToLine => 'Ir a la línea';
+
+  @override
+  String goToLineHint(int count) {
+    return 'Línea ($count)';
+  }
 }

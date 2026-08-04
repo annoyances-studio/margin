@@ -13,6 +13,7 @@ import '../../desktop/file_reveal.dart';
 import '../clipboard_service.dart';
 import '../find/find_session.dart';
 import '../link_target.dart';
+import 'go_to_line_bar.dart';
 import 'markdown_editing_controller.dart';
 
 /// The note editor: a text field whose Markdown is styled inline as you type
@@ -71,6 +72,10 @@ class NoteEditor extends StatefulWidget {
   /// text to the session so matches track edits.
   final FindSession? find;
 
+  /// Go-to-line (Ctrl+G). When it fires, the editor moves the caret to that line
+  /// and focuses, so the field scrolls it exactly into view.
+  final GoToLineRequest? goToLine;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -85,6 +90,7 @@ class NoteEditor extends StatefulWidget {
     this.readOnly = false,
     this.onOpenLink,
     this.find,
+    this.goToLine,
   });
 
   @override
@@ -98,6 +104,10 @@ class _NoteEditorState extends State<NoteEditor> {
   /// The injected clipboard, or the platform default.
   late final ClipboardService _clipboard =
       widget.clipboard ?? createClipboardService();
+
+  /// Focus for the text field, so go-to-line can focus it and let the field
+  /// reveal the caret (an exact scroll, no measuring).
+  final FocusNode _fieldFocus = FocusNode();
 
   MarkdownLink? _activeLink;
 
@@ -129,6 +139,7 @@ class _NoteEditorState extends State<NoteEditor> {
     _controller.addListener(_onEditorChanged);
     HardwareKeyboard.instance.addHandler(_onKeyEvent);
     widget.find?.addListener(_onFind);
+    widget.goToLine?.addListener(_onGoToLine);
     // Apply any highlights the session already holds (find opened before this
     // editor mounted, e.g. switching notes with find active).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -160,13 +171,19 @@ class _NoteEditorState extends State<NoteEditor> {
       widget.find?.addListener(_onFind);
       _onFind();
     }
+    if (oldWidget.goToLine != widget.goToLine) {
+      oldWidget.goToLine?.removeListener(_onGoToLine);
+      widget.goToLine?.addListener(_onGoToLine);
+    }
   }
 
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
     widget.find?.removeListener(_onFind);
+    widget.goToLine?.removeListener(_onGoToLine);
     _revealPainter?.dispose();
+    _fieldFocus.dispose();
     _hScroll.dispose();
     _vScroll.dispose();
     _controller.dispose();
@@ -178,6 +195,30 @@ class _NoteEditorState extends State<NoteEditor> {
   void _onEditorChanged() {
     _refreshActiveLink();
     widget.find?.setText(_controller.text);
+  }
+
+  /// Jumps to the requested 1-based line: selects that line and focuses the
+  /// field so it scrolls the caret exactly into view. Works read-only too (a
+  /// read-only field is still selectable), so it serves companion browsing.
+  void _onGoToLine() {
+    final line = widget.goToLine?.line;
+    if (line == null || line <= 0 || !mounted) return;
+    final lines = _controller.text.split('\n');
+    final n = line.clamp(1, lines.length);
+    var offset = 0;
+    for (var i = 0; i < n - 1; i++) {
+      offset += lines[i].length + 1; // + the newline
+    }
+    final end = offset + lines[n - 1].length;
+    // Focus so the caret is live (arrow keys work), and select the line with
+    // its caret (extent) at the start. Then do our deterministic scroll in a
+    // post-frame so it runs after the field's own caret-reveal and wins — the
+    // line lands ~30% down rather than jammed against an edge.
+    _fieldFocus.requestFocus();
+    _controller.selection = TextSelection(baseOffset: end, extentOffset: offset);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _revealOffset(offset);
+    });
   }
 
   /// Reacts to find state: repaint the field's match highlights and reveal the
@@ -200,21 +241,27 @@ class _NoteEditorState extends State<NoteEditor> {
   /// made fast navigation feel like it wasn't keeping up.
   void _revealActive() {
     final match = widget.find?.activeMatch;
-    if (match == null || !mounted) return;
+    if (match == null) return;
+    _revealOffset(match.start);
+  }
+
+  /// Scrolls the field so the character at [offset] is ~30% down the viewport,
+  /// without requiring focus. Shared by find's active-match reveal and go-to-
+  /// line. Locates the position with an off-screen painter matched to the
+  /// field's base style + text scaler (a mismatch wraps differently and drifts).
+  /// The painter is cached (text + width unchanged between calls) so repeated
+  /// reveals stay responsive.
+  void _revealOffset(int offset) {
+    if (!mounted) return;
     if (!_vScroll.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _revealActive();
+        if (mounted) _revealOffset(offset);
       });
       return;
     }
     final text = _controller.text;
     final width =
         (widget.wordWrap && _viewportWidth > 0) ? _viewportWidth : double.infinity;
-    // Match the field's own layout as closely as possible so the located line
-    // is accurate at any width: the same effective base style the TextField
-    // resolves (theme bodyLarge + the field's explicit style) and the same text
-    // scaler. A mismatch wraps differently and the error compounds over lines —
-    // which is why a narrow window drifted more than a wide one.
     final scaler = MediaQuery.textScalerOf(context);
     if (_revealPainter == null ||
         _revealPainterText != text ||
@@ -232,7 +279,7 @@ class _NoteEditorState extends State<NoteEditor> {
       _revealPainterWidth = width;
       _revealPainterScaler = scaler;
     }
-    final start = match.start.clamp(0, text.length);
+    final start = offset.clamp(0, text.length);
     final dy =
         _revealPainter!.getOffsetForCaret(TextPosition(offset: start), Rect.zero).dy;
     final pos = _vScroll.position;
@@ -371,7 +418,9 @@ class _NoteEditorState extends State<NoteEditor> {
   Widget _editorField(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return TextField(
+      key: const Key('noteEditorField'),
       controller: _controller,
+      focusNode: _fieldFocus,
       scrollController: _vScroll,
       onChanged: widget.onChanged,
       readOnly: widget.readOnly,

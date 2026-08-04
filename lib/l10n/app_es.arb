@@ -116,5 +116,7 @@
   "findNoMatches": "Sin resultados",
   "findCaseSensitive": "Distinguir mayúsculas",
   "navigateBack": "Atrás",
-  "navigateForward": "Adelante"
+  "navigateForward": "Adelante",
+  "goToLine": "Ir a la línea",
+  "goToLineHint": "Línea ({count})"
 }

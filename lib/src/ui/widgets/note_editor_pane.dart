@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../editor_view_mode.dart';
 import '../find/find_session.dart';
 import 'find_bar.dart';
+import 'go_to_line_bar.dart';
 import 'markdown_preview.dart';
 import 'note_editor.dart';
 
@@ -80,6 +81,8 @@ class NoteEditorPane extends StatefulWidget {
 
 class _NoteEditorPaneState extends State<NoteEditorPane> {
   final FindSession _find = FindSession();
+  final GoToLineRequest _goToLine = GoToLineRequest();
+  bool _goToLineVisible = false;
 
   /// Focus for the pane itself. Autofocused so the Ctrl+F shortcut has a
   /// focused node in scope even before the editor is clicked, and re-focused
@@ -107,6 +110,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
   void dispose() {
     _find.removeListener(_onFind);
     _find.dispose();
+    _goToLine.dispose();
     _paneFocus.dispose();
     super.dispose();
   }
@@ -116,6 +120,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
   }
 
   void _openFind() {
+    setState(() => _goToLineVisible = false); // one bar at a time
     _find.setText(widget.body);
     _find.open();
   }
@@ -124,6 +129,16 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
     _find.close();
     // Return focus to the pane so shortcuts keep working (the find field that
     // had focus is now gone).
+    _paneFocus.requestFocus();
+  }
+
+  void _openGoToLine() {
+    _find.close();
+    setState(() => _goToLineVisible = true);
+  }
+
+  void _closeGoToLine() {
+    setState(() => _goToLineVisible = false);
     _paneFocus.requestFocus();
   }
 
@@ -146,6 +161,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
       readOnly: widget.readOnly,
       onOpenLink: widget.onOpenLink,
       find: _find,
+      goToLine: _goToLine,
     );
     final preview = MarkdownPreview(
       // Keyed by note (not revision) so switching notes starts a fresh preview
@@ -171,11 +187,20 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
         ),
     };
 
+    final editorShown = widget.mode != EditorViewMode.preview;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true):
             _openFind,
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _openFind,
+        // Go-to-line targets the editor, so only in editor/split.
+        if (editorShown) ...{
+          const SingleActivator(LogicalKeyboardKey.keyG, control: true):
+              _openGoToLine,
+          const SingleActivator(LogicalKeyboardKey.keyG, meta: true):
+              _openGoToLine,
+        },
         // Preview only (there's no text field to edit): Backspace goes back,
         // browser-style. Never bound in editor/split, where it deletes text.
         if (widget.mode == EditorViewMode.preview &&
@@ -190,6 +215,19 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
           children: [
             if (_find.isVisible)
               FindBar(session: _find, onClose: _closeFind),
+            if (_goToLineVisible && editorShown)
+              GoToLineBar(
+                lineCount: widget.body.isEmpty
+                    ? 1
+                    : '\n'.allMatches(widget.body).length + 1,
+                onSubmit: (line) {
+                  // Hide the bar, then jump: the editor focuses itself to reveal
+                  // the line, so don't route focus back to the pane here.
+                  setState(() => _goToLineVisible = false);
+                  _goToLine.go(line);
+                },
+                onClose: _closeGoToLine,
+              ),
             Expanded(child: content),
           ],
         ),
