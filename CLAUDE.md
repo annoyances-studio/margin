@@ -52,13 +52,20 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
   public, redirect URI is registered in Entra):
   ```
   --dart-define=ONEDRIVE_CLIENT_ID=0304331a-6dd1-4374-8a6d-208de756ea14
-  "--dart-define=ONEDRIVE_REDIRECT_URI=msauth://com.lordofthedummies.margin/3bApnScojg4cQfTjSK14EAemu0k%3D"
+  "--dart-define=ONEDRIVE_REDIRECT_URI=msauth://studio.annoyances.margin/f3%2F3quA0uUotTGXbPZY4CvNyA8M%3D"
   ```
+  (The redirect encodes the release upload key's signature hash for the
+  `studio.annoyances.margin` package. The old
+  `msauth://com.lordofthedummies.margin/3bApnScojg4cQfTjSK14EAemu0k%3D` — the
+  debug-key hash — is also still registered in Entra during the migration.)
   Windows desktop is built **without** these (OAuth is mobile-only; desktop uses
   the OneDrive-synced local folder).
-- Android package: `com.lordofthedummies.margin`. Release is signed with the
-  **debug keystore** (matches the Entra signature hash, so OneDrive works on
-  release APKs). A possible future rebrand → `es.annoyanc.margin`.
+- Android package (`applicationId`): `studio.annoyances.margin` (Annoyances
+  Studio namespace; internal `namespace` stays `com.lordofthedummies.margin`).
+  Release is signed with the **upload keystore** at `C:/Code/.keys/margin-upload.jks`
+  (alias `upload`), read via the gitignored `android/key.properties`; absent
+  key.properties falls back to debug signing so fresh clones/CI still build. The
+  upload key's signature hash is registered in Entra (see the redirect above).
 - `pip`/external installs hit a corporate **SSL-intercepting proxy**; use
   `--trusted-host pypi.org --trusted-host files.pythonhosted.org` if needed.
 
