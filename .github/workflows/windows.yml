@@ -1,0 +1,57 @@
+# Builds the Windows release and publishes it as a downloadable zip.
+#
+# Runs only when you ask for it — on a version tag (`git tag v0.1.0 && git push
+# --tags`), which also attaches the zip to the matching GitHub Release, or via
+# the "Run workflow" button (Actions tab). Nothing runs on ordinary pushes.
+#
+# The build is UNSIGNED (Windows SmartScreen will show "unknown publisher" on
+# download) — desktop needs no secrets. A code-signing step can slot in later
+# after the build, once the studio can complete certificate identity checks.
+name: Windows build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    # Needed so a tagged run can attach the zip to the GitHub Release.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # Pinned to the version used locally, so CI matches the dev machine.
+          flutter-version: 3.44.0
+          channel: stable
+          cache: true
+
+      - run: flutter config --enable-windows-desktop
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      # Package the whole Release folder (margin.exe + DLLs + data\) — the app
+      # needs all of it, not just the .exe.
+      - name: Package the build
+        run: >-
+          Compress-Archive
+          -Path build\windows\x64\runner\Release\*
+          -DestinationPath margin-windows-x64.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: margin-windows-x64
+          path: margin-windows-x64.zip
+
+      # On a version tag, also attach the zip to that tag's GitHub Release
+      # (created if it doesn't exist yet) — the download link you'd grab at work.
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: margin-windows-x64.zip
