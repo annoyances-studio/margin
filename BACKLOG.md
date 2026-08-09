@@ -82,9 +82,23 @@ arbitrary folders via `dart:io`).
   browses it read-only, so the folder-freshness problem is solved inside Margin
   instead of by an external sync tool. Would need a bundled Dart git
   implementation (`dart_git`/libgit2-style — no shell inside the Android
-  sandbox). Overlaps heavily with GitJournal; deliberately kept out of the SAF
-  path so it can't complicate it. Lower priority — the in-philosophy answer is
-  "read a folder someone else syncs."
+  sandbox). Overlaps with GitJournal; kept out of the SAF path so it can't
+  complicate it. Lower priority — the in-philosophy answer is "read a folder
+  someone else syncs."
+  - **Why it would actually be worth building (the value prop):** kill the
+    mobile-git *auth* annoyance. Every mobile git tool (MGit, Termux) makes you
+    fight PAT/SSH-key entry per clone. Margin could take a PAT **once**, store it
+    in the OS keystore via the existing `CredentialStore` (same as WebDAV/OneDrive
+    creds), and never re-prompt. "The markdown reader that makes mobile-git-auth
+    a one-time thing" is the differentiator, not "it does git."
+  - **The scope-creep trap to decide up front:** cloning into Margin's *own*
+    managed folder is simpler than SAF (known location, no picker) — BUT once a
+    repo lives in Margin's folder, users will expect a *proper* git backend
+    (commit/push), not read-only. Desktop dodges this because the folder is "just
+    a folder that happens to be git," and external git tools do the committing;
+    mobile has no such tool, so the expectation lands squarely on Margin. So the
+    boundary must be chosen deliberately: stay a pull-only reader, or accept
+    becoming a git client. Staying read-only keeps the "dumb folder" identity.
 
 ## Editor & viewing
 
