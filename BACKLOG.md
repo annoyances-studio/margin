@@ -57,9 +57,34 @@ arbitrary folders via `dart:io`).
   (no file on disk). Read the bytes via the backend and use `Image.memory`
   (cached) when there's no local path. Prerequisite for great remote/bundle
   reading.
-- `[larger]` **Android SAF / document-picker + content-URI backend** — to browse
-  a *local* Android folder shared into the app. A different access model than
-  the `dart:io`-based `LocalFolderBackend`; Android-specific and bigger.
+- `[larger]` **Android SAF folder-picker + read-only content-URI backend** — the
+  chosen path for companion-on-Android. Scoped storage means `dart:io` can't read
+  arbitrary paths, so the user picks the folder once via the system folder picker
+  (Storage Access Framework); the app gets a **persistable** `content://` tree URI
+  and reads through `DocumentFile`/`ContentResolver`. Design:
+  - New `SafBackend implements StorageBackend` over a Kotlin **method channel**
+    (fits the existing `MainActivity` channel used for Back-to-background /
+    clipboard images). **Read-only** → only `list`/`exists`/`read` needed.
+  - The browse machinery is already backend-agnostic (`Folio.browse(backend)` +
+    `ContentService(browse: true)`), so this is a new backend, not new UI logic.
+  - Store the granted tree URI in recent-folios (already has a `browse` flag) for
+    one-tap reopen; add a landing entry point ("Open a folder to read").
+  - **Prerequisite:** "Render embedded images through the backend" (above) —
+    SAF files have no `dart:io` path, so images need `Image.memory`.
+  - **Explicitly out of scope:** keeping the folder *current*. That's the sync
+    layer's job (Syncthing / a cloud-synced folder / Termux `git pull` / MGit) —
+    Margin just reads whatever's there ("dumb folder" philosophy). Rejected the
+    `MANAGE_EXTERNAL_STORAGE` shortcut (lets `LocalFolderBackend` read any path
+    with little code, but it's a heavy, Play-restricted, user-hostile permission).
+
+- `[larger]` `[idea]` **Git-read backend (pull-only, no push)** — a *separate,
+  walled-off* idea from SAF: a backend that clones/pulls a repo directly and
+  browses it read-only, so the folder-freshness problem is solved inside Margin
+  instead of by an external sync tool. Would need a bundled Dart git
+  implementation (`dart_git`/libgit2-style — no shell inside the Android
+  sandbox). Overlaps heavily with GitJournal; deliberately kept out of the SAF
+  path so it can't complicate it. Lower priority — the in-philosophy answer is
+  "read a folder someone else syncs."
 
 ## Editor & viewing
 
