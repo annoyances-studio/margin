@@ -118,5 +118,9 @@
   "navigateBack": "Atrás",
   "navigateForward": "Adelante",
   "goToLine": "Ir a la línea",
-  "goToLineHint": "Línea ({count})"
+  "goToLineHint": "Línea ({count})",
+  "collapseAll": "Contraer todo",
+  "expandAll": "Expandir todo",
+  "modifiedLabel": "Modificado",
+  "lineColumn": "Ln {line}, Col {col}"
 }

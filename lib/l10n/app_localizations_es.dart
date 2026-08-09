@@ -352,4 +352,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String goToLineHint(int count) {
     return 'Línea ($count)';
   }
+
+  @override
+  String get collapseAll => 'Contraer todo';
+
+  @override
+  String get expandAll => 'Expandir todo';
+
+  @override
+  String get modifiedLabel => 'Modificado';
+
+  @override
+  String lineColumn(int line, int col) {
+    return 'Ln $line, Col $col';
+  }
 }

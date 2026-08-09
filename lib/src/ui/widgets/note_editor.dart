@@ -109,6 +109,10 @@ class _NoteEditorState extends State<NoteEditor> {
   /// reveal the caret (an exact scroll, no measuring).
   final FocusNode _fieldFocus = FocusNode();
 
+  /// Caret line/column (1-based), shown in a small pill. A [ValueNotifier] so
+  /// moving the caret updates only the pill, not the whole editor.
+  final ValueNotifier<({int line, int col})?> _caret = ValueNotifier(null);
+
   MarkdownLink? _activeLink;
 
   /// Whether Ctrl/Cmd is currently held — when it is, the editor shows a click
@@ -183,6 +187,7 @@ class _NoteEditorState extends State<NoteEditor> {
     widget.find?.removeListener(_onFind);
     widget.goToLine?.removeListener(_onGoToLine);
     _revealPainter?.dispose();
+    _caret.dispose();
     _fieldFocus.dispose();
     _hScroll.dispose();
     _vScroll.dispose();
@@ -190,11 +195,30 @@ class _NoteEditorState extends State<NoteEditor> {
     super.dispose();
   }
 
-  /// Fires on every text/selection change: keeps the link affordance current
-  /// and feeds the live text to find so matches track edits precisely.
+  /// Fires on every text/selection change: keeps the link affordance current,
+  /// updates the caret pill, and feeds the live text to find so matches track
+  /// edits precisely.
   void _onEditorChanged() {
     _refreshActiveLink();
+    _updateCaret();
     widget.find?.setText(_controller.text);
+  }
+
+  /// Recomputes the 1-based caret line/column from the selection's base offset.
+  void _updateCaret() {
+    final selection = _controller.selection;
+    if (!selection.isValid) {
+      _caret.value = null;
+      return;
+    }
+    final text = _controller.text;
+    final offset = selection.baseOffset.clamp(0, text.length);
+    final before = text.substring(0, offset);
+    final lastNewline = before.lastIndexOf('\n');
+    _caret.value = (
+      line: '\n'.allMatches(before).length + 1,
+      col: offset - lastNewline, // lastNewline is -1 when on line 1 → col = offset+1
+    );
   }
 
   /// Jumps to the requested 1-based line: selects that line and focuses the
@@ -547,7 +571,38 @@ class _NoteEditorState extends State<NoteEditor> {
               onOpenLink: widget.onOpenLink,
             ),
           ),
+        // Caret line/column pill, bottom-right. Hidden while the link affordance
+        // occupies the bottom strip (it takes priority).
+        if (link == null)
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: IgnorePointer(
+              child: ValueListenableBuilder<({int line, int col})?>(
+                valueListenable: _caret,
+                builder: (context, caret, _) =>
+                    caret == null ? const SizedBox.shrink() : _caretPill(context, caret),
+              ),
+            ),
+          ),
       ],
+    );
+  }
+
+  Widget _caretPill(BuildContext context, ({int line, int col}) caret) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.inverseSurface.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        AppLocalizations.of(context).lineColumn(caret.line, caret.col),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onInverseSurface,
+        ),
+      ),
     );
   }
 }

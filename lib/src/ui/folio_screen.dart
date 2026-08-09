@@ -41,6 +41,11 @@ class _FolioScreenState extends State<FolioScreen> {
 
   bool _showTree = true;
 
+  /// Desktop sidebar width, adjustable by dragging the divider (clamped).
+  double _treeWidth = 280;
+  static const double _minTreeWidth = 180;
+  static const double _maxTreeWidth = 520;
+
   // Phone layout: three swipeable pages (0 folders, 1 editor, 2 preview).
   final PageController _pageController = PageController(initialPage: 1);
   int _currentPage = 1;
@@ -521,7 +526,7 @@ class _FolioScreenState extends State<FolioScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          width: 280,
+          width: _treeWidth,
           child: Material(
             // A slightly distinct surface tone sets the sidebar apart from the
             // editor (VS Code / Claude-desktop style).
@@ -529,9 +534,34 @@ class _FolioScreenState extends State<FolioScreen> {
             child: _treePanelContent(),
           ),
         ),
-        const VerticalDivider(width: 1),
+        _treeResizeHandle(),
         Expanded(child: editor),
       ],
+    );
+  }
+
+  /// A draggable divider that resizes the sidebar (clamped between a sensible
+  /// min and max). A wide hit area over a thin visual line, with a resize
+  /// cursor on desktop.
+  Widget _treeResizeHandle() {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragUpdate: (d) => setState(() {
+          _treeWidth =
+              (_treeWidth + d.delta.dx).clamp(_minTreeWidth, _maxTreeWidth);
+        }),
+        child: SizedBox(
+          width: 8,
+          child: Center(
+            child: VerticalDivider(
+              width: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -894,7 +924,9 @@ class _FolioScreenState extends State<FolioScreen> {
         if (confirmed) await controller.deleteFolder(folder.path);
       case TreeAction.openContainingFolder:
       case TreeAction.deleteNote:
-        break; // not applicable to folders
+      case TreeAction.collapseAll:
+      case TreeAction.expandAll:
+        break; // not applicable here (collapse/expand handled inside the tree)
     }
   }
 

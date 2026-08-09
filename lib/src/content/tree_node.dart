@@ -30,6 +30,11 @@ class FolderNode extends TreeNode {
   /// tapping the folder name rather than listed among [notes].
   final bool hasFolderNote;
 
+  /// The folder note's last-modified time and size (when [hasFolderNote]), from
+  /// the directory listing — for the folder-note tooltip.
+  final DateTime? folderNoteModified;
+  final int? folderNoteSize;
+
   const FolderNode({
     required super.path,
     required super.name,
@@ -37,6 +42,8 @@ class FolderNode extends TreeNode {
     this.notes = const [],
     this.color,
     this.hasFolderNote = false,
+    this.folderNoteModified,
+    this.folderNoteSize,
   });
 
   /// Whether this folder has no child folders and no notes.
@@ -45,7 +52,19 @@ class FolderNode extends TreeNode {
 
 /// A note file (`*.md`).
 class NoteNode extends TreeNode {
-  const NoteNode({required super.path, required super.name});
+  /// Last-modified time, if the backend reports it (from the directory listing,
+  /// so it costs no extra reads and works for browsed folders too).
+  final DateTime? modified;
+
+  /// File size in bytes, if known.
+  final int? size;
+
+  const NoteNode({
+    required super.path,
+    required super.name,
+    this.modified,
+    this.size,
+  });
 
   /// The file name without its `.md` extension, for display.
   String get title {

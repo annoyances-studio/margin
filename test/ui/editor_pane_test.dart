@@ -250,6 +250,19 @@ void main() {
     expect(controller.selectedNotePath, 'Work/other.md');
   });
 
+  testWidgets('the editor shows a caret line/column pill', (tester) async {
+    final controller = await openWithNote(tester);
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    // Placing the caret (via typed text) shows the position: end of 'ab\ncd'
+    // is line 2, column 3.
+    await tester.enterText(
+        find.byKey(const Key('noteEditorField')), 'ab\ncd');
+    await tester.pump();
+    expect(find.text('Ln 2, Col 3'), findsOneWidget);
+  });
+
   testWidgets('Ctrl+G jumps the editor selection to a line', (tester) async {
     final controller = await openWithNote(tester);
     controller.updateBody('l1\nl2\nl3\nl4\nl5');

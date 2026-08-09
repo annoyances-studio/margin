@@ -128,11 +128,14 @@ arbitrary folders via `dart:io`).
   duplicate on desktop; carry sidecars and folder markers. Mobile: a "Move to…"
   menu instead of drag.
 - **Tree sort & ordering** — name vs. `updated` sort (the sidecar indexes
-  `updated`), folders-first, and persisted expand/collapse state.
+  `updated`), folders-first. (Collapse/expand-all shipped via a central
+  expansion model in `FolderTreeView`; **persisting** that expand/collapse state
+  across sessions is the remaining piece — the model is now there to hang it on.)
 - **Widen the folder right-click hit area** to the whole row (currently the
   label only).
-- **Resizable tree panel** — a draggable divider to set sidebar width (clamped
-  min/max), persisted like other device-local prefs.
+- **Persist the sidebar width** — the tree panel is now drag-resizable (clamped
+  min/max), but the width resets each launch; persist it like other device-local
+  prefs (settings store + AppController), alongside the expand/collapse state.
 
 ## Landing & UX
 

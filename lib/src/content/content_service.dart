@@ -72,6 +72,8 @@ class ContentService {
     final notes = <NoteNode>[];
     var hasProperties = false;
     var hasFolderNote = false;
+    DateTime? folderNoteModified;
+    int? folderNoteSize;
 
     for (final entry in entries) {
       // Defend against a backend yielding the directory itself or a path that
@@ -107,9 +109,16 @@ class ContentService {
         // note in browse mode).
         if (!isRoot && entry.name.toLowerCase() == folderNoteName.toLowerCase()) {
           hasFolderNote = true;
+          folderNoteModified = entry.modified;
+          folderNoteSize = entry.size;
           continue;
         }
-        notes.add(NoteNode(path: entry.path, name: entry.name));
+        notes.add(NoteNode(
+          path: entry.path,
+          name: entry.name,
+          modified: entry.modified,
+          size: entry.size,
+        ));
       }
     }
 
@@ -143,6 +152,8 @@ class ContentService {
       notes: notes,
       color: color,
       hasFolderNote: hasFolderNote,
+      folderNoteModified: folderNoteModified,
+      folderNoteSize: folderNoteSize,
     );
   }
 

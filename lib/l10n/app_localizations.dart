@@ -751,6 +751,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Line ({count})'**
   String goToLineHint(int count);
+
+  /// Folder menu action: collapse this folder and everything under it.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse all'**
+  String get collapseAll;
+
+  /// Folder menu action: expand this folder and everything under it.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand all'**
+  String get expandAll;
+
+  /// Prefix in a note's tooltip before its last-modified date.
+  ///
+  /// In en, this message translates to:
+  /// **'Modified'**
+  String get modifiedLabel;
+
+  /// Caret position pill in the editor: line and column (both 1-based).
+  ///
+  /// In en, this message translates to:
+  /// **'Ln {line}, Col {col}'**
+  String lineColumn(int line, int col);
 }
 
 class _AppLocalizationsDelegate

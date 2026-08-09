@@ -220,5 +220,18 @@
   "@goToLineHint": {
     "description": "Placeholder in the go-to-line field, showing the total line count.",
     "placeholders": { "count": { "type": "int" } }
+  },
+
+  "collapseAll": "Collapse all",
+  "@collapseAll": { "description": "Folder menu action: collapse this folder and everything under it." },
+  "expandAll": "Expand all",
+  "@expandAll": { "description": "Folder menu action: expand this folder and everything under it." },
+  "modifiedLabel": "Modified",
+  "@modifiedLabel": { "description": "Prefix in a note's tooltip before its last-modified date." },
+
+  "lineColumn": "Ln {line}, Col {col}",
+  "@lineColumn": {
+    "description": "Caret position pill in the editor: line and column (both 1-based).",
+    "placeholders": { "line": { "type": "int" }, "col": { "type": "int" } }
   }
 }
