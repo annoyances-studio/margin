@@ -69,6 +69,7 @@
   "createFolderFirst": "Crea primero una carpeta (página Carpetas).",
 
   "selectNoteToEdit": "Selecciona una nota para editar.",
+  "selectNoteToRead": "Selecciona una nota para leer.",
   "selectNoteToPreview": "Selecciona una nota para previsualizar.",
   "writeInMarkdown": "Escribe en Markdown...",
   "noTarget": "(sin destino)",
@@ -122,5 +123,6 @@
   "collapseAll": "Contraer todo",
   "expandAll": "Expandir todo",
   "modifiedLabel": "Modificado",
-  "lineColumn": "Ln {line}, Col {col}"
+  "lineColumn": "Ln {line}, Col {col}",
+  "openFolderToRead": "Abrir una carpeta para leer"
 }

@@ -57,25 +57,18 @@ arbitrary folders via `dart:io`).
   (no file on disk). Read the bytes via the backend and use `Image.memory`
   (cached) when there's no local path. Prerequisite for great remote/bundle
   reading.
-- `[larger]` **Android SAF folder-picker + read-only content-URI backend** — the
-  chosen path for companion-on-Android. Scoped storage means `dart:io` can't read
-  arbitrary paths, so the user picks the folder once via the system folder picker
-  (Storage Access Framework); the app gets a **persistable** `content://` tree URI
-  and reads through `DocumentFile`/`ContentResolver`. Design:
-  - New `SafBackend implements StorageBackend` over a Kotlin **method channel**
-    (fits the existing `MainActivity` channel used for Back-to-background /
-    clipboard images). **Read-only** → only `list`/`exists`/`read` needed.
-  - The browse machinery is already backend-agnostic (`Folio.browse(backend)` +
-    `ContentService(browse: true)`), so this is a new backend, not new UI logic.
-  - Store the granted tree URI in recent-folios (already has a `browse` flag) for
-    one-tap reopen; add a landing entry point ("Open a folder to read").
-  - **Prerequisite:** "Render embedded images through the backend" (above) —
-    SAF files have no `dart:io` path, so images need `Image.memory`.
-  - **Explicitly out of scope:** keeping the folder *current*. That's the sync
-    layer's job (Syncthing / a cloud-synced folder / Termux `git pull` / MGit) —
-    Margin just reads whatever's there ("dumb folder" philosophy). Rejected the
-    `MANAGE_EXTERNAL_STORAGE` shortcut (lets `LocalFolderBackend` read any path
-    with little code, but it's a heavy, Play-restricted, user-hostile permission).
+- **Android SAF companion — SHIPPED.** The user picks a folder via the system
+  picker (SAF); a read-only `SafBackend` over a Kotlin method channel reads the
+  granted `content://` tree (`DocumentFile`); recent-folios stores the URI for
+  one-tap reopen; browsed notes open in Preview and Android Back walks note
+  history. Remaining follow-ups: **render images through the backend** (above —
+  SAF has no `dart:io` path, so `![](pic.png)` doesn't render yet); and the
+  path→document resolution uses `findFile` per segment (O(children) per level) —
+  if big trees feel slow, construct document URIs directly (`DocumentsContract`).
+  LEARNED: another app's `Android/data/<pkg>/` (e.g. an MGit clone) is
+  unreachable by SAF *and* `MANAGE_EXTERNAL_STORAGE` on Android 11+ — the folder
+  must live in **shared** storage (Documents/Downloads, a Syncthing/cloud folder,
+  or a Termux clone under `~/storage/shared`).
 
 - `[larger]` `[idea]` **Git-read backend (pull-only, no push)** — a *separate,
   walled-off* idea from SAF: a backend that clones/pulls a repo directly and
@@ -99,6 +92,17 @@ arbitrary folders via `dart:io`).
     mobile has no such tool, so the expectation lands squarely on Margin. So the
     boundary must be chosen deliberately: stay a pull-only reader, or accept
     becoming a git client. Staying read-only keeps the "dumb folder" identity.
+  - **Resolution to the trap (from MGit testing):** clone into a **shared-storage**
+    managed folder (not app-private), so any external tool can commit/push against
+    it — Margin stays the read-only reader, the folder is "just a folder that
+    happens to be git," and the desktop model is preserved on mobile. Bonus: a
+    shared, well-known folder could one day be operated on by *other apps,
+    possibly the Claude App itself*. (Contrast: cloning into app-private storage
+    is where the "must become a git client" pressure comes from.)
+  - **Auth, kept simple (from MGit testing):** a single **username + password**
+    field covers most git servers over HTTPS; for GitHub the "password" is just a
+    **PAT**. So v1 needs no SSH-key UI — one username + one password/PAT field,
+    stored in `CredentialStore`. (Public repos need no auth at all.)
 
 ## Editor & viewing
 

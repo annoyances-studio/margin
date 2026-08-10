@@ -26,6 +26,8 @@ import '../storage/local_folder_backend.dart';
 import '../storage/onedrive_auth.dart';
 import '../storage/onedrive_backend.dart';
 import '../storage/onedrive_oauth.dart';
+import '../storage/saf/saf_backend.dart';
+import '../storage/saf/saf_channel.dart';
 import '../storage/storage_backend.dart';
 import '../storage/storage_exception.dart';
 import '../storage/webdav_backend.dart';
@@ -57,6 +59,7 @@ class AppController extends ChangeNotifier {
 
   /// Clipboard access (incl. rich HTML). Injectable so tests use a fake.
   final ClipboardService _clipboard;
+  final SafChannel _saf;
 
   AppController({
     SettingsStore? settings,
@@ -65,11 +68,13 @@ class AppController extends ChangeNotifier {
     http.Client Function()? httpClientFactory,
     Future<Directory> Function()? cacheRoot,
     ClipboardService? clipboard,
+    SafChannel? saf,
   })  : _settings = settings ?? InMemorySettingsStore(),
         _credentials = credentials ?? InMemoryCredentialStore(),
         _syncStates = syncStates ?? InMemorySyncStateStore(),
         _httpClientFactory = httpClientFactory ?? (() => http.Client()),
         _clipboard = clipboard ?? createClipboardService(),
+        _saf = saf ?? const MethodChannelSaf(),
         _cacheRoot = cacheRoot ??
             (() async {
               final docs = await getApplicationDocumentsDirectory();
@@ -312,6 +317,13 @@ class AppController extends ChangeNotifier {
         } else {
           await openOneDrive(recent.location, knownId: recent.id);
         }
+      case 'saf':
+        // Reopen a granted Android folder (permission persisted natively).
+        // A revoked/missing grant surfaces as an [error] via openRemoteBrowse.
+        await openRemoteBrowse(
+          SafBackend(_saf, recent.location),
+          name: recent.name,
+        );
       default:
         if (!await Directory(recent.location).exists()) {
           _error = 'This Folio\'s folder is missing: ${recent.location}';
@@ -479,6 +491,31 @@ class AppController extends ChangeNotifier {
     final slash = trimmed.lastIndexOf('/');
     final name = slash >= 0 ? trimmed.substring(slash + 1) : trimmed;
     return name.isEmpty ? 'Notes' : name;
+  }
+
+  /// Companion mode on Android: the user picks a folder via the system picker
+  /// (SAF), and it's browsed read-only over the granted `content://` tree URI.
+  /// The permission is persisted natively, and a recent-Folios entry stores the
+  /// URI so it reopens with one tap. No-op if the user cancels the picker.
+  Future<void> browseAndroidFolder() async {
+    final ({String uri, String name})? picked;
+    try {
+      picked = await _saf.pickFolder();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return;
+    }
+    if (picked == null) return; // cancelled
+    await openRemoteBrowse(SafBackend(_saf, picked.uri), name: picked.name);
+    if (hasFolio) {
+      _recordRecent(RecentFolio(
+        type: 'saf',
+        location: picked.uri,
+        name: folioName,
+        browse: true,
+      ));
+    }
   }
 
   /// Browses a WebDAV folder read-only (companion mode). Stores the password in

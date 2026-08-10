@@ -136,15 +136,22 @@ class _MarginAppState extends State<MarginApp> with WidgetsBindingObserver {
           } else {
             screen = OpenFolioScreen(controller: _controller);
           }
-          // On Android, intercept the root Back so it hides the app (like Home)
-          // instead of finishing the activity — keeping state alive so resume
-          // is instant. Elsewhere there's no system Back to intercept.
+          // On Android, intercept the root Back: first walk the note history
+          // (browser-style — matters for companion reading, where you follow
+          // links), and only when there's nowhere back to go, hide the app
+          // (like Home) rather than finishing the activity, keeping state alive
+          // for an instant resume. Elsewhere there's no system Back to intercept.
           if (!backMinimizesApp) return screen;
           return PopScope(
             key: const Key('rootBackGuard'),
             canPop: false,
             onPopInvokedWithResult: (didPop, _) {
-              if (!didPop) moveAppToBackground();
+              if (didPop) return;
+              if (_controller.canGoBack) {
+                _controller.goBack();
+              } else {
+                moveAppToBackground();
+              }
             },
             child: screen,
           );

@@ -537,7 +537,9 @@ class _NoteEditorState extends State<NoteEditor> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (widget.notePath == null) {
-      return Center(child: Text(l10n.selectNoteToEdit));
+      return Center(child: Text(
+        widget.readOnly ? l10n.selectNoteToRead : l10n.selectNoteToEdit,
+      ));
     }
     final link = _activeLink;
     return Stack(

@@ -201,6 +201,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectNoteToEdit => 'Select a note to edit.';
 
   @override
+  String get selectNoteToRead => 'Select a note to read.';
+
+  @override
   String get selectNoteToPreview => 'Select a note to preview.';
 
   @override
@@ -361,4 +364,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String lineColumn(int line, int col) {
     return 'Ln $line, Col $col';
   }
+
+  @override
+  String get openFolderToRead => 'Open a folder to read';
 }

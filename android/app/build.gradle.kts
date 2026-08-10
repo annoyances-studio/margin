@@ -79,6 +79,12 @@ kotlin {
     }
 }
 
+dependencies {
+    // Storage Access Framework helper — the companion-mode folder picker reads a
+    // user-granted content:// tree via DocumentFile (see MainActivity SAF handler).
+    implementation("androidx.documentfile:documentfile:1.0.1")
+}
+
 flutter {
     source = "../.."
 }

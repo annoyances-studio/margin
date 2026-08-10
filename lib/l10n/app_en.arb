@@ -131,6 +131,8 @@
   "createFolderFirst": "Create a folder first (Folders page).",
 
   "selectNoteToEdit": "Select a note to edit.",
+  "selectNoteToRead": "Select a note to read.",
+  "@selectNoteToRead": { "description": "Editor placeholder in read-only browse mode (companion), where 'edit' would be wrong." },
   "selectNoteToPreview": "Select a note to preview.",
   "writeInMarkdown": "Write in Markdown...",
   "noTarget": "(no target)",
@@ -233,5 +235,8 @@
   "@lineColumn": {
     "description": "Caret position pill in the editor: line and column (both 1-based).",
     "placeholders": { "line": { "type": "int" }, "col": { "type": "int" } }
-  }
+  },
+
+  "openFolderToRead": "Open a folder to read",
+  "@openFolderToRead": { "description": "Landing button (Android) to pick a local folder and browse it read-only (companion mode)." }
 }

@@ -234,7 +234,10 @@ class _FolioScreenState extends State<FolioScreen> {
                 Material(
                   color: Theme.of(context).colorScheme.surfaceContainerLow,
                   child: _treePanelContent(
-                    onNoteSelected: () => _goToPage(1),
+                    // Browsed (read-only) folders are for reading, so land on
+                    // the rendered preview; editable Folios land on the editor.
+                    onNoteSelected: () =>
+                        _goToPage(controller.isBrowsing ? 2 : 1),
                     scrollable: true,
                   ),
                 ),

@@ -145,7 +145,12 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
   @override
   Widget build(BuildContext context) {
     if (widget.notePath == null) {
-      return Center(child: Text(AppLocalizations.of(context).selectNoteToEdit));
+      final l10n = AppLocalizations.of(context);
+      return Center(
+        child: Text(widget.readOnly
+            ? l10n.selectNoteToRead
+            : l10n.selectNoteToEdit),
+      );
     }
 
     final editor = NoteEditor(

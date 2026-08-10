@@ -476,6 +476,12 @@ abstract class AppLocalizations {
   /// **'Select a note to edit.'**
   String get selectNoteToEdit;
 
+  /// Editor placeholder in read-only browse mode (companion), where 'edit' would be wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a note to read.'**
+  String get selectNoteToRead;
+
   /// No description provided for @selectNoteToPreview.
   ///
   /// In en, this message translates to:
@@ -775,6 +781,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ln {line}, Col {col}'**
   String lineColumn(int line, int col);
+
+  /// Landing button (Android) to pick a local folder and browse it read-only (companion mode).
+  ///
+  /// In en, this message translates to:
+  /// **'Open a folder to read'**
+  String get openFolderToRead;
 }
 
 class _AppLocalizationsDelegate

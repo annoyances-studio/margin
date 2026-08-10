@@ -53,6 +53,10 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
   bool get _supportsFolderPicker =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+  /// Android reads a user-granted folder read-only via SAF (companion mode);
+  /// desktop uses the folder picker above, so this button is Android-only.
+  bool get _supportsSafFolder => !kIsWeb && Platform.isAndroid;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -143,6 +147,14 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
             icon: const Icon(Icons.create_new_folder),
             label: Text(l10n.createFolioLocal),
             onPressed: () => _createNew(context),
+          ),
+        ],
+        if (_supportsSafFolder) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.folder_special_outlined),
+            label: Text(l10n.openFolderToRead),
+            onPressed: () => controller.browseAndroidFolder(),
           ),
         ],
         const SizedBox(height: 12),
