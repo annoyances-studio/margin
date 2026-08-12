@@ -75,9 +75,9 @@ arbitrary folders via `dart:io`).
 - `[larger]` `[idea]` **Git-read backend (pull-only, no push)** — a *separate,
   walled-off* idea from SAF: a backend that clones/pulls a repo directly and
   browses it read-only, so the folder-freshness problem is solved inside Margin
-  instead of by an external sync tool. Would need a bundled Dart git
-  implementation (`dart_git`/libgit2-style — no shell inside the Android
-  sandbox). Overlaps with GitJournal; kept out of the SAF path so it can't
+  instead of by an external sync tool. Mechanism decided (see **Architecture**
+  sub-bullet): **JGit** behind a method channel, not a Dart git lib. Overlaps
+  with GitJournal; kept out of the SAF path so it can't
   complicate it. **Priority raised (field evidence 2026-08-12):** on-device git
   tooling is confirmed inadequate for this — MGit has no LFS support (silently
   clones pointer stubs), and Termux git wouldn't operate on MGit's clone (repo
@@ -117,6 +117,39 @@ arbitrary folders via `dart:io`).
     detect it), which external clients get wrong. One more "control the clone"
     argument. Interim fix is the sync layer's job (Termux `git lfs pull`,
     Syncthing/cloud).
+  - **Architecture (spike two unknowns FIRST, before any product code):** JGit
+    (`org.eclipse.jgit` + `org.eclipse.jgit.lfs`) is pure Java, runs in-process
+    on Android's ART — no NDK, no bundled `git` binary. It slots into the
+    **exact SAF shape**: a Dart `GitChannel` interface + `MethodChannelGit` →
+    a Kotlin handler in `MainActivity` (same `margin/app`-style channel as SAF),
+    added as one Gradle dependency. Key design call: **git *materializes*, it
+    does not *read*.** JGit clones/pulls into a folder on disk; Margin then
+    browses that folder with the **existing `LocalFolderBackend`** (browse mode)
+    — no new `StorageBackend`, and images hit the local-file fast path for free.
+    Reuses the clone-then-sync cache pattern the app already has. **Mobile-first
+    by nature:** JGit is JVM-only, Flutter desktop is native (no JVM), and
+    desktop users already have a real `git` — so this backend is Android-only
+    (desktop would shell out or simply not offer it). The two unknowns that gate
+    everything — verify empirically in a throwaway spike, don't assume: (1)
+    **JGit under ART** — it leans on some `java.nio.file`/`java.time` APIs;
+    modern Android + Gradle desugaring should cover it, but prove a clone works;
+    (2) **LFS smudge-on-clone** — confirm `jgit.lfs` checks out **real bytes**,
+    not the 130-byte pointer (the same trap that killed MGit). If JGit-LFS also
+    leaves pointers, the feature is pointless — learn that in an hour.
+  - **Clone destination & scope (decided):** default target is Margin's own
+    managed folder in **shared** storage, but the user can pick a **different
+    root folder** for clones. Consequence, accepted deliberately: for some users
+    Margin effectively becomes an Android *cloning tool* — **allow it, don't
+    prevent it, don't advertise it.** Always a **full clone/pull of the whole
+    repo** (no sparse/selective fetch): `.md` files link to siblings and assets,
+    and we won't parse notes to decide what to pull. Pull-only, never push —
+    Margin stays the read-only reader; any committing is an external tool's job
+    against that shared folder (preserves the desktop "just a folder that happens
+    to be git" model).
+  - **Pull-failure handling (decided):** a pull is best-effort. If it fails
+    (network, auth, conflict, repo corruption), **keep showing the last good
+    clone** (it's already on disk, read-only) and **warn the user** that the copy
+    may be stale — never blank the reader or block browsing on a failed refresh.
 
 - **Detect a Git LFS pointer in the preview and show a hint** — small, standalone
   win independent of the git-read backend. When an image's bytes are a Git LFS
