@@ -238,5 +238,8 @@
   },
 
   "openFolderToRead": "Open a folder to read",
-  "@openFolderToRead": { "description": "Landing button (Android) to pick a local folder and browse it read-only (companion mode)." }
+  "@openFolderToRead": { "description": "Landing button (Android) to pick a local folder and browse it read-only (companion mode)." },
+
+  "lfsPointerImage": "Git LFS pointer — run “git lfs pull” to fetch this image",
+  "@lfsPointerImage": { "description": "Shown in place of an image whose file is a Git LFS pointer stub, not the real binary." }
 }

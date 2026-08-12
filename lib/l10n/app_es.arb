@@ -124,5 +124,6 @@
   "expandAll": "Expandir todo",
   "modifiedLabel": "Modificado",
   "lineColumn": "Ln {line}, Col {col}",
-  "openFolderToRead": "Abrir una carpeta para leer"
+  "openFolderToRead": "Abrir una carpeta para leer",
+  "lfsPointerImage": "Puntero de Git LFS — ejecuta “git lfs pull” para obtener esta imagen"
 }

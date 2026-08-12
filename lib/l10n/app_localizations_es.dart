@@ -372,4 +372,8 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get openFolderToRead => 'Abrir una carpeta para leer';
+
+  @override
+  String get lfsPointerImage =>
+      'Puntero de Git LFS — ejecuta “git lfs pull” para obtener esta imagen';
 }

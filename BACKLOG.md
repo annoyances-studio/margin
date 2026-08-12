@@ -51,12 +51,14 @@ arbitrary folders via `dart:io`).
   OneDrive **in-app folder browser** (below) would make picking a folder to
   browse easier than typing a path; and recursive tree listing over Graph is one
   API call per folder — fine for now, optimize if big trees feel slow.
-- **Render embedded images through the backend** — the preview resolves images
-  to a local file path (`_imageBaseDir` → `localAbsolutePath`), so `![](pic.png)`
-  in a note **doesn't render when browsing a remote (or future zip) folder**
-  (no file on disk). Read the bytes via the backend and use `Image.memory`
-  (cached) when there's no local path. Prerequisite for great remote/bundle
-  reading.
+- **Render embedded images through the backend — SHIPPED.** When the preview has
+  no local file path (browsing a remote/SAF folder), it reads the image bytes via
+  the backend (`AppController.readNoteImage` → `content.backend.read`, resolved
+  relative to the open note, root-escape guarded) and renders `Image.memory`,
+  memoized per src (no re-read/flicker). Local Folios still use the fast
+  `Image.file` path. Unblocks remote + SAF + future-zip image reading. Follow-ups
+  if needed: a size cap / eviction on the in-memory cache for image-heavy notes,
+  and a shared cache across notes (currently per-preview, reset on note switch).
 - **Android SAF companion — SHIPPED.** The user picks a folder via the system
   picker (SAF); a read-only `SafBackend` over a Kotlin method channel reads the
   granted `content://` tree (`DocumentFile`); recent-folios stores the URI for
@@ -103,6 +105,21 @@ arbitrary folders via `dart:io`).
     field covers most git servers over HTTPS; for GitHub the "password" is just a
     **PAT**. So v1 needs no SSH-key UI — one username + one password/PAT field,
     stored in `CredentialStore`. (Public repos need no auth at all.)
+  - **Git LFS is another external-client gap (from MGit testing):** MGit clones
+    LFS-tracked files as ~130-byte pointer stubs (not the binary), so images
+    silently don't render — Margin reads the stub faithfully, it's just not an
+    image. A controlled git-read backend could handle/`git lfs pull` (or at least
+    detect it), which external clients get wrong. One more "control the clone"
+    argument. Interim fix is the sync layer's job (Termux `git lfs pull`,
+    Syncthing/cloud).
+
+- **Detect a Git LFS pointer in the preview and show a hint** — small, standalone
+  win independent of the git-read backend. When an image's bytes are a Git LFS
+  pointer (a small text file starting with
+  `version https://git-lfs.github.com/spec/v1`), the preview currently shows a
+  generic broken-image icon. Detect that signature (in `readNoteImage` or the
+  image widget) and render an actionable message instead ("Git LFS pointer — run
+  `git lfs pull`") so the user isn't left guessing.
 
 ## Editor & viewing
 

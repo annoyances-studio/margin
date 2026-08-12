@@ -33,6 +33,10 @@ class NoteEditorPane extends StatefulWidget {
   /// the preview.
   final String? imageBaseDir;
 
+  /// Reads an embedded image's bytes through the backend when there's no local
+  /// file (browsing a remote/SAF folder). Forwarded to the preview.
+  final Future<Uint8List?> Function(String src)? imageLoader;
+
   /// Opens the formatted-copy chooser ("Special Copy") from the editor/preview
   /// context menus. Null hides the item.
   final VoidCallback? onSpecialCopy;
@@ -73,6 +77,7 @@ class NoteEditorPane extends StatefulWidget {
     this.readOnly = false,
     this.onOpenLink,
     this.onNavigateBack,
+    this.imageLoader,
   });
 
   @override
@@ -174,6 +179,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
       key: ValueKey('preview:${widget.notePath}'),
       data: widget.body,
       imageBaseDir: widget.imageBaseDir,
+      imageLoader: widget.imageLoader,
       find: _find,
       onSpecialCopy: widget.onSpecialCopy,
       onOpenLink: widget.onOpenLink,

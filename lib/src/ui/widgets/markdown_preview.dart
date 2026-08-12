@@ -2,7 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -52,6 +54,11 @@ class MarkdownPreview extends StatefulWidget {
   /// OS). When null, falls back to opening the resolved target directly.
   final void Function(String target)? onOpenLink;
 
+  /// Reads an embedded image's bytes through the backend, given its note-
+  /// relative `src`. Used to render images when there's no local file on disk
+  /// (browsing a remote/SAF folder). Null → such images show a broken icon.
+  final Future<Uint8List?> Function(String src)? imageLoader;
+
   const MarkdownPreview({
     super.key,
     required this.data,
@@ -60,6 +67,7 @@ class MarkdownPreview extends StatefulWidget {
     this.find,
     this.onSpecialCopy,
     this.onOpenLink,
+    this.imageLoader,
   });
 
   @override
@@ -87,6 +95,11 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
 
   /// Anchors the render-tree walk used to find the link under the pointer.
   final GlobalKey _bodyKey = GlobalKey();
+
+  /// Memoized backend image reads, keyed by note-relative src, so an image is
+  /// fetched once and rebuilds reuse the completed future (no re-read, no
+  /// flicker). Reset per note since the preview is keyed by note path.
+  final Map<String, Future<Uint8List?>> _imageBytes = {};
 
   /// Link display-text → destination, parsed from the source (memoized per
   /// data). Links render natively (overriding the `a` builder breaks
@@ -452,15 +465,112 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
           width: config.width, height: config.height);
     }
 
+    // Fast path: a real file on disk (local Folio / synced cache).
     final path = resolveLinkTarget(uri.path, widget.imageBaseDir);
-    if (path == null) {
-      return const Icon(Icons.image_not_supported_outlined);
+    if (path != null) {
+      return Image.file(
+        File(path),
+        width: config.width,
+        height: config.height,
+        errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
+      );
     }
-    return Image.file(
-      File(path),
-      width: config.width,
-      height: config.height,
-      errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
+
+    // No local file (browsing a remote/SAF folder): read the bytes through the
+    // backend and render from memory.
+    final loader = widget.imageLoader;
+    if (loader != null) {
+      final future = _imageBytes.putIfAbsent(uri.path, () => loader(uri.path));
+      return _BackendImage(
+        future: future,
+        width: config.width,
+        height: config.height,
+      );
+    }
+    return const Icon(Icons.image_not_supported_outlined);
+  }
+}
+
+/// Whether [bytes] are a Git LFS pointer stub (a tiny text file) rather than the
+/// real binary — the case where a repo was cloned without LFS, so the image
+/// never came down. Cheap: LFS pointers are ~130 bytes and start with a fixed
+/// version line.
+bool isLfsPointer(Uint8List bytes) {
+  if (bytes.isEmpty || bytes.length > 1024) return false;
+  final text = utf8.decode(bytes, allowMalformed: true);
+  return text.startsWith('version https://git-lfs.github.com/spec/v1');
+}
+
+/// Renders an image whose bytes come from the backend (no file on disk). Shows a
+/// spinner while loading, an actionable hint when the "image" is really a Git
+/// LFS pointer, and a broken-image icon if it can't be read/decoded.
+class _BackendImage extends StatelessWidget {
+  final Future<Uint8List?> future;
+  final double? width;
+  final double? height;
+
+  const _BackendImage({required this.future, this.width, this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return SizedBox(
+            width: width ?? 64,
+            height: height ?? 64,
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        final bytes = snap.data;
+        if (bytes == null) {
+          return const Icon(Icons.broken_image_outlined);
+        }
+        if (isLfsPointer(bytes)) {
+          return _lfsHint(context);
+        }
+        return Image.memory(
+          bytes,
+          width: width,
+          height: height,
+          errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
+        );
+      },
+    );
+  }
+
+  /// A calm, actionable stand-in for an image that's really a Git LFS pointer.
+  Widget _lfsHint(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_download_outlined,
+              size: 16, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              AppLocalizations.of(context).lfsPointerImage,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

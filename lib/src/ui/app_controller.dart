@@ -201,6 +201,30 @@ class AppController extends ChangeNotifier {
     return backend is LocalFolderBackend ? backend.absolutePathOf(path) : null;
   }
 
+  /// Reads the bytes of an image referenced from the open note ([src] is note-
+  /// relative, e.g. `_attachments/pic.png`) **through the backend** — so images
+  /// render when browsing a remote/SAF folder that has no local file on disk.
+  /// Returns null for absolute/remote srcs (the preview handles http(s) itself)
+  /// or on any failure. Used by the preview only when there's no local path.
+  Future<Uint8List?> readNoteImage(String src) async {
+    final content = _content;
+    final notePath = _selectedNotePath;
+    if (content == null || notePath == null || src.isEmpty) return null;
+    // Skip anything with a scheme (http/https/data) — not a backend path.
+    if (Uri.tryParse(src)?.hasScheme ?? false) return null;
+    final slash = notePath.lastIndexOf('/');
+    final folder = slash < 0 ? '' : notePath.substring(0, slash);
+    final resolved =
+        p.posix.normalize(folder.isEmpty ? src : '$folder/$src');
+    // Never read outside the Folio root.
+    if (resolved.startsWith('..') || resolved.startsWith('/')) return null;
+    try {
+      return await content.backend.read(resolved);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// The accent color (`#RRGGBB`) of the folder containing the selected note,
   /// or null. Used as a per-note visual cue.
   String? get selectedNoteFolderColor {

@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -152,6 +153,19 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun safRead(treeUri: Uri, path: String): ByteArray? {
+        // Fast, reliable path: construct the child document URI directly from the
+        // tree's document id (hierarchical providers like externalstorage). Avoids
+        // DocumentFile.findFile enumerating a whole directory per segment, which is
+        // slow and flaky in large folders (e.g. a cloned code repo).
+        try {
+            val rootId = DocumentsContract.getTreeDocumentId(treeUri)
+            val childId = if (path.isEmpty()) rootId else "$rootId/$path"
+            val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childId)
+            val bytes = contentResolver.openInputStream(childUri)?.use { it.readBytes() }
+            if (bytes != null) return bytes
+        } catch (_: Exception) {
+            // Fall through to the DocumentFile walk for non-hierarchical providers.
+        }
         val file = resolve(treeUri, path) ?: return null
         if (!file.isFile) return null
         return contentResolver.openInputStream(file.uri)?.use { it.readBytes() }

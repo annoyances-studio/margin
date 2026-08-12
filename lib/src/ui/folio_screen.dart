@@ -288,6 +288,7 @@ class _FolioScreenState extends State<FolioScreen> {
           mode: EditorViewMode.edit, // preview is its own page here
           revision: controller.editorRevision,
           imageBaseDir: _imageBaseDir(),
+          imageLoader: controller.readNoteImage,
           onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
           onDownloadImage: controller.downloadImageAsAttachment,
@@ -302,6 +303,7 @@ class _FolioScreenState extends State<FolioScreen> {
                   key: ValueKey('preview:${controller.selectedNotePath}'),
                   data: controller.workingBody,
                   imageBaseDir: _imageBaseDir(),
+                  imageLoader: controller.readNoteImage,
                   physics: const AlwaysScrollableScrollPhysics(),
                   onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
                   onOpenLink: controller.openLink,
@@ -550,6 +552,7 @@ class _FolioScreenState extends State<FolioScreen> {
         mode: controller.viewMode,
         revision: controller.editorRevision,
         imageBaseDir: _imageBaseDir(),
+        imageLoader: controller.readNoteImage,
         onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
         onSaveAttachment: controller.saveAttachmentForCurrentNote,
         onDownloadImage: controller.downloadImageAsAttachment,

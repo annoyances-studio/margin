@@ -787,6 +787,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open a folder to read'**
   String get openFolderToRead;
+
+  /// Shown in place of an image whose file is a Git LFS pointer stub, not the real binary.
+  ///
+  /// In en, this message translates to:
+  /// **'Git LFS pointer — run “git lfs pull” to fetch this image'**
+  String get lfsPointerImage;
 }
 
 class _AppLocalizationsDelegate
