@@ -78,8 +78,13 @@ arbitrary folders via `dart:io`).
   instead of by an external sync tool. Would need a bundled Dart git
   implementation (`dart_git`/libgit2-style — no shell inside the Android
   sandbox). Overlaps with GitJournal; kept out of the SAF path so it can't
-  complicate it. Lower priority — the in-philosophy answer is "read a folder
-  someone else syncs."
+  complicate it. **Priority raised (field evidence 2026-08-12):** on-device git
+  tooling is confirmed inadequate for this — MGit has no LFS support (silently
+  clones pointer stubs), and Termux git wouldn't operate on MGit's clone (repo
+  ownership/perms), so getting a real repo onto the phone currently needs
+  hand-copying. Syncthing/cloud remain the clean *user* answer, but a built-in
+  git-read backend (with LFS handling) is looking like the more self-contained
+  fix. Still walled off from SAF; still read-only.
   - **Why it would actually be worth building (the value prop):** kill the
     mobile-git *auth* annoyance. Every mobile git tool (MGit, Termux) makes you
     fight PAT/SSH-key entry per clone. Margin could take a PAT **once**, store it
