@@ -50,6 +50,10 @@ class _FolioScreenState extends State<FolioScreen> {
   final PageController _pageController = PageController(initialPage: 1);
   int _currentPage = 1;
 
+  /// Whether the last build used the wide layout, to detect a layout switch
+  /// (rotation/resize) and carry the editor-vs-preview choice across it.
+  bool? _wasWide;
+
   final TextEditingController _searchController = TextEditingController();
 
   AppController get controller => widget.controller;
@@ -81,6 +85,25 @@ class _FolioScreenState extends State<FolioScreen> {
     }
   }
 
+  /// Keeps editor-vs-preview consistent when the layout flips (rotation/resize).
+  /// Into wide: adopt the pager's page as the view mode. Into narrow: open the
+  /// pager on the page matching the view mode. The folders page (0) is left
+  /// alone — it's navigation, not a view mode.
+  void _syncViewAcrossLayout(bool toWide) {
+    if (!mounted) return;
+    if (toWide) {
+      if (_currentPage == 2) {
+        controller.setViewMode(EditorViewMode.preview);
+      } else if (_currentPage == 1) {
+        controller.setViewMode(EditorViewMode.edit);
+      }
+    } else if (_pageController.hasClients) {
+      _pageController.jumpToPage(
+        controller.viewMode == EditorViewMode.preview ? 2 : 1,
+      );
+    }
+  }
+
   void _openSettings() => SettingsDialog.show(
         context,
         startupService: widget.startupService,
@@ -94,7 +117,23 @@ class _FolioScreenState extends State<FolioScreen> {
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, constraints) {
-            return constraints.maxWidth >= _wideBreakpoint
+            final wide = constraints.maxWidth >= _wideBreakpoint;
+            final firstBuild = _wasWide == null;
+            final switched = !firstBuild && _wasWide != wide;
+            _wasWide = wide;
+            // Keep the swipe-pager's page and the wide view mode consistent:
+            // - on a layout flip (rotation/resize), carry the choice across;
+            // - on the first narrow build, open on the page matching the view
+            //   mode, so a browsed folder (which resolves to preview) opens
+            //   rendered rather than on the raw editor page.
+            if (switched) {
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _syncViewAcrossLayout(wide));
+            } else if (firstBuild && !wide) {
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _syncViewAcrossLayout(false));
+            }
+            return wide
                 ? _buildWide(context)
                 : _buildNarrow(context);
           },

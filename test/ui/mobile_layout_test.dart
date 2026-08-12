@@ -2,7 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,6 +67,50 @@ void main() {
     expect(find.byTooltip('Preview'), findsOneWidget);
     // The editor page is shown initially.
     expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('rotation preserves preview: narrow preview page -> wide '
+      'preview mode', (tester) async {
+    useNarrowScreen(tester);
+    final controller = await openWithNote(); // Work/meeting.md auto-selected
+    await tester.pumpWidget(localizedApp(FolioScreen(controller: controller)));
+    await tester.pumpAndSettle();
+
+    // Read on the preview page (editable Folio starts in the edit view mode).
+    expect(controller.viewMode, EditorViewMode.edit);
+    await tester.tap(find.byTooltip('Preview'));
+    await tester.pumpAndSettle();
+
+    // "Rotate" to a wide layout — the preview choice must carry over.
+    tester.view.physicalSize = const Size(1200, 900);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SegmentedButton<EditorViewMode>), findsOneWidget);
+    expect(controller.viewMode, EditorViewMode.preview);
+  });
+
+  testWidgets('companion opens on preview (not the raw editor) on a phone',
+      (tester) async {
+    useNarrowScreen(tester);
+    // A plain folder (no properties.yaml) with a root overview note -> browse.
+    final backend = MemoryBackend();
+    await backend.write(
+        'README.md', Uint8List.fromList(utf8.encode('# Docs\n\nhi')));
+    final controller = AppController();
+    addTearDown(controller.dispose);
+    await controller.open(backend);
+
+    await tester.pumpWidget(localizedApp(FolioScreen(controller: controller)));
+    await tester.pumpAndSettle();
+
+    expect(controller.isBrowsing, isTrue);
+    expect(controller.viewMode, EditorViewMode.preview);
+    // The pager opened on the preview page (its bottom-nav button is selected).
+    final previewNav = find.ancestor(
+      of: find.byTooltip('Preview'),
+      matching: find.byType(IconButton),
+    );
+    expect(tester.widget<IconButton>(previewNav).isSelected, isTrue);
   });
 
   testWidgets('Folders page: searching filters to matching notes',
