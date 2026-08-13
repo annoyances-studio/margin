@@ -241,5 +241,17 @@
   "@openFolderToRead": { "description": "Landing button (Android) to pick a local folder and browse it read-only (companion mode)." },
 
   "lfsPointerImage": "Git LFS pointer — run “git lfs pull” to fetch this image",
-  "@lfsPointerImage": { "description": "Shown in place of an image whose file is a Git LFS pointer stub, not the real binary." }
+  "@lfsPointerImage": { "description": "Shown in place of an image whose file is a Git LFS pointer stub, not the real binary." },
+
+  "cloneGitRepo": "Clone a Git repo (read-only)",
+  "@cloneGitRepo": { "description": "Landing button (Android) to clone a git repository and browse it read-only." },
+
+  "gitRepoUrl": "Repository URL",
+  "@gitRepoUrl": { "description": "Text field label for the HTTPS URL of a git repository to clone." },
+
+  "gitTokenLabel": "Password / token",
+  "@gitTokenLabel": { "description": "Text field label for the git HTTPS password or access token." },
+
+  "gitTokenHelp": "For GitHub, use a Personal Access Token",
+  "@gitTokenHelp": { "description": "Helper text under the git password field explaining GitHub uses a PAT." }
 }

@@ -371,4 +371,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get lfsPointerImage =>
       'Git LFS pointer — run “git lfs pull” to fetch this image';
+
+  @override
+  String get cloneGitRepo => 'Clone a Git repo (read-only)';
+
+  @override
+  String get gitRepoUrl => 'Repository URL';
+
+  @override
+  String get gitTokenLabel => 'Password / token';
+
+  @override
+  String get gitTokenHelp => 'For GitHub, use a Personal Access Token';
 }

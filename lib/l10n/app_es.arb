@@ -125,5 +125,10 @@
   "modifiedLabel": "Modificado",
   "lineColumn": "Ln {line}, Col {col}",
   "openFolderToRead": "Abrir una carpeta para leer",
-  "lfsPointerImage": "Puntero de Git LFS — ejecuta “git lfs pull” para obtener esta imagen"
+  "lfsPointerImage": "Puntero de Git LFS — ejecuta “git lfs pull” para obtener esta imagen",
+
+  "cloneGitRepo": "Clonar un repositorio Git (solo lectura)",
+  "gitRepoUrl": "URL del repositorio",
+  "gitTokenLabel": "Contraseña / token",
+  "gitTokenHelp": "En GitHub, usa un token de acceso personal (PAT)"
 }

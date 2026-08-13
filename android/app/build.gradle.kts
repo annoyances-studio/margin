@@ -27,6 +27,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // JGit (git-read spike) uses java.nio.file; desugaring makes it work
+        // on Android below API 26 (wraps platform code on 26+).
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -61,6 +64,21 @@ android {
         }
     }
 
+    // The two JGit jars ship identical OSGi/Eclipse metadata files; without this
+    // the resource merger fails on the duplicates. Dropping them is safe — they
+    // are packaging metadata, not code.
+    packaging {
+        resources {
+            excludes += setOf(
+                "OSGI-INF/l10n/plugin.properties",
+                "about.html",
+                "plugin.properties",
+                "META-INF/DEPENDENCIES",
+                "META-INF/eclipse.inf",
+            )
+        }
+    }
+
     buildTypes {
         release {
             // Use the release keystore when key.properties is present; fall back
@@ -69,6 +87,12 @@ android {
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")
+            // R8 runs on release; JGit needs the keep/dontwarn rules in
+            // proguard-rules.pro (desktop-only refs + reflective loading).
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
@@ -83,6 +107,14 @@ dependencies {
     // Storage Access Framework helper — the companion-mode folder picker reads a
     // user-granted content:// tree via DocumentFile (see MainActivity SAF handler).
     implementation("androidx.documentfile:documentfile:1.0.1")
+
+    // Git-read spike: JGit clones a repo read-only into app storage; the LFS
+    // add-on smudges pointer files to real bytes at checkout. 6.10.1 keeps a
+    // Java-11 baseline (best Android compatibility vs the Java-17 7.x line).
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.10.1.202505221210-r")
+    implementation("org.eclipse.jgit:org.eclipse.jgit.lfs:6.10.1.202505221210-r")
+    // Provides java.nio.file on older Android for JGit (see compileOptions).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 }
 
 flutter {

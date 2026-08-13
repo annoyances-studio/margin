@@ -26,6 +26,7 @@ import '../storage/local_folder_backend.dart';
 import '../storage/onedrive_auth.dart';
 import '../storage/onedrive_backend.dart';
 import '../storage/onedrive_oauth.dart';
+import '../storage/git/git_channel.dart';
 import '../storage/saf/saf_backend.dart';
 import '../storage/saf/saf_channel.dart';
 import '../storage/storage_backend.dart';
@@ -60,6 +61,7 @@ class AppController extends ChangeNotifier {
   /// Clipboard access (incl. rich HTML). Injectable so tests use a fake.
   final ClipboardService _clipboard;
   final SafChannel _saf;
+  final GitChannel _git;
 
   AppController({
     SettingsStore? settings,
@@ -69,12 +71,14 @@ class AppController extends ChangeNotifier {
     Future<Directory> Function()? cacheRoot,
     ClipboardService? clipboard,
     SafChannel? saf,
+    GitChannel? git,
   })  : _settings = settings ?? InMemorySettingsStore(),
         _credentials = credentials ?? InMemoryCredentialStore(),
         _syncStates = syncStates ?? InMemorySyncStateStore(),
         _httpClientFactory = httpClientFactory ?? (() => http.Client()),
         _clipboard = clipboard ?? createClipboardService(),
         _saf = saf ?? const MethodChannelSaf(),
+        _git = git ?? const MethodChannelGit(),
         _cacheRoot = cacheRoot ??
             (() async {
               final docs = await getApplicationDocumentsDirectory();
@@ -540,6 +544,48 @@ class AppController extends ChangeNotifier {
         browse: true,
       ));
     }
+  }
+
+  /// Git-read spike (Android): clone [url] read-only (optional HTTPS
+  /// [user]/[password] — for GitHub the password is a PAT) into app-private
+  /// storage, then browse the checked-out working tree like any local folder.
+  /// LFS pointers smudge to real bytes during checkout (native side). No push,
+  /// no keystore/recents yet — this validates JGit + LFS on-device before the
+  /// full backend (shared-storage destination, auth-once, pull, recents) lands.
+  Future<void> browseGitRepo({
+    required String url,
+    String user = '',
+    String password = '',
+  }) async {
+    final name = _gitRepoName(url);
+    final String path;
+    // Clone can take many seconds (fetch + LFS); show the busy indicator the
+    // whole time so the landing screen doesn't look frozen. open() below keeps
+    // its own busy state up (via _run), so we don't clear it on success.
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      path = await _git.clone(
+        url: url,
+        user: user,
+        password: password,
+        name: name,
+      );
+    } catch (e) {
+      _error = 'Clone failed: $e';
+      _busy = false;
+      notifyListeners();
+      return;
+    }
+    await open(LocalFolderBackend(path), browseName: name);
+  }
+
+  /// A repo's display name from its clone URL: the last path segment without a
+  /// trailing `.git` (e.g. `https://host/org/notes.git` -> `notes`).
+  String _gitRepoName(String url) {
+    final base = _remoteBasename(url);
+    return base.endsWith('.git') ? base.substring(0, base.length - 4) : base;
   }
 
   /// Browses a WebDAV folder read-only (companion mode). Stores the password in

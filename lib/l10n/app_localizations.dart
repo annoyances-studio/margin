@@ -793,6 +793,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Git LFS pointer — run “git lfs pull” to fetch this image'**
   String get lfsPointerImage;
+
+  /// Landing button (Android) to clone a git repository and browse it read-only.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone a Git repo (read-only)'**
+  String get cloneGitRepo;
+
+  /// Text field label for the HTTPS URL of a git repository to clone.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository URL'**
+  String get gitRepoUrl;
+
+  /// Text field label for the git HTTPS password or access token.
+  ///
+  /// In en, this message translates to:
+  /// **'Password / token'**
+  String get gitTokenLabel;
+
+  /// Helper text under the git password field explaining GitHub uses a PAT.
+  ///
+  /// In en, this message translates to:
+  /// **'For GitHub, use a Personal Access Token'**
+  String get gitTokenHelp;
 }
 
 class _AppLocalizationsDelegate

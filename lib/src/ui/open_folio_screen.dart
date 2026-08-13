@@ -57,6 +57,10 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
   /// desktop uses the folder picker above, so this button is Android-only.
   bool get _supportsSafFolder => !kIsWeb && Platform.isAndroid;
 
+  /// The git-read spike (clone a repo read-only) runs JGit natively — Android
+  /// only. Desktop users already have a real `git` on PATH.
+  bool get _supportsGitClone => !kIsWeb && Platform.isAndroid;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -155,6 +159,14 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
             icon: const Icon(Icons.folder_special_outlined),
             label: Text(l10n.openFolderToRead),
             onPressed: () => controller.browseAndroidFolder(),
+          ),
+        ],
+        if (_supportsGitClone) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.cloud_download_outlined),
+            label: Text(l10n.cloneGitRepo),
+            onPressed: () => _cloneGitRepo(context),
           ),
         ],
         const SizedBox(height: 12),
@@ -302,6 +314,75 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
         await controller.openWebDav(
             url.text.trim(), user.text.trim(), pass.text);
       }
+    }
+  }
+
+  /// Git-read spike: prompts for a repo URL and optional HTTPS credentials, then
+  /// clones it read-only and browses the working tree. The password/PAT is held
+  /// only long enough to hand to the controller (not persisted in this spike).
+  Future<void> _cloneGitRepo(BuildContext context) async {
+    final url = TextEditingController();
+    final user = TextEditingController();
+    final pass = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.cloneGitRepo),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: url,
+                  autofocus: true,
+                  keyboardType: TextInputType.url,
+                  decoration: InputDecoration(
+                    labelText: l10n.gitRepoUrl,
+                    hintText: 'https://github.com/user/repo.git',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: user,
+                  decoration: InputDecoration(labelText: l10n.username),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: pass,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: l10n.gitTokenLabel,
+                    helperText: l10n.gitTokenHelp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.open),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && url.text.trim().isNotEmpty) {
+      // Password intentionally not trimmed (tokens shouldn't contain spaces,
+      // but be safe); username is trimmed.
+      await controller.browseGitRepo(
+        url: url.text.trim(),
+        user: user.text.trim(),
+        password: pass.text,
+      );
     }
   }
 
