@@ -1,0 +1,104 @@
+# Builds the SIGNED Android release APK and attaches it to the GitHub Release.
+#
+# Runs only when you ask for it — on a version tag (`git tag v0.1.0 && git push
+# --tags`), which attaches the APK to the matching Release, or via the "Run
+# workflow" button (Actions tab). Nothing runs on ordinary pushes.
+#
+# The job is pinned to the `android-release` Environment, which you configure
+# with yourself as a REQUIRED REVIEWER — so the run pauses for one approval click
+# before the upload keystore is ever decoded. A signed build never happens
+# without a deliberate human go-ahead (important once the repo is public: it
+# blocks a sneaky workflow edit from exfiltrating the key on a tag push).
+#
+# One-time setup (repo Settings):
+#   Secrets and variables -> Actions -> New repository secret:
+#     ANDROID_KEYSTORE_BASE64    base64 of margin-upload.jks (see below)
+#     ANDROID_KEYSTORE_PASSWORD  the store password
+#     ANDROID_KEY_PASSWORD       the key password
+#     ANDROID_KEY_ALIAS          upload
+#   Environments -> New environment `android-release` -> add yourself under
+#     "Required reviewers".
+#
+# Make the base64 secret value on the dev machine (PowerShell):
+#   [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Code\.keys\margin-upload.jks"))
+#
+# The OneDrive values below are PUBLIC (client id + the registered redirect), so
+# they live here in the clear — not in secrets.
+name: Android build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    # The approval gate: this run waits here until a required reviewer approves,
+    # so the keystore is only used on a build you deliberately let through.
+    environment: android-release
+    # Needed so a tagged run can attach the APK to the GitHub Release.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Android Gradle here compiles against Java 17 (build.gradle.kts).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # Pinned to the version used locally, so CI matches the dev machine.
+          flutter-version: 3.44.0
+          channel: stable
+          cache: true
+
+      # Recreate the gitignored signing config from secrets. (Absent secrets
+      # would fall back to debug signing per build.gradle.kts, but the Environment
+      # gate means we only reach this for a real, approved signed release.)
+      - name: Restore signing config
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/upload.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+          } > android/key.properties
+
+      - run: flutter pub get
+
+      - name: Build signed APK
+        run: |
+          flutter build apk --release \
+            --dart-define=ONEDRIVE_CLIENT_ID=0304331a-6dd1-4374-8a6d-208de756ea14 \
+            --dart-define=ONEDRIVE_REDIRECT_URI='msauth://studio.annoyances.margin/f3%2F3quA0uUotTGXbPZY4CvNyA8M%3D'
+
+      - name: Name the artifact
+        run: cp build/app/outputs/flutter-apk/app-release.apk margin-android.apk
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: margin-android
+          path: margin-android.apk
+
+      # On a version tag, also attach the APK to that tag's GitHub Release.
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: margin-android.apk
+
+      # Never leave key material on the runner, even if a step above failed.
+      - name: Clean up signing config
+        if: always()
+        run: rm -f android/key.properties "$RUNNER_TEMP/upload.jks"
