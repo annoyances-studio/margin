@@ -90,6 +90,17 @@ class AppController extends ChangeNotifier {
   StorageBackend? _syncPeer;
   String? _folioId;
 
+  /// When the open Folio is a git clone (browse mode), the clone URL, its local
+  /// path, and the username — so Refresh can `git pull` the folder up to date.
+  /// All null for non-git Folios; set after opening a git clone, cleared on
+  /// adopting/closing any other Folio.
+  String? _gitUrl;
+  String? _gitPath;
+  String? _gitUser;
+
+  /// Whether the open Folio is a git clone that Refresh can pull.
+  bool get isGitFolio => _gitUrl != null;
+
   /// Progress of an in-flight cache/sync, or null when idle.
   ({int completed, int total})? _syncProgress;
   ({int completed, int total})? get syncProgress => _syncProgress;
@@ -138,6 +149,11 @@ class AppController extends ChangeNotifier {
   /// username — both known before we can connect.
   static String _webDavCredKey(String url, String username) =>
       'webdav|$url|$username';
+
+  /// Keystore key for a git password/PAT, derived from its (non-secret) clone
+  /// URL and username — both known before we can clone.
+  static String _gitCredKey(String url, String username) =>
+      'git|$url|$username';
 
   Folio? _folio;
   ContentService? _content;
@@ -351,6 +367,28 @@ class AppController extends ChangeNotifier {
         await openRemoteBrowse(
           SafBackend(_saf, recent.location),
           name: recent.name,
+        );
+      case 'git':
+        // Offline-first: if the clone is still on disk, open it instantly (no
+        // network, no credentials). Otherwise re-clone with the saved PAT.
+        final name = _gitRepoName(recent.location);
+        final cached = await _git.localPath(name);
+        if (cached != null) {
+          await open(LocalFolderBackend(cached), browseName: name);
+          if (hasFolio) {
+            _gitUrl = recent.location;
+            _gitPath = cached;
+            _gitUser = recent.user ?? '';
+          }
+          return;
+        }
+        final password =
+            await _credentials.read(_gitCredKey(recent.location, recent.user ?? '')) ??
+                '';
+        await browseGitRepo(
+          url: recent.location,
+          user: recent.user ?? '',
+          password: password,
         );
       default:
         if (!await Directory(recent.location).exists()) {
@@ -579,6 +617,23 @@ class AppController extends ChangeNotifier {
       return;
     }
     await open(LocalFolderBackend(path), browseName: name);
+    if (hasFolio) {
+      // Auth-once: keep the PAT in the OS keystore (never in the recent entry),
+      // and record a git recent so reopening is one tap.
+      if (user.isNotEmpty || password.isNotEmpty) {
+        await _credentials.write(_gitCredKey(url, user), password);
+      }
+      _recordRecent(RecentFolio(
+        type: 'git',
+        location: url,
+        name: folioName,
+        user: user,
+        browse: true,
+      ));
+      _gitUrl = url;
+      _gitPath = path;
+      _gitUser = user;
+    }
   }
 
   /// A repo's display name from its clone URL: the last path segment without a
@@ -865,6 +920,23 @@ class AppController extends ChangeNotifier {
   Future<void> refreshTree() async {
     if (!hasFolio) return;
     await _run(() async {
+      // A git Folio refreshes by pulling the remote into the local clone first
+      // (fetch + reset + re-smudge LFS). Best-effort: on failure keep showing
+      // the last-good clone and warn it may be stale (never blank the reader).
+      if (_gitUrl != null && _gitPath != null) {
+        try {
+          final password =
+              await _credentials.read(_gitCredKey(_gitUrl!, _gitUser ?? '')) ?? '';
+          await _git.pull(
+            path: _gitPath!,
+            url: _gitUrl!,
+            user: _gitUser ?? '',
+            password: password,
+          );
+        } catch (e) {
+          _error = 'Couldn\'t pull the latest — showing the last synced copy. ($e)';
+        }
+      }
       await _reloadTree();
       final notePath = _selectedNotePath;
       if (notePath == null || _dirty) return;
@@ -1091,6 +1163,9 @@ class AppController extends ChangeNotifier {
     _syncProgress = null;
     _hasUnsyncedChanges = false;
     _syncError = null;
+    _gitUrl = null;
+    _gitPath = null;
+    _gitUser = null;
     _searchQuery = '';
     _searchResults = const [];
     _searchIndex = null;
@@ -1808,6 +1883,10 @@ class AppController extends ChangeNotifier {
     _folioId = null;
     _hasUnsyncedChanges = false;
     _syncError = null;
+    // Git context is set by the git flows after this returns; default to none.
+    _gitUrl = null;
+    _gitPath = null;
+    _gitUser = null;
   }
 
   Future<void> _reloadTree() async {

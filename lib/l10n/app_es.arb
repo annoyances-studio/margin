@@ -130,5 +130,6 @@
   "cloneGitRepo": "Clonar un repositorio Git (solo lectura)",
   "gitRepoUrl": "URL del repositorio",
   "gitTokenLabel": "Contraseña / token",
-  "gitTokenHelp": "En GitHub, usa un token de acceso personal (PAT)"
+  "gitTokenHelp": "En GitHub, usa un token de acceso personal (PAT)",
+  "pullLatest": "Traer lo último del repositorio"
 }

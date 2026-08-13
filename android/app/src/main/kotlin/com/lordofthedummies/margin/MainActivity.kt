@@ -16,6 +16,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.lfs.BuiltinLFS
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.json.JSONArray
@@ -70,6 +71,14 @@ class MainActivity : FlutterActivity() {
                     )
                     // --- Git-read spike: clone a repo read-only (JGit) ---
                     "gitClone" -> gitClone(call, result)
+                    // Path of an existing local clone (offline reopen), or null.
+                    "gitLocalPath" -> {
+                        val name = sanitizeRepoName(call.argument<String>("name") ?: "")
+                        val dir = File(File(filesDir, "git"), name)
+                        result.success(if (dir.isDirectory) dir.absolutePath else null)
+                    }
+                    // Pull the latest into an existing clone (Refresh).
+                    "gitPull" -> gitPull(call, result)
                     else -> result.notImplemented()
                 }
             }
@@ -235,6 +244,52 @@ class MainActivity : FlutterActivity() {
                 try { dest.deleteRecursively() } catch (_: Exception) {}
                 runOnUiThread {
                     result.error("cloneFailed", e.message ?: e.toString(), null)
+                }
+            }
+        }
+    }
+
+    // Update an existing clone to the latest (Refresh). Read-only mirror: fetch,
+    // then hard-reset the working tree to the fetched remote branch (the local
+    // copy never diverges, so there's nothing to merge), then re-materialise LFS
+    // (reset writes LFS files back out as pointer stubs). Runs off the main thread.
+    private fun gitPull(call: MethodCall, result: MethodChannel.Result) {
+        val path = call.argument<String>("path")
+        if (path.isNullOrBlank()) {
+            result.error("badArgs", "Missing clone path", null)
+            return
+        }
+        val url = call.argument<String>("url") ?: ""
+        val user = call.argument<String>("user") ?: ""
+        val pass = call.argument<String>("pass") ?: ""
+        System.setProperty("user.home", filesDir.absolutePath)
+        ioExecutor.execute {
+            val dir = File(path)
+            try {
+                BuiltinLFS.register()
+                Git.open(dir).use { git ->
+                    val fetch = git.fetch().setRemote("origin")
+                    if (user.isNotEmpty() || pass.isNotEmpty()) {
+                        fetch.setCredentialsProvider(
+                            UsernamePasswordCredentialsProvider(user, pass)
+                        )
+                    }
+                    fetch.call()
+                    val branch = git.repository.branch
+                    val target = git.repository.resolve("refs/remotes/origin/$branch")
+                        ?: git.repository.resolve("FETCH_HEAD")
+                    if (target != null) {
+                        git.reset()
+                            .setMode(ResetCommand.ResetType.HARD)
+                            .setRef(target.name)
+                            .call()
+                    }
+                }
+                if (url.isNotEmpty()) lfsSmudge(dir, url, user, pass)
+                runOnUiThread { result.success(null) }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    result.error("pullFailed", e.message ?: e.toString(), null)
                 }
             }
         }

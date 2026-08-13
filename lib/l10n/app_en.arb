@@ -253,5 +253,8 @@
   "@gitTokenLabel": { "description": "Text field label for the git HTTPS password or access token." },
 
   "gitTokenHelp": "For GitHub, use a Personal Access Token",
-  "@gitTokenHelp": { "description": "Helper text under the git password field explaining GitHub uses a PAT." }
+  "@gitTokenHelp": { "description": "Helper text under the git password field explaining GitHub uses a PAT." },
+
+  "pullLatest": "Pull the latest from the repository",
+  "@pullLatest": { "description": "Refresh button tooltip when the open folio is a git clone — it pulls new commits instead of only reloading from disk." }
 }

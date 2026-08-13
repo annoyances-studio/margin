@@ -19,6 +19,20 @@ abstract interface class GitChannel {
     String password,
     required String name,
   });
+
+  /// The absolute path of an existing local clone named [name], or null if none
+  /// is on disk yet. Lets a reopen use the offline cache instead of re-cloning.
+  Future<String?> localPath(String name);
+
+  /// Updates the local clone at [path] to the latest of [url] (fetch + reset to
+  /// the remote branch + re-materialise LFS). [user]/[password] as for [clone].
+  /// Throws [GitException] on failure — read-only, never pushes.
+  Future<void> pull({
+    required String path,
+    required String url,
+    String user,
+    String password,
+  });
 }
 
 /// The real [GitChannel], over the `margin/app` platform channel (Android).
@@ -45,6 +59,29 @@ class MethodChannelGit implements GitChannel {
         throw const GitException('Clone returned no path');
       }
       return path;
+    } on PlatformException catch (e) {
+      throw GitException(e.message ?? e.code);
+    }
+  }
+
+  @override
+  Future<String?> localPath(String name) =>
+      _channel.invokeMethod<String>('gitLocalPath', {'name': name});
+
+  @override
+  Future<void> pull({
+    required String path,
+    required String url,
+    String user = '',
+    String password = '',
+  }) async {
+    try {
+      await _channel.invokeMethod<void>('gitPull', {
+        'path': path,
+        'url': url,
+        'user': user,
+        'pass': password,
+      });
     } on PlatformException catch (e) {
       throw GitException(e.message ?? e.code);
     }

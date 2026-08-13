@@ -64,9 +64,15 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // While an operation runs (cloning, syncing, restoring), swallow taps so the
+    // user can't launch a second op or navigate away mid-clone — the progress
+    // indicator below is the only live element.
+    final busy = controller.isBusy || controller.syncProgress != null;
     return Scaffold(
       body: Center(
-        child: ConstrainedBox(
+        child: AbsorbPointer(
+          absorbing: busy,
+          child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -129,6 +135,7 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
               ],
             ],
           ),
+        ),
         ),
       ),
     );
@@ -219,6 +226,7 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
   static IconData _recentIcon(String type) => switch (type) {
         'webdav' => Icons.cloud_outlined,
         'onedrive' => Icons.cloud_queue_outlined,
+        'git' => Icons.cloud_download_outlined,
         _ => Icons.folder_outlined,
       };
 

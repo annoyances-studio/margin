@@ -383,4 +383,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitTokenHelp => 'For GitHub, use a Personal Access Token';
+
+  @override
+  String get pullLatest => 'Pull the latest from the repository';
 }

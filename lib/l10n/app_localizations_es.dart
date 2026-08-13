@@ -388,4 +388,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get gitTokenHelp => 'En GitHub, usa un token de acceso personal (PAT)';
+
+  @override
+  String get pullLatest => 'Traer lo último del repositorio';
 }

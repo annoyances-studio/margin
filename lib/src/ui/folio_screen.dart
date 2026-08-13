@@ -170,7 +170,7 @@ class _FolioScreenState extends State<FolioScreen> {
             child: _viewModeControl(),
           ),
           IconButton(
-            tooltip: _l10n.refreshTree,
+            tooltip: controller.isGitFolio ? _l10n.pullLatest : _l10n.refreshTree,
             icon: const Icon(Icons.refresh),
             onPressed: () => controller.refreshTree(),
           ),
@@ -269,7 +269,7 @@ class _FolioScreenState extends State<FolioScreen> {
       children: [
         tree == null
             ? const SizedBox.shrink()
-            : _pullToSync(
+            : _pullToRefresh(
                 Material(
                   color: Theme.of(context).colorScheme.surfaceContainerLow,
                   child: _treePanelContent(
@@ -298,7 +298,7 @@ class _FolioScreenState extends State<FolioScreen> {
         ),
         notePath == null
             ? Center(child: Text(_l10n.selectNoteToPreview))
-            : _pullToSync(
+            : _pullToRefresh(
                 MarkdownPreview(
                   key: ValueKey('preview:${controller.selectedNotePath}'),
                   data: controller.workingBody,
@@ -313,15 +313,25 @@ class _FolioScreenState extends State<FolioScreen> {
     );
   }
 
-  /// Wraps a scrollable mobile page so a pull-down gesture triggers a sync —
-  /// the touch equivalent of "Sync now". Only added when the Folio has a remote
-  /// peer; otherwise the child is returned unchanged.
-  Widget _pullToSync(Widget child) {
-    if (!controller.canSync) return child;
-    return RefreshIndicator(
-      onRefresh: () => controller.syncNow(),
-      child: child,
-    );
+  /// Wraps a scrollable mobile page so a pull-down gesture refreshes — the touch
+  /// equivalent of the app-bar ↻ (which the crowded phone bar doesn't show). For
+  /// a managed Folio that's "Sync now"; for a git clone it's a pull (fetch +
+  /// reset + re-LFS). Other Folios have nothing to fetch, so the child is
+  /// returned unchanged.
+  Widget _pullToRefresh(Widget child) {
+    if (controller.canSync) {
+      return RefreshIndicator(
+        onRefresh: () => controller.syncNow(),
+        child: child,
+      );
+    }
+    if (controller.isGitFolio) {
+      return RefreshIndicator(
+        onRefresh: () => controller.refreshTree(),
+        child: child,
+      );
+    }
+    return child;
   }
 
   Widget _mobileBottomBar() {

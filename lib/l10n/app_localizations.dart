@@ -817,6 +817,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For GitHub, use a Personal Access Token'**
   String get gitTokenHelp;
+
+  /// Refresh button tooltip when the open folio is a git clone — it pulls new commits instead of only reloading from disk.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull the latest from the repository'**
+  String get pullLatest;
 }
 
 class _AppLocalizationsDelegate
