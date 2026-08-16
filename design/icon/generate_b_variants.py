@@ -11,6 +11,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "png_b")
 os.makedirs(OUT, exist_ok=True)
 
+# Glyph scale about the canvas centre (1.0 = original). Android's adaptive-icon
+# system zooms the foreground, so a bracket+dot that filled ~58% of the square
+# read as oversized on the phone launcher. Shrinking to leave more cream padding
+# sits the glyph comfortably inside the adaptive safe zone.
+GLYPH = 0.72
+
 INK = (30, 27, 22, 255)            # warm near-black bracket
 PAPER = (243, 236, 221, 255)       # warm cream
 PAPER_DEEP = (236, 226, 206, 255)  # deeper ecru
@@ -43,16 +49,21 @@ def draw(name, size):
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     k = s / 256.0
+    # Glyph coordinates are scaled toward the centre (128,128) by GLYPH; the
+    # paper/strip background stays full-bleed (raw coords), so only the
+    # bracket+dot shrink and gain padding.
     def P(x, y):
-        return (x * k, y * k)
+        gx = 128 + (x - 128) * GLYPH
+        gy = 128 + (y - 128) * GLYPH
+        return (gx * k, gy * k)
 
     d.rectangle([0, 0, s, s], fill=paper)
     if two_tone:
         d.rectangle([0, 0, 70 * k, s], fill=STRIP)
-        d.line([P(70, 0), P(70, 256)], fill=RULE, width=int(4 * k))
+        d.line([(70 * k, 0), (70 * k, s)], fill=RULE, width=int(4 * k))
 
-    _stroke(d, [P(120, 64), P(78, 64), P(78, 192), P(120, 192)], int(20 * k), INK)
-    r = 15 * k
+    _stroke(d, [P(120, 64), P(78, 64), P(78, 192), P(120, 192)], int(20 * k * GLYPH), INK)
+    r = 15 * k * GLYPH
     cx, cy = P(168, 128)
     d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=dot)
 
