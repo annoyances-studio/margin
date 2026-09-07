@@ -133,5 +133,7 @@
   "gitTokenHelp": "En GitHub, usa un token de acceso personal (PAT)",
   "pullLatest": "Traer lo último del repositorio",
   "wordWrapOn": "Activar ajuste de línea",
-  "wordWrapOff": "Desactivar ajuste de línea"
+  "wordWrapOff": "Desactivar ajuste de línea",
+  "pastePlainFallback": "Pegado como texto sin formato — no se pudo procesar el formato.",
+  "pasteFailed": "No se pudo pegar este contenido."
 }

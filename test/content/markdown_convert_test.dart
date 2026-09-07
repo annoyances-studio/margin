@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -95,6 +96,34 @@ void main() {
       const md = '![](data:image/png;base64,aW1n)';
       final out = await rewriteDataUriImages(md, (b, e) async => null);
       expect(out, md);
+    });
+
+    test('handles a multi-megabyte payload without a StackOverflowError',
+        () async {
+      // Regression: a pasted screenshot arrives as a huge base64 data URI. The
+      // old capturing regex recursed over it and threw StackOverflowError,
+      // silently killing the whole paste. A valid ~4 MB base64 blob (bytes are
+      // "A" repeated; length a multiple of 3 so there's no padding).
+      final big = base64.encode(Uint8List(3 * 1000 * 1000));
+      var saved = 0;
+      final out = await rewriteDataUriImages(
+        '![shot](data:image/png;base64,$big)',
+        (bytes, ext) async {
+          saved++;
+          return '_attachments/pasted.$ext';
+        },
+      );
+      expect(saved, 1);
+      expect(out, '![Pasted Image](_attachments/pasted.png)');
+    });
+
+    test('rewrites a linked data-URI image, keeping the outer link', () async {
+      final out = await rewriteDataUriImages(
+        '[![alt](data:image/png;base64,aW1n)](https://example.com/x)',
+        (bytes, ext) async => '_attachments/pasted.$ext',
+      );
+      expect(out,
+          '[![Pasted Image](_attachments/pasted.png)](https://example.com/x)');
     });
   });
 

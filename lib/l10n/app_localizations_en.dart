@@ -392,4 +392,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wordWrapOff => 'Turn word wrap off';
+
+  @override
+  String get pastePlainFallback =>
+      'Pasted as plain text — couldn\'t process the formatting.';
+
+  @override
+  String get pasteFailed => 'Couldn\'t paste this content.';
 }

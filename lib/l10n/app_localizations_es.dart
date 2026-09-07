@@ -397,4 +397,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get wordWrapOff => 'Desactivar ajuste de línea';
+
+  @override
+  String get pastePlainFallback =>
+      'Pegado como texto sin formato — no se pudo procesar el formato.';
+
+  @override
+  String get pasteFailed => 'No se pudo pegar este contenido.';
 }

@@ -262,5 +262,11 @@
   "@wordWrapOn": { "description": "Editor right-click menu item shown when word wrap is currently off." },
 
   "wordWrapOff": "Turn word wrap off",
-  "@wordWrapOff": { "description": "Editor right-click menu item shown when word wrap is currently on." }
+  "@wordWrapOff": { "description": "Editor right-click menu item shown when word wrap is currently on." },
+
+  "pastePlainFallback": "Pasted as plain text — couldn't process the formatting.",
+  "@pastePlainFallback": { "description": "Snackbar shown when Paste as Markdown fails on rich content and falls back to inserting plain text." },
+
+  "pasteFailed": "Couldn't paste this content.",
+  "@pasteFailed": { "description": "Snackbar shown when a paste fails and there is no plain text to fall back to." }
 }

@@ -381,49 +381,75 @@ class _NoteEditorState extends State<NoteEditor> {
   /// HTML keeps priority: copies from Word/browsers carry HTML alongside any
   /// bitmap rendering, and the HTML is the faithful version.
   Future<void> _pasteAsMarkdown() async {
-    final html = await _clipboard.readHtml();
-    if (html == null) {
-      final image = await _clipboard.readImage();
+    try {
+      final html = await _clipboard.readHtml();
+      if (html == null) {
+        final image = await _clipboard.readImage();
+        final saver = widget.onSaveAttachment;
+        if (image != null && saver != null) {
+          final link = await saver(image.bytes, image.extension);
+          if (link != null) _insertAtCaret('![Pasted Image]($link)');
+          return;
+        }
+      }
+      final plain = await _clipboard.readText();
+      var inserted = clipboardToMarkdown(html: html, plainText: plain);
+      // Rich HTML that converts to nothing usable (an exotic embed the converter
+      // can't represent) must not silently drop the paste — use the plain text.
+      if (inserted.trim().isEmpty && plain != null && plain.isNotEmpty) {
+        inserted = plain;
+      }
+      // Turn any pasted base64 images into real attachments (linked as
+      // "[Pasted Image]") rather than bloating the note with data URIs.
       final saver = widget.onSaveAttachment;
-      if (image != null && saver != null) {
-        final link = await saver(image.bytes, image.extension);
-        if (link != null) _insertAtCaret('![Pasted Image]($link)');
-        return;
-      }
-    }
-    var inserted = clipboardToMarkdown(
-      html: html,
-      plainText: await _clipboard.readText(),
-    );
-    // Turn any pasted base64 images into real attachments (linked as
-    // "[Pasted Image]") rather than bloating the note with data URIs.
-    final saver = widget.onSaveAttachment;
-    if (saver != null) inserted = await rewriteDataUriImages(inserted, saver);
+      if (saver != null) inserted = await rewriteDataUriImages(inserted, saver);
 
-    // Download remote (hotlinked) images into attachments so they don't rot.
-    // This can be slow, so show progress; failures keep the original link.
-    final downloader = widget.onDownloadImage;
-    if (downloader != null && mounted && hasRemoteImages(inserted)) {
-      final messenger = ScaffoldMessenger.of(context);
-      final progress = messenger.showSnackBar(SnackBar(
-        duration: const Duration(minutes: 5),
-        content: Row(children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 12),
-          Text(AppLocalizations.of(context).downloadingImages),
-        ]),
-      ));
-      try {
-        inserted = await rewriteRemoteImages(inserted, downloader);
-      } finally {
-        progress.close();
+      // Download remote (hotlinked) images into attachments so they don't rot.
+      // This can be slow, so show progress; failures keep the original link.
+      final downloader = widget.onDownloadImage;
+      if (downloader != null && mounted && hasRemoteImages(inserted)) {
+        final messenger = ScaffoldMessenger.of(context);
+        final progress = messenger.showSnackBar(SnackBar(
+          duration: const Duration(minutes: 5),
+          content: Row(children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Text(AppLocalizations.of(context).downloadingImages),
+          ]),
+        ));
+        try {
+          inserted = await rewriteRemoteImages(inserted, downloader);
+        } finally {
+          progress.close();
+        }
       }
+      _insertAtCaret(inserted);
+    } catch (_) {
+      // Something in the rich path threw — a malformed/oversized pasted image or
+      // exotic clipboard HTML the converter choked on. Never fail silently: fall
+      // back to plain text and tell the user, so a big paste isn't lost.
+      await _pastePlainFallback();
     }
-    _insertAtCaret(inserted);
+  }
+
+  /// Fallback when rich "paste as Markdown" fails: insert the clipboard's plain
+  /// text (if any) and report that formatting couldn't be processed — so the
+  /// paste never silently does nothing.
+  Future<void> _pastePlainFallback() async {
+    var text = '';
+    try {
+      text = (await _clipboard.readText()) ?? '';
+    } catch (_) {}
+    if (text.isNotEmpty) _insertAtCaret(text);
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(text.isNotEmpty ? l10n.pastePlainFallback : l10n.pasteFailed),
+    ));
   }
 
   /// Replaces the selection (or inserts at the caret / end) with [inserted]

@@ -835,6 +835,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Turn word wrap off'**
   String get wordWrapOff;
+
+  /// Snackbar shown when Paste as Markdown fails on rich content and falls back to inserting plain text.
+  ///
+  /// In en, this message translates to:
+  /// **'Pasted as plain text — couldn\'t process the formatting.'**
+  String get pastePlainFallback;
+
+  /// Snackbar shown when a paste fails and there is no plain text to fall back to.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t paste this content.'**
+  String get pasteFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -64,31 +64,60 @@ String clipboardToMarkdown({String? html, String? plainText}) =>
         ? htmlToMarkdown(html)
         : (plainText ?? '');
 
-final RegExp _dataUriImage = RegExp(
-  r'!\[[^\]]*\]\(\s*data:image/([A-Za-z0-9.+-]+);base64,([^)\s]+)\s*\)',
-);
-
 /// Replaces base64 data-URI image embeds (as pasted from Word/web) with real
 /// attachments: [save] persists the decoded bytes (given a file extension) and
 /// returns the new note-relative link, which is re-linked as `![Pasted Image]
 /// (...)`. If [save] returns null (or the data can't be decoded), the original
 /// embed is kept.
+///
+/// Parsed by hand with `indexOf`/`substring` rather than one big regex: a pasted
+/// screenshot can be a multi-megabyte base64 payload, and a capturing group over
+/// it (`([^)\s]+)`) recurses and throws a StackOverflowError — which silently
+/// killed the whole paste. Scanning is linear and safe at any size.
 Future<String> rewriteDataUriImages(
   String markdown,
   Future<String?> Function(Uint8List bytes, String extension) save,
 ) async {
-  final matches = _dataUriImage.allMatches(markdown).toList();
-  if (matches.isEmpty) return markdown;
+  if (!markdown.contains('](data:image/')) return markdown;
+  const prefix = 'data:image/';
+  const b64Marker = ';base64,';
   final out = StringBuffer();
-  var last = 0;
-  for (final m in matches) {
-    out.write(markdown.substring(last, m.start));
-    final bytes = _tryDecodeBase64(m.group(2)!);
-    final link = bytes == null ? null : await save(bytes, _imageExt(m.group(1)!));
-    out.write(link != null ? '![Pasted Image]($link)' : m.group(0));
-    last = m.end;
+  final n = markdown.length;
+  var i = 0;
+  while (i < n) {
+    final bang = markdown.indexOf('![', i);
+    if (bang < 0) {
+      out.write(markdown.substring(i));
+      break;
+    }
+    out.write(markdown.substring(i, bang));
+    // Alt text runs to the next ']' (Markdown alt can't contain one); the URL
+    // must follow immediately in "(...)". base64 payloads contain no ')', so the
+    // first ')' closes the link.
+    final altEnd = markdown.indexOf(']', bang + 2);
+    final urlEnd = (altEnd >= 0 &&
+            altEnd + 1 < n &&
+            markdown[altEnd + 1] == '(')
+        ? markdown.indexOf(')', altEnd + 2)
+        : -1;
+    if (urlEnd < 0) {
+      out.write('!['); // not a well-formed image; emit and move on
+      i = bang + 2;
+      continue;
+    }
+    final url = markdown.substring(altEnd + 2, urlEnd).trim();
+    final original = markdown.substring(bang, urlEnd + 1);
+    final b64At = url.startsWith(prefix) ? url.indexOf(b64Marker) : -1;
+    if (b64At > 0) {
+      final subtype = url.substring(prefix.length, b64At);
+      final bytes = _tryDecodeBase64(url.substring(b64At + b64Marker.length));
+      final link = bytes == null ? null : await save(bytes, _imageExt(subtype));
+      out.write(link != null ? '![Pasted Image]($link)' : original);
+    } else {
+      out.write(original);
+    }
+    i = urlEnd + 1;
   }
-  out.write(markdown.substring(last));
   return out.toString();
 }
 
