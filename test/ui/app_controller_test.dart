@@ -33,6 +33,25 @@ void main() {
     return null;
   }
 
+  test('openFolderNote is idempotent (double-click / stale flag)', () async {
+    await controller.create(backend, 'My Notes');
+    await controller.createFolder('F');
+    final folder =
+        controller.tree!.folders.firstWhere((f) => f.name == 'F');
+
+    // First open creates and selects the README.
+    await controller.openFolderNote(folder);
+    expect(controller.error, isNull);
+    expect(controller.selectedNotePath, 'F/README.md');
+
+    // A racing double-click (or an un-refreshed tree) calls again with a node
+    // whose hasFolderNote is still false. It must open, not throw "already
+    // exists".
+    await controller.openFolderNote(const FolderNode(path: 'F', name: 'F'));
+    expect(controller.error, isNull);
+    expect(controller.selectedNotePath, 'F/README.md');
+  });
+
   test('back/forward navigate note history', () async {
     await controller.create(backend, 'My Notes');
     await controller.createFolder('F');

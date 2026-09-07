@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../content/content_exception.dart';
 import '../content/content_service.dart';
 import '../content/markdown_convert.dart';
 import '../content/tree_node.dart';
@@ -1779,24 +1780,44 @@ class AppController extends ChangeNotifier {
   /// the root), so this is a no-op there.
   Future<void> openFolderNote(FolderNode folder) async {
     if (folder.path.isEmpty) return;
-    // Browsing is read-only: open an existing folder note, but never create one.
-    if (isBrowsing && !folder.hasFolderNote) return;
+    final content = _content;
+    if (content == null) return;
     final notePath = '${folder.path}/${ContentService.folderNoteName}';
-    if (!folder.hasFolderNote) {
+
+    // Trust the filesystem, not the (possibly stale) tree flag: the file may
+    // already exist when hasFolderNote is false — a double-click firing this
+    // twice, or the tree not yet refreshed. Relying on the flag made the second
+    // call re-create it and throw "already exists".
+    var exists = folder.hasFolderNote;
+    if (!exists) {
+      try {
+        exists = await content.backend.exists(notePath);
+      } catch (_) {
+        exists = false;
+      }
+    }
+
+    if (!exists) {
+      if (isBrowsing) return; // read-only: open an existing note, never create
       await _run(() async {
         final now = DateTime.now().toUtc();
-        await _content!.createNote(
-          folder.path,
-          ContentService.folderNoteName,
-          initial: Note(
-            frontmatter:
-                NoteFrontmatter(title: folder.name, created: now, updated: now),
-            body: '',
-          ),
-        );
+        try {
+          await content.createNote(
+            folder.path,
+            ContentService.folderNoteName,
+            initial: Note(
+              frontmatter: NoteFrontmatter(
+                  title: folder.name, created: now, updated: now),
+              body: '',
+            ),
+          );
+        } on ContentException {
+          // Already there (a racing double-click, or a stale flag): not an
+          // error — fall through and just open it.
+        }
         await _reloadTree();
       });
-      if (_error != null) return; // creation failed; error already surfaced
+      if (_error != null) return; // a real creation failure surfaced
       _scheduleSync();
     }
     await selectNote(
