@@ -167,8 +167,16 @@ arbitrary folders via `dart:io`).
   gutter must track the field's wrapped-line Y exactly — same TextPainter
   machinery as find's reveal, but a gutter is stared at so drift shows). Desktop,
   opt-in.
-- **Quick word-wrap toggle** in the editor toolbar (not just Settings), for
-  flipping it per-note while reading wide tables.
+- **Image sizing (plain-text width hint)** — no way to resize an embedded image
+  yet (the one thing missed vs OneNote). Must stay **plain-text** so the folder
+  stays portable: honor a width hint written into the Markdown that degrades
+  gracefully everywhere else. Obsidian's `![alt|300](path)` (or `|300x200`) is the
+  common convention — GitHub and others still render the image, just with the
+  literal alt text. The preview already has a custom image builder
+  (`markdown_preview.dart` `_buildImage` / `sizedImageBuilder`), so v1 = parse a
+  trailing `|W[xH]` in the alt and set the widget width/height. Nicer later: a way
+  to set it (right-click an image → set width, or drag-handles in the preview)
+  that writes the suffix back into the note text.
 - `[parked]` **Editable table grid** — pipe coloring + word-wrap-off covers the
   table pain well in daily use; revisit only if a real need appears.
 - **Ctrl+Scroll zoom (desktop)** — live text scaling (a settings-persisted scale
