@@ -391,4 +391,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pullLatest => 'Traer lo último del repositorio';
+
+  @override
+  String get wordWrapOn => 'Activar ajuste de línea';
+
+  @override
+  String get wordWrapOff => 'Desactivar ajuste de línea';
 }

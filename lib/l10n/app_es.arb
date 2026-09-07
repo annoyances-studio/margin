@@ -131,5 +131,7 @@
   "gitRepoUrl": "URL del repositorio",
   "gitTokenLabel": "Contraseña / token",
   "gitTokenHelp": "En GitHub, usa un token de acceso personal (PAT)",
-  "pullLatest": "Traer lo último del repositorio"
+  "pullLatest": "Traer lo último del repositorio",
+  "wordWrapOn": "Activar ajuste de línea",
+  "wordWrapOff": "Desactivar ajuste de línea"
 }

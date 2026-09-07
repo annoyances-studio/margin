@@ -256,5 +256,11 @@
   "@gitTokenHelp": { "description": "Helper text under the git password field explaining GitHub uses a PAT." },
 
   "pullLatest": "Pull the latest from the repository",
-  "@pullLatest": { "description": "Refresh button tooltip when the open folio is a git clone — it pulls new commits instead of only reloading from disk." }
+  "@pullLatest": { "description": "Refresh button tooltip when the open folio is a git clone — it pulls new commits instead of only reloading from disk." },
+
+  "wordWrapOn": "Turn word wrap on",
+  "@wordWrapOn": { "description": "Editor right-click menu item shown when word wrap is currently off." },
+
+  "wordWrapOff": "Turn word wrap off",
+  "@wordWrapOff": { "description": "Editor right-click menu item shown when word wrap is currently on." }
 }

@@ -59,6 +59,10 @@ class NoteEditor extends StatefulWidget {
   /// instead of soft-wrapping — easier to read wide tables and code.
   final bool wordWrap;
 
+  /// Toggles [wordWrap] from the editor's right-click menu (a quick flip while
+  /// reading a wide table, without a trip to Settings). Null hides the item.
+  final VoidCallback? onToggleWordWrap;
+
   /// Read-only mode (browsed plain folders): the text can be selected and
   /// copied but not edited, and "Paste as Markdown" is hidden.
   final bool readOnly;
@@ -87,6 +91,7 @@ class NoteEditor extends StatefulWidget {
     this.onSaveAttachment,
     this.onDownloadImage,
     this.wordWrap = true,
+    this.onToggleWordWrap,
     this.readOnly = false,
     this.onOpenLink,
     this.find,
@@ -478,6 +483,17 @@ class _NoteEditorState extends State<NoteEditor> {
             onPressed: () {
               ContextMenuController.removeAny();
               widget.onSpecialCopy!();
+            },
+          ));
+        }
+        // Quick word-wrap flip (also useful read-only, for wide tables). Label
+        // states the action, since the toolbar can't show a checkmark.
+        if (widget.onToggleWordWrap != null) {
+          items.add(ContextMenuButtonItem(
+            label: widget.wordWrap ? l10n.wordWrapOff : l10n.wordWrapOn,
+            onPressed: () {
+              ContextMenuController.removeAny();
+              widget.onToggleWordWrap!();
             },
           ));
         }

@@ -210,9 +210,15 @@ class ContentService {
         'Notes cannot be created at the repository root',
       );
     }
-    final name = fileName.toLowerCase().endsWith(noteExtension)
-        ? fileName
-        : '$fileName$noteExtension';
+    // Sanitize to a portable filename so a note created on one platform (e.g.
+    // Android/Linux, where `:` is legal) doesn't become un-syncable on Windows
+    // (where it's illegal). The `.md` stem carries the display title, so this
+    // also normalizes what the user sees.
+    final stem = _sanitizeSegment(_stripExtension(fileName));
+    if (stem.isEmpty) {
+      throw ContentException('Invalid note name: "$fileName"');
+    }
+    final name = '$stem$noteExtension';
     _validateSegment(name);
     if (name == propertiesFileName) {
       throw const ContentException('"$propertiesFileName" is a reserved name');
@@ -237,7 +243,13 @@ class ContentService {
   ///
   /// Throws [ContentException] if the name is invalid or the folder already
   /// exists. Returns the new (empty) [FolderNode].
-  Future<FolderNode> createFolder(String parentPath, String name) async {
+  Future<FolderNode> createFolder(String parentPath, String rawName) async {
+    // Same portability rule as notes: a folder name valid on Android/Linux but
+    // illegal on Windows would break the folder on sync.
+    final name = _sanitizeSegment(rawName);
+    if (name.isEmpty) {
+      throw ContentException('Invalid folder name: "$rawName"');
+    }
     _validateSegment(name);
     if (name == attachmentsDirName) {
       throw const ContentException('"$attachmentsDirName" is a reserved name');
@@ -283,6 +295,28 @@ class ContentService {
       final candidate = '$stem-$i$ext';
       if (!await backend.exists(_join(dir, candidate))) return candidate;
     }
+  }
+
+  /// Sanitizes a user-typed note/folder name into a portable path segment that
+  /// is valid on every platform Margin targets (Windows is the strict one). Keeps
+  /// spaces and Unicode letters — only the characters Windows forbids are
+  /// replaced — so names stay readable (the segment doubles as the display title).
+  /// Returns `''` when nothing usable remains (the caller errors).
+  static String _sanitizeSegment(String raw) {
+    var s = raw.trim();
+    // Characters illegal in a Windows filename (and control chars) -> underscore.
+    s = s.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_');
+    // Collapse runs the replacement creates (e.g. "::" -> "_", not "__").
+    s = s.replaceAll(RegExp(r'_{2,}'), '_');
+    // Windows disallows trailing dots/spaces on a name.
+    s = s.replaceAll(RegExp(r'[. ]+$'), '');
+    // Windows reserved device names (CON, NUL, COM1…) — prefix to dodge them.
+    if (RegExp(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)',
+            caseSensitive: false)
+        .hasMatch(s)) {
+      s = '_$s';
+    }
+    return s;
   }
 
   String _sanitizeFileName(String fileName) {

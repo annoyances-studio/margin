@@ -823,6 +823,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pull the latest from the repository'**
   String get pullLatest;
+
+  /// Editor right-click menu item shown when word wrap is currently off.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn word wrap on'**
+  String get wordWrapOn;
+
+  /// Editor right-click menu item shown when word wrap is currently on.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn word wrap off'**
+  String get wordWrapOff;
 }
 
 class _AppLocalizationsDelegate

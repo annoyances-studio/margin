@@ -52,6 +52,9 @@ class NoteEditorPane extends StatefulWidget {
   /// Whether the editor soft-wraps long lines (false = horizontal scroll).
   final bool wordWrap;
 
+  /// Toggles [wordWrap] from the editor's right-click menu. Null hides the item.
+  final VoidCallback? onToggleWordWrap;
+
   /// Read-only mode (browsed plain folders): no editing, no paste-as-markdown.
   final bool readOnly;
 
@@ -74,6 +77,7 @@ class NoteEditorPane extends StatefulWidget {
     this.onSaveAttachment,
     this.onDownloadImage,
     this.wordWrap = true,
+    this.onToggleWordWrap,
     this.readOnly = false,
     this.onOpenLink,
     this.onNavigateBack,
@@ -168,6 +172,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
       onSaveAttachment: widget.onSaveAttachment,
       onDownloadImage: widget.onDownloadImage,
       wordWrap: widget.wordWrap,
+      onToggleWordWrap: widget.onToggleWordWrap,
       readOnly: widget.readOnly,
       onOpenLink: widget.onOpenLink,
       find: _find,

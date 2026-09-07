@@ -208,6 +208,32 @@ void main() {
       await service.deleteNote('Work/temp.md');
       expect(await backend.exists('Work/temp.md'), isFalse);
     });
+
+    test('createNote sanitizes a name that is illegal on Windows', () async {
+      // A OneNote-style title with colons: legal on Android/Linux, illegal on
+      // Windows. It must be sanitized so the folder stays portable across sync.
+      final node = await service.createNote(
+          'Work', 'Steam Community :: Guide :: Baldr Sky guide');
+      expect(node.name, 'Steam Community _ Guide _ Baldr Sky guide.md');
+      // Spaces are kept; only the illegal chars are replaced (runs collapsed).
+      expect(node.name, isNot(contains(':')));
+      expect(await backend.exists(node.path), isTrue);
+    });
+
+    test('createNote keeps spaces and Unicode, dodges reserved names', () async {
+      final unicode = await service.createNote('Work', 'メモ 日本語');
+      expect(unicode.name, 'メモ 日本語.md');
+      final reserved = await service.createNote('Work', 'CON');
+      expect(reserved.name, '_CON.md'); // CON is a Windows device name
+    });
+
+    test('createNote errors when nothing usable remains after sanitizing', () {
+      // All dots/spaces -> Windows strips trailing dots/spaces -> empty.
+      expect(
+        () => service.createNote('Work', '...  '),
+        throwsA(isA<ContentException>()),
+      );
+    });
   });
 
   group('sidecar index', () {

@@ -386,4 +386,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pullLatest => 'Pull the latest from the repository';
+
+  @override
+  String get wordWrapOn => 'Turn word wrap on';
+
+  @override
+  String get wordWrapOff => 'Turn word wrap off';
 }

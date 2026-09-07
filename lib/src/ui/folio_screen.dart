@@ -293,6 +293,8 @@ class _FolioScreenState extends State<FolioScreen> {
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
           onDownloadImage: controller.downloadImageAsAttachment,
           wordWrap: controller.wordWrap,
+          onToggleWordWrap: () =>
+              controller.setWordWrap(!controller.wordWrap),
           readOnly: controller.isBrowsing,
           onOpenLink: controller.openLink,
         ),
@@ -567,6 +569,7 @@ class _FolioScreenState extends State<FolioScreen> {
         onSaveAttachment: controller.saveAttachmentForCurrentNote,
         onDownloadImage: controller.downloadImageAsAttachment,
         wordWrap: controller.wordWrap,
+        onToggleWordWrap: () => controller.setWordWrap(!controller.wordWrap),
         readOnly: controller.isBrowsing,
         onOpenLink: controller.openLink,
         onNavigateBack: () => controller.goBack(),

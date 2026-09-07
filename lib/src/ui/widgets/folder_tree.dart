@@ -334,12 +334,18 @@ class _FolderTile extends StatelessWidget {
                         ),
                         if (folder.hasFolderNote) ...[
                           const SizedBox(width: 6),
-                          Tooltip(
-                            message: folderNoteTooltip,
-                            child: Icon(
-                              Icons.sticky_note_2_outlined,
-                              size: 14,
-                              color: Theme.of(context).colorScheme.primary,
+                          // The badge opens the folder note too (not just the
+                          // name) — it's the obvious thing to tap.
+                          GestureDetector(
+                            onTap: onOpenNote,
+                            behavior: HitTestBehavior.opaque,
+                            child: Tooltip(
+                              message: folderNoteTooltip,
+                              child: Icon(
+                                Icons.sticky_note_2_outlined,
+                                size: 14,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ),
                           ),
                         ],
