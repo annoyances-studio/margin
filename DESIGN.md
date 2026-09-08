@@ -12,8 +12,10 @@ work can be inspected, reused, and given back to the community.
 
 ## Status
 
-Design phase. No application code written yet. This document is the
-specification to build against.
+Shipping. Margin is feature-complete for daily use and released (Windows +
+Android; macOS/Linux/iOS build on their host or via CI). This document is the
+standing record of **architecture and rationale**; the live task list is
+`BACKLOG.md` and the practical "how to work here" is `CLAUDE.md`.
 
 ## Name
 
@@ -123,11 +125,13 @@ sync nearly anything to a folder, so the genuinely hard problem is **mobile**.
 - **SFTP** — best next backend; pure Dart (`dartssh2`); all platforms; no
   OAuth. Needs **two auth modes: password and SSH key** (key file + optional
   passphrase), both supported by `dartssh2`.
-- **Git** — not a dumb folder but a *sync strategy* over a local clone: clone
-  into a `LocalFolderBackend`, the app commits/pushes to sync. Desktop only,
-  via the system `git` CLI (if installed) or the folder approach (an external
-  client keeps a synced clone). Mobile: poor (no git binary, no mature Dart
-  lib, auth complexity).
+- **Git** — two separate ideas. (a) A read-write *sync* backend over a local
+  clone (commit/push) — desktop via the system `git` CLI or an external client
+  keeping a synced clone — **not built**. (b) A read-only *companion* —
+  **shipped on Android**: JGit clones a repo into app storage (Git-LFS
+  materialized, a one-time PAT in the keystore), Refresh pulls, and Margin
+  browses the working tree read-only via `LocalFolderBackend`. See
+  **Companion mode**. JGit is JVM-only, so the companion is Android-first.
 - **SMB/CIFS** — desktop via OS mount/UNC path; mobile not realistic (sandbox;
   only immature Dart libs). No in-app backend.
 - **NFS** — desktop via OS mount only; no Dart client. No backend.
@@ -169,7 +173,10 @@ foundation. It assumes the user has somewhere repositories can live, and it
 brings auth pain on mobile (SSH keys, tokens on a phone). Because the app owns
 its own sync and conflict logic, Git's merge machinery is unnecessary. Git
 remains a possible opt-in backend for users who want real history, but it is
-not required.
+not required. (Update: a read-only git-*read* backend has since shipped as a
+**companion** feature on Android — pull-only, LFS-aware; see **Companion mode**.
+That is browsing a repo, not adopting Git as the read-write sync foundation,
+which is what this section rejects.)
 
 ---
 
@@ -424,6 +431,34 @@ values, and rebuild. The app follows the OS locale. Model-layer exception
 messages are not yet localized.
 
 ---
+
+## Companion mode (read-only browsing)
+
+Beyond editing its own Folios, Margin opens **any** plain-Markdown folder
+read-only — documentation, a wiki, a Claude-generated knowledge base — without
+writing anything into it (no `properties.yaml`, no sidecars). Detection: a folder
+with no root `properties.yaml` opens in *browse* mode. It renders the tree and
+Markdown, follows relative `.md` links in-app, offers deep/full-text search and
+backlinks, and opens on an overview (root `CLAUDE.md`/`README.md`, else a
+synthesized landing). Root-level `.md` is allowed here — the "no `.md` at root"
+rule is managed-Folio only.
+
+Browse mode is **backend-agnostic**: it runs over any `StorageBackend`, so the
+same reader serves local folders, cloud folders (OneDrive/WebDAV, read directly),
+and Android's Storage Access Framework (a user-granted `content://` tree). Because
+a browsed image may have no `dart:io` path, embedded images render **through the
+backend** (`readNoteImage` → `Image.memory`, memoized) so `![](pic.png)` works
+everywhere; a Git-LFS pointer stub renders an actionable hint instead of a broken
+image.
+
+The **git-read companion** (Android) closes the "keep the folder current" gap
+that is otherwise an external sync tool's job: JGit clones a repo into app
+storage (materializing LFS via the batch API, authenticating once with a PAT held
+in the keystore), Refresh does a pull, and the checked-out working tree is
+browsed read-only like any local folder. Read-only by design — Margin stays the
+reader, and committing is left to other tools — which preserves the dumb-folder
+identity. (JGit is JVM-only, hence Android-only; desktop already has a real
+`git`.)
 
 ## Encryption (future, post-v1)
 

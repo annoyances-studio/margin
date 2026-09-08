@@ -40,124 +40,52 @@ what's *not done yet* lives here.**
 - `[larger]` **Further mobile cloud providers** (Google Drive, Dropbox) — a
   per-provider effort over OAuth + provider REST, still built-in (no plugins).
 
-## Companion mode (read-only plain-folder browsing) — mobile
+## Companion mode (read-only plain-folder browsing)
 
-Companion mode ships on desktop. Making it work on **mobile** is an *access*
-gap, not a logic gap (the browse logic is platform-agnostic; mobile can't reach
-arbitrary folders via `dart:io`).
+Shipped across desktop, cloud (OneDrive/WebDAV "Browse read-only", read
+directly), and Android (SAF folder pick + the git-read backend below). Embedded
+images render **through the backend** (`readNoteImage` → `Image.memory`, memoized)
+so `![](pic.png)` works where there's no `dart:io` path; a Git-LFS pointer stub
+shows an actionable hint instead of a broken image. Remaining follow-ups:
 
-- Cloud browse is shipped (OneDrive + WebDAV, via the "Browse read-only" toggle
-  in each connect dialog; reads directly, no clone/sync). Follow-ups: the
-  OneDrive **in-app folder browser** (below) would make picking a folder to
-  browse easier than typing a path; and recursive tree listing over Graph is one
-  API call per folder — fine for now, optimize if big trees feel slow.
-- **Render embedded images through the backend — SHIPPED.** When the preview has
-  no local file path (browsing a remote/SAF folder), it reads the image bytes via
-  the backend (`AppController.readNoteImage` → `content.backend.read`, resolved
-  relative to the open note, root-escape guarded) and renders `Image.memory`,
-  memoized per src (no re-read/flicker). Local Folios still use the fast
-  `Image.file` path. Unblocks remote + SAF + future-zip image reading. Follow-ups
-  if needed: a size cap / eviction on the in-memory cache for image-heavy notes,
-  and a shared cache across notes (currently per-preview, reset on note switch).
-- **Android SAF companion — SHIPPED.** The user picks a folder via the system
-  picker (SAF); a read-only `SafBackend` over a Kotlin method channel reads the
-  granted `content://` tree (`DocumentFile`); recent-folios stores the URI for
-  one-tap reopen; browsed notes open in Preview and Android Back walks note
-  history. Remaining follow-ups: **render images through the backend** (above —
-  SAF has no `dart:io` path, so `![](pic.png)` doesn't render yet); and the
-  path→document resolution uses `findFile` per segment (O(children) per level) —
-  if big trees feel slow, construct document URIs directly (`DocumentsContract`).
-  LEARNED: another app's `Android/data/<pkg>/` (e.g. an MGit clone) is
-  unreachable by SAF *and* `MANAGE_EXTERNAL_STORAGE` on Android 11+ — the folder
-  must live in **shared** storage (Documents/Downloads, a Syncthing/cloud folder,
-  or a Termux clone under `~/storage/shared`).
+- **OneDrive in-app folder browser** — picking a browse folder still means typing
+  a path; a visual Graph picker (see Landing & UX) would help. Recursive tree
+  listing over Graph is one API call per folder — fine for now.
+- **Image cache tuning** — the per-preview image cache resets on note switch; add
+  a size cap / eviction and a cache shared across notes if image-heavy notes feel
+  heavy.
+- **SAF path resolution** — `SafBackend` builds document URIs directly
+  (`DocumentsContract`) with a `findFile` fallback; fine in practice. LEARNED: a
+  browsed folder must live in **shared** storage — another app's
+  `Android/data/<pkg>/` (e.g. an MGit clone) is unreachable by SAF *and*
+  `MANAGE_EXTERNAL_STORAGE` on Android 11+.
 
-- `[larger]` `[idea]` **Git-read backend (pull-only, no push)** — a *separate,
-  walled-off* idea from SAF: a backend that clones/pulls a repo directly and
-  browses it read-only, so the folder-freshness problem is solved inside Margin
-  instead of by an external sync tool. Mechanism decided (see **Architecture**
-  sub-bullet): **JGit** behind a method channel, not a Dart git lib. Overlaps
-  with GitJournal; kept out of the SAF path so it can't
-  complicate it. **Priority raised (field evidence 2026-08-12):** on-device git
-  tooling is confirmed inadequate for this — MGit has no LFS support (silently
-  clones pointer stubs), and Termux git wouldn't operate on MGit's clone (repo
-  ownership/perms), so getting a real repo onto the phone currently needs
-  hand-copying. Syncthing/cloud remain the clean *user* answer, but a built-in
-  git-read backend (with LFS handling) is looking like the more self-contained
-  fix. Still walled off from SAF; still read-only.
-  - **Why it would actually be worth building (the value prop):** kill the
-    mobile-git *auth* annoyance. Every mobile git tool (MGit, Termux) makes you
-    fight PAT/SSH-key entry per clone. Margin could take a PAT **once**, store it
-    in the OS keystore via the existing `CredentialStore` (same as WebDAV/OneDrive
-    creds), and never re-prompt. "The markdown reader that makes mobile-git-auth
-    a one-time thing" is the differentiator, not "it does git."
-  - **The scope-creep trap to decide up front:** cloning into Margin's *own*
-    managed folder is simpler than SAF (known location, no picker) — BUT once a
-    repo lives in Margin's folder, users will expect a *proper* git backend
-    (commit/push), not read-only. Desktop dodges this because the folder is "just
-    a folder that happens to be git," and external git tools do the committing;
-    mobile has no such tool, so the expectation lands squarely on Margin. So the
-    boundary must be chosen deliberately: stay a pull-only reader, or accept
-    becoming a git client. Staying read-only keeps the "dumb folder" identity.
-  - **Resolution to the trap (from MGit testing):** clone into a **shared-storage**
-    managed folder (not app-private), so any external tool can commit/push against
-    it — Margin stays the read-only reader, the folder is "just a folder that
-    happens to be git," and the desktop model is preserved on mobile. Bonus: a
-    shared, well-known folder could one day be operated on by *other apps,
-    possibly the Claude App itself*. (Contrast: cloning into app-private storage
-    is where the "must become a git client" pressure comes from.)
-  - **Auth, kept simple (from MGit testing):** a single **username + password**
-    field covers most git servers over HTTPS; for GitHub the "password" is just a
-    **PAT**. So v1 needs no SSH-key UI — one username + one password/PAT field,
-    stored in `CredentialStore`. (Public repos need no auth at all.)
-  - **Git LFS is another external-client gap (from MGit testing):** MGit clones
-    LFS-tracked files as ~130-byte pointer stubs (not the binary), so images
-    silently don't render — Margin reads the stub faithfully, it's just not an
-    image. A controlled git-read backend could handle/`git lfs pull` (or at least
-    detect it), which external clients get wrong. One more "control the clone"
-    argument. Interim fix is the sync layer's job (Termux `git lfs pull`,
-    Syncthing/cloud).
-  - **Architecture (spike two unknowns FIRST, before any product code):** JGit
-    (`org.eclipse.jgit` + `org.eclipse.jgit.lfs`) is pure Java, runs in-process
-    on Android's ART — no NDK, no bundled `git` binary. It slots into the
-    **exact SAF shape**: a Dart `GitChannel` interface + `MethodChannelGit` →
-    a Kotlin handler in `MainActivity` (same `margin/app`-style channel as SAF),
-    added as one Gradle dependency. Key design call: **git *materializes*, it
-    does not *read*.** JGit clones/pulls into a folder on disk; Margin then
-    browses that folder with the **existing `LocalFolderBackend`** (browse mode)
-    — no new `StorageBackend`, and images hit the local-file fast path for free.
-    Reuses the clone-then-sync cache pattern the app already has. **Mobile-first
-    by nature:** JGit is JVM-only, Flutter desktop is native (no JVM), and
-    desktop users already have a real `git` — so this backend is Android-only
-    (desktop would shell out or simply not offer it). The two unknowns that gate
-    everything — verify empirically in a throwaway spike, don't assume: (1)
-    **JGit under ART** — it leans on some `java.nio.file`/`java.time` APIs;
-    modern Android + Gradle desugaring should cover it, but prove a clone works;
-    (2) **LFS smudge-on-clone** — confirm `jgit.lfs` checks out **real bytes**,
-    not the 130-byte pointer (the same trap that killed MGit). If JGit-LFS also
-    leaves pointers, the feature is pointless — learn that in an hour.
-  - **Clone destination & scope (decided):** default target is Margin's own
-    managed folder in **shared** storage, but the user can pick a **different
-    root folder** for clones. Consequence, accepted deliberately: for some users
-    Margin effectively becomes an Android *cloning tool* — **allow it, don't
-    prevent it, don't advertise it.** Always a **full clone/pull of the whole
-    repo** (no sparse/selective fetch): `.md` files link to siblings and assets,
-    and we won't parse notes to decide what to pull. Pull-only, never push —
-    Margin stays the read-only reader; any committing is an external tool's job
-    against that shared folder (preserves the desktop "just a folder that happens
-    to be git" model).
-  - **Pull-failure handling (decided):** a pull is best-effort. If it fails
-    (network, auth, conflict, repo corruption), **keep showing the last good
-    clone** (it's already on disk, read-only) and **warn the user** that the copy
-    may be stale — never blank the reader or block browsing on a failed refresh.
+### Git-read backend — SHIPPED (Android), read-only
 
-- **Detect a Git LFS pointer in the preview and show a hint** — small, standalone
-  win independent of the git-read backend. When an image's bytes are a Git LFS
-  pointer (a small text file starting with
-  `version https://git-lfs.github.com/spec/v1`), the preview currently shows a
-  generic broken-image icon. Detect that signature (in `readNoteImage` or the
-  image widget) and render an actionable message instead ("Git LFS pointer — run
-  `git lfs pull`") so the user isn't left guessing.
+Clone/pull a repo directly and browse it read-only, so folder-freshness is solved
+inside Margin instead of by an external sync tool (on-device git tools are
+inadequate — MGit clones LFS as pointer stubs; Termux is impractical). Shipped:
+**JGit** behind the `margin/app` method channel clones into app storage and Margin
+browses the working tree via `LocalFolderBackend` — git *materializes*, it does
+not *read*, so there's no new backend and images hit the local-file fast path.
+**Git-LFS** blobs are fetched via the batch API and the pointer stubs overwritten
+(JGit's checkout leaves pointers). **Auth once** — username + PAT in the keystore
+(`CredentialStore`), offline-first reopen from the local clone. **Refresh = pull**
+(fetch + hard-reset + re-LFS), best-effort: a failed pull keeps the last-good
+clone and warns. Read-only by design preserves the dumb-folder identity (Margin
+reads; committing is another tool's job). JGit is JVM-only, hence Android-only.
+Remaining:
+- `[larger]` **Shared-storage destination** — the clone lands in app-*private*
+  storage today, invisible to Android's file explorer and other apps
+  (field-reported). Move it to **shared** storage (and let the user pick a root),
+  making it "just a folder that happens to be git" that other tools — possibly the
+  Claude app — could operate on. The identity-defining follow-up.
+- **LFS object caching** — each pull re-downloads all LFS blobs (the reset reverts
+  them to pointers; we don't populate `.git/lfs/objects`). Cache objects to skip
+  the re-download.
+- **Desktop** — not offered; desktop already has a real `git` (would shell out).
+- Always a **full clone/pull** (no sparse fetch): notes link to siblings/assets,
+  and we won't parse them to decide what to pull. (Decided.)
 
 ## Editor & viewing
 
@@ -290,33 +218,24 @@ Both fit the existing seams cleanly — browse mode is already the reader, and
 
 ## Platform, release & CI
 
-See also the `release-roadmap` memory.
+See also the `release-roadmap` memory. **Done:** package migration to
+`studio.annoyances.margin`; the **upload keystore** (signed release, SHA
+registered in Entra for OneDrive); **Android developer verification** (package
+registered); and **CI for Windows + Android** — a `v*` tag builds a signed
+Android APK + a Windows zip and attaches both to the GitHub Release (Android
+signing is gated by the `android-release` Environment, which enforces a required
+reviewer once the repo is public). Off-store distribution via GitHub Releases.
+Remaining:
 
-- `[larger]` **GitHub CI for builds** — matrix on hosted runners (windows +
-  ubuntu-for-APK + macos-for-iOS). The path to an **iOS build**. OneDrive
-  `--dart-define`s go in as (public) workflow vars.
-- **Move Margin to `studio.annoyances.margin` before first Play upload.** Studio
-  brand is decided — **Annoyances Studio** (domain `annoyances.studio`), namespace
-  `studio.annoyances.*`. Margin currently ships `com.lordofthedummies.margin` and
-  isn't on Play yet, so the id can still change (permanent after first upload).
-  **Batch the change with the keystore + Entra pass below** — both the new package
-  and the new signing hash rewrite the OneDrive redirect URI `msauth://<pkg>/<hash>`,
-  so do them together (one Entra reconfig). Package id is invisible to users (they
-  see "Margin•").
-- **Release keystore decision** (Android) — release APKs are debug-signed on
-  purpose for the Entra/OneDrive signature hash; Play needs a real key (re-
-  register its SHA in Entra, or use Play App Signing). Also gates CI signing.
-- **Google Play publishing** (first target) — needs the keystore above + an AAB.
-- **Windows distribution** — leaning GitHub Releases over the Microsoft Store to
-  start.
-- **Mobile layout polish** — slide-over tree and the Android/iOS build hardening.
-- **Verify macOS + Linux desktop builds** — scaffolding now exists (`flutter
-  create`, binary `margin`, id `com.lordofthedummies.margin`), but neither has
-  been built; both need their OS or a CI runner. CI can also collect all
-  platforms' outputs into a uniform `dist/` (the per-platform build paths differ;
-  see CLAUDE.md).
-- **macOS file access under App Sandbox** — the generated macOS runner enables
-  App Sandbox, which blocks reading arbitrary folders (companion mode's whole
-  point). For direct distribution, relax the sandbox entitlement; for the App
-  Store, use security-scoped bookmarks (same family as the iOS document-picker
-  problem).
+- **CI for macOS + iOS** — add those runners (macOS is the path to the **iOS
+  build**), and collect every platform's output into a uniform `dist/` (the
+  per-platform build paths differ; see CLAUDE.md).
+- **Google Play publishing** — needs an **AAB** (CI builds APK only today) plus
+  the listing. Play / Obtainium / F-Droid all optional; off-store is the default.
+- **Verify macOS + Linux desktop builds** — scaffolding exists (`flutter create`,
+  binary `margin`), but neither has been built; each needs its OS or a CI runner.
+- **macOS file access under App Sandbox** — the generated macOS runner enables App
+  Sandbox, which blocks reading arbitrary folders (companion mode's whole point).
+  Direct distribution: relax the entitlement; App Store: security-scoped bookmarks
+  (same family as the iOS document-picker problem).
+- **Mobile layout polish** — slide-over tree and Android/iOS build hardening.

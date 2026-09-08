@@ -17,8 +17,9 @@ sharing nothing with that codebase beyond lineage and intent.
   control — edit them here or in any other tool. No database, no lock-in.
 - **Companion mode.** Open *any* plain Markdown folder read-only — documentation,
   a wiki, a Claude-generated project — with in-app `.md` link navigation,
-  backlinks, full-text search, and folder overviews. Works on local folders and
-  on shared cloud folders (OneDrive / WebDAV).
+  backlinks, full-text search, and folder overviews. Works on local folders,
+  shared cloud folders (OneDrive / WebDAV), an Android folder you grant, and even
+  a read-only **git clone** (Android, LFS-aware, pull to refresh).
 - **Sync that stays yours.** Pluggable storage backends (local folder, WebDAV,
   OneDrive) with clone-then-sync and offline-first; a conflict keeps both copies
   rather than overwriting.
