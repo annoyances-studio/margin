@@ -72,10 +72,45 @@ class FolderTreeView extends StatefulWidget {
 }
 
 class _FolderTreeViewState extends State<FolderTreeView> {
-  /// Collapsed folder paths. Absent = expanded (folders default open).
+  /// Collapsed folder paths. Folders default **collapsed** (see
+  /// [_applyDefaultCollapse]) so you see the structure first and drill in.
   final Set<String> _collapsed = {};
 
+  /// Folder paths we've already applied the collapsed-by-default rule to, so a
+  /// folder the user later expanded stays expanded across rebuilds (and only
+  /// newly-appearing folders start collapsed).
+  final Set<String> _known = {};
+
   bool _isExpanded(String path) => !_collapsed.contains(path);
+
+  /// On first sighting, collapse each folder — except the ancestors of the
+  /// selected note, so the current note never hides inside a collapsed folder.
+  void _applyDefaultCollapse(FolderNode root, String? selectedNotePath) {
+    final keepOpen = _ancestorFolderPaths(selectedNotePath);
+    void walk(FolderNode f) {
+      if (f.path.isNotEmpty && _known.add(f.path) && !keepOpen.contains(f.path)) {
+        _collapsed.add(f.path);
+      }
+      for (final child in f.folders) {
+        walk(child);
+      }
+    }
+
+    walk(root);
+  }
+
+  /// The folder paths that contain [notePath] (e.g. `A/B/n.md` -> {`A`, `A/B`}).
+  Set<String> _ancestorFolderPaths(String? notePath) {
+    if (notePath == null) return const {};
+    final slash = notePath.lastIndexOf('/');
+    if (slash < 0) return const {};
+    final segments = notePath.substring(0, slash).split('/');
+    final out = <String>{};
+    for (var i = 0; i < segments.length; i++) {
+      out.add(segments.sublist(0, i + 1).join('/'));
+    }
+    return out;
+  }
 
   void _toggle(String path) => setState(() {
         if (!_collapsed.remove(path)) _collapsed.add(path);
@@ -113,6 +148,7 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    _applyDefaultCollapse(widget.root, widget.selectedNotePath);
     final children = _childrenOf(widget.root, l10n);
     if (children.isEmpty) {
       return Center(
@@ -313,7 +349,15 @@ class _FolderTile extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    color != null ? Icons.folder : Icons.folder_outlined,
+                    // Open-folder glyph when expanded, closed when collapsed —
+                    // filled variants carry the folder's accent color.
+                    expanded
+                        ? (color != null
+                            ? Icons.folder_open
+                            : Icons.folder_open_outlined)
+                        : (color != null
+                            ? Icons.folder
+                            : Icons.folder_outlined),
                     color: color,
                     size: 22,
                   ),

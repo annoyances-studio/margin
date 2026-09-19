@@ -25,9 +25,10 @@ void main() {
         ],
       );
 
-  Widget host(FolderNode root) => localizedApp(Scaffold(
+  Widget host(FolderNode root, {String? selected}) => localizedApp(Scaffold(
         body: FolderTreeView(
           root: root,
+          selectedNotePath: selected,
           onNoteTap: (_) {},
           onFolderAction: (_, _) {},
           onNoteAction: (_, _) {},
@@ -35,7 +36,7 @@ void main() {
         ),
       ));
 
-  testWidgets('collapse all hides a subtree; expand all restores it',
+  testWidgets('expand all reveals a subtree; collapse all hides it',
       (tester) async {
     await tester.pumpWidget(host(treeWith(
       const NoteNode(path: 'A/n1.md', name: 'n1.md'),
@@ -43,38 +44,43 @@ void main() {
     )));
     await tester.pumpAndSettle();
 
-    // Both notes visible initially (folders default expanded).
-    expect(find.text('n1'), findsOneWidget);
-    expect(find.text('n2'), findsOneWidget);
-
-    // Folder A's menu → Collapse all.
-    await tester.tap(find.byType(PopupMenuButton<TreeAction>).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Collapse all'));
-    await tester.pumpAndSettle();
+    // Folders default collapsed: the subtree is hidden initially.
     expect(find.text('n1'), findsNothing);
     expect(find.text('n2'), findsNothing);
 
-    // Folder A's menu → Expand all restores the whole subtree.
+    // Folder A's menu → Expand all reveals the whole subtree.
     await tester.tap(find.byType(PopupMenuButton<TreeAction>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Expand all'));
     await tester.pumpAndSettle();
     expect(find.text('n1'), findsOneWidget);
     expect(find.text('n2'), findsOneWidget);
+
+    // Folder A's menu → Collapse all hides it again.
+    await tester.tap(find.byType(PopupMenuButton<TreeAction>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Collapse all'));
+    await tester.pumpAndSettle();
+    expect(find.text('n1'), findsNothing);
+    expect(find.text('n2'), findsNothing);
   });
 
   testWidgets('a note carries a Modified/size tooltip from listing metadata',
       (tester) async {
-    await tester.pumpWidget(host(treeWith(
-      NoteNode(
-        path: 'A/n1.md',
-        name: 'n1.md',
-        modified: DateTime(2026, 7, 16, 15, 24),
-        size: 2048,
+    // Selecting the note keeps its folder expanded (ancestors stay open), so
+    // the note row — and its tooltip — is rendered despite the collapsed default.
+    await tester.pumpWidget(host(
+      treeWith(
+        NoteNode(
+          path: 'A/n1.md',
+          name: 'n1.md',
+          modified: DateTime(2026, 7, 16, 15, 24),
+          size: 2048,
+        ),
+        const NoteNode(path: 'A/B/n2.md', name: 'n2.md'),
       ),
-      const NoteNode(path: 'A/B/n2.md', name: 'n2.md'),
-    )));
+      selected: 'A/n1.md',
+    ));
     await tester.pumpAndSettle();
 
     final tips = tester
