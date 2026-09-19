@@ -13,6 +13,10 @@ import 'package:window_manager/window_manager.dart';
 bool get isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+/// macOS desktop specifically — the custom title bar keeps the native
+/// traffic-lights there (left) and moves the Margin mark to the right.
+bool get isMacOSDesktop => !kIsWeb && Platform.isMacOS;
+
 /// Sets up the desktop window: a sensible size and "close hides to tray"
 /// behaviour (DESIGN.md). No-op off desktop.
 ///
@@ -27,14 +31,60 @@ Future<void> initDesktopWindow({bool startMinimized = false}) async {
     minimumSize: Size(640, 480),
     center: true,
     title: 'Margin•',
+    // Hide the OS title bar — Margin draws its own merged bar. On macOS we keep
+    // the native traffic-lights (windowButtonVisibility below); on Windows/Linux
+    // the app draws its own window buttons.
+    titleBarStyle: TitleBarStyle.hidden,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
+    try {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: Platform.isMacOS,
+      );
+    } catch (_) {}
     if (startMinimized) return; // stay hidden in the tray
     await windowManager.show();
     await windowManager.focus();
   });
   // Intercept the close button so it hides to the tray instead of quitting.
   await windowManager.setPreventClose(true);
+}
+
+/// Window-control actions for the custom title bar (desktop only; failures
+/// swallowed so a missing window manager can't crash the UI).
+Future<void> minimizeWindow() async {
+  if (!isDesktop) return;
+  try {
+    await windowManager.minimize();
+  } catch (_) {}
+}
+
+Future<void> toggleMaximizeWindow() async {
+  if (!isDesktop) return;
+  try {
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    } else {
+      await windowManager.maximize();
+    }
+  } catch (_) {}
+}
+
+/// Closes the window — which the tray guard turns into "hide to tray".
+Future<void> closeWindow() async {
+  if (!isDesktop) return;
+  try {
+    await windowManager.close();
+  } catch (_) {}
+}
+
+/// Sets the OS window title (taskbar / alt-tab). Falls back to the app name.
+Future<void> setWindowTitle(String title) async {
+  if (!isDesktop) return;
+  try {
+    await windowManager.setTitle(title.trim().isEmpty ? 'Margin•' : title);
+  } catch (_) {}
 }
 
 /// Quits the desktop app for real: drops the hide-to-tray guard and destroys

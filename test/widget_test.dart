@@ -59,9 +59,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The new note is auto-selected, so the app-bar title is its breadcrumb.
+    // The new note is auto-selected: the status bar shows the full path, the
+    // title bar shows the document name, and the tree shows the note.
     expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget); // folder in tree
-    expect(find.text('meeting'), findsOneWidget); // note in tree
+    // "meeting" appears twice now: the tree row and the title-bar document name.
+    expect(find.text('meeting'), findsNWidgets(2));
   });
 }

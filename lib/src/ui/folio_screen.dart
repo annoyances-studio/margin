@@ -2,9 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../content/tree_node.dart';
@@ -40,6 +43,9 @@ class _FolioScreenState extends State<FolioScreen> {
   static const double _wideBreakpoint = 720;
 
   bool _showTree = true;
+
+  /// Last title pushed to the OS window, to avoid redundant native calls.
+  String? _lastWinTitle;
 
   /// Desktop sidebar width, adjustable by dragging the divider (clamped).
   double _treeWidth = 280;
@@ -145,60 +151,196 @@ class _FolioScreenState extends State<FolioScreen> {
   // --- wide (desktop) layout: tree panel + editor, with view-mode control ---
 
   Widget _buildWide(BuildContext context) {
+    // Push the open document's name to the OS window title (taskbar / alt-tab).
+    final winTitle = _documentName();
+    if (winTitle != _lastWinTitle) {
+      _lastWinTitle = winTitle;
+      unawaited(setWindowTitle(winTitle));
+    }
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: _showTree ? _l10n.hideFolders : _l10n.showFolders,
-          icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
-          onPressed: () => setState(() => _showTree = !_showTree),
-        ),
-        title: Text(_wideTitle()),
-        actions: [
-          IconButton(
-            tooltip: _l10n.navigateBack,
-            icon: const Icon(Icons.arrow_back),
-            onPressed: controller.canGoBack ? () => controller.goBack() : null,
-          ),
-          IconButton(
-            tooltip: _l10n.navigateForward,
-            icon: const Icon(Icons.arrow_forward),
-            onPressed:
-                controller.canGoForward ? () => controller.goForward() : null,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: _viewModeControl(),
-          ),
-          IconButton(
-            tooltip: controller.isGitFolio ? _l10n.pullLatest : _l10n.refreshTree,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => controller.refreshTree(),
-          ),
-          if (controller.selectedNotePath != null)
-            IconButton(
-              tooltip: _l10n.backlinks,
-              icon: const Icon(Icons.hub_outlined),
-              onPressed: () => _showBacklinks(context),
-            ),
-          if (controller.selectedNotePath != null && !controller.isBrowsing)
-            IconButton(
-              tooltip: _l10n.attachFile,
-              icon: const Icon(Icons.attach_file),
-              onPressed: _attachFile,
-            ),
-          if (!controller.isBrowsing) _saveAction(),
-          if (controller.syncError != null) _syncRetryAction(),
-          _overflowMenu(),
-        ],
-        bottom: _busyBar(),
-      ),
+      appBar: _desktopTitleBar(),
       body: Column(
         children: [
           _accentDivider(),
           if (controller.error != null) _errorBanner(controller.error!),
           if (controller.syncNeedsEmptyConfirm) _emptySyncBanner(),
           Expanded(child: _wideContent()),
+          _statusBar(),
         ],
+      ),
+    );
+  }
+
+  /// Margin's merged title bar (desktop): the OS chrome is hidden, so this one
+  /// strip carries the app mark, folders/history controls, the document name (a
+  /// draggable region), the view-mode control and menu, and — on Windows/Linux —
+  /// the window buttons. macOS keeps its native traffic-lights at the left, and
+  /// the Margin mark moves to the right so the left isn't crowded.
+  PreferredSizeWidget _desktopTitleBar() {
+    final scheme = Theme.of(context).colorScheme;
+    final onMac = isMacOSDesktop;
+    final showOwnButtons = isDesktop && !onMac;
+
+    final title = Container(
+      alignment: Alignment.center,
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Text(
+        _documentName(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+    );
+
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(46),
+      child: Material(
+        color: scheme.surfaceContainer,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  // macOS: leave room for the native traffic-lights; else the mark.
+                  if (onMac) const SizedBox(width: 72) else _appMark(),
+                  IconButton(
+                    tooltip: _showTree ? _l10n.hideFolders : _l10n.showFolders,
+                    icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => setState(() => _showTree = !_showTree),
+                  ),
+                  IconButton(
+                    tooltip: _l10n.navigateBack,
+                    icon: const Icon(Icons.arrow_back),
+                    visualDensity: VisualDensity.compact,
+                    onPressed:
+                        controller.canGoBack ? () => controller.goBack() : null,
+                  ),
+                  IconButton(
+                    tooltip: _l10n.navigateForward,
+                    icon: const Icon(Icons.arrow_forward),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: controller.canGoForward
+                        ? () => controller.goForward()
+                        : null,
+                  ),
+                  IconButton(
+                    tooltip: controller.isGitFolio
+                        ? _l10n.pullLatest
+                        : _l10n.refreshTree,
+                    icon: const Icon(Icons.refresh),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => controller.refreshTree(),
+                  ),
+                  Expanded(
+                    child: isDesktop ? DragToMoveArea(child: title) : title,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _viewModeControl(),
+                  ),
+                  if (controller.selectedNotePath != null)
+                    IconButton(
+                      tooltip: _l10n.backlinks,
+                      icon: const Icon(Icons.hub_outlined),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _showBacklinks(context),
+                    ),
+                  if (controller.selectedNotePath != null &&
+                      !controller.isBrowsing)
+                    IconButton(
+                      tooltip: _l10n.attachFile,
+                      icon: const Icon(Icons.attach_file),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _attachFile,
+                    ),
+                  if (!controller.isBrowsing) _saveAction(),
+                  if (controller.syncError != null) _syncRetryAction(),
+                  _overflowMenu(),
+                  if (onMac) _appMark(),
+                  if (showOwnButtons) const _WindowButtons(),
+                ],
+              ),
+            ),
+            if (controller.isBusy) const LinearProgressIndicator(minHeight: 2),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _appMark() => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CustomPaint(
+            painter: _MarginMarkPainter(Theme.of(context).colorScheme.primary),
+          ),
+        ),
+      );
+
+  /// The open document's display name for the title bar / OS window title: the
+  /// note name without `.md`; a top-level README shows its folder's name; no
+  /// note open falls back to the Folio name.
+  String _documentName() {
+    final notePath = controller.selectedNotePath;
+    if (notePath == null) return '${controller.folioName}$_unsyncedMark';
+    final slash = notePath.lastIndexOf('/');
+    final file = slash < 0 ? notePath : notePath.substring(slash + 1);
+    var name =
+        file.toLowerCase().endsWith('.md') ? file.substring(0, file.length - 3) : file;
+    if (name.toLowerCase() == 'readme') {
+      final folder = slash < 0 ? '' : notePath.substring(0, slash);
+      final fslash = folder.lastIndexOf('/');
+      final fname = fslash < 0 ? folder : folder.substring(fslash + 1);
+      if (fname.isNotEmpty) name = fname;
+    }
+    return '$name$_unsyncedMark';
+  }
+
+  /// Bottom status strip: the open note's full path (the canonical "where am I",
+  /// freeing the title bar to show just the document name) plus a compact sync
+  /// state.
+  Widget _statusBar() {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainer,
+      child: SizedBox(
+        height: 24,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _wideTitle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+              if (controller.canSync)
+                Icon(
+                  controller.syncError != null
+                      ? Icons.cloud_off_outlined
+                      : (controller.hasUnsyncedChanges
+                          ? Icons.cloud_upload_outlined
+                          : Icons.cloud_done_outlined),
+                  size: 14,
+                  color: controller.syncError != null
+                      ? scheme.error
+                      : scheme.onSurfaceVariant,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -492,13 +634,6 @@ class _FolioScreenState extends State<FolioScreen> {
     await controller.setAlwaysOnTop(value); // persists + notifies (updates check)
     await setWindowAlwaysOnTop(value);
   }
-
-  PreferredSizeWidget? _busyBar() => controller.isBusy
-      ? const PreferredSize(
-          preferredSize: Size.fromHeight(2),
-          child: LinearProgressIndicator(minHeight: 2),
-        )
-      : null;
 
   /// A trailing "*" when there are local changes not yet synced to the remote.
   String get _unsyncedMark => controller.hasUnsyncedChanges ? ' *' : '';
@@ -1191,4 +1326,81 @@ class _ColorSwatch extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Windows/Linux window buttons for the custom title bar (macOS uses native
+/// traffic-lights). Close routes through the tray guard (hide to tray).
+class _WindowButtons extends StatelessWidget {
+  const _WindowButtons();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _WinBtn(icon: Icons.remove, onTap: minimizeWindow),
+        _WinBtn(icon: Icons.crop_square, onTap: toggleMaximizeWindow),
+        _WinBtn(icon: Icons.close, onTap: closeWindow, danger: true),
+      ],
+    );
+  }
+}
+
+class _WinBtn extends StatelessWidget {
+  const _WinBtn({required this.icon, required this.onTap, this.danger = false});
+
+  final IconData icon;
+  final Future<void> Function() onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 46,
+      height: 44,
+      child: InkWell(
+        onTap: () => onTap(),
+        hoverColor:
+            danger ? const Color(0xFFD64545) : scheme.onSurface.withValues(alpha: .08),
+        child: Icon(icon, size: 15, color: scheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+/// The bracket-dot app mark, painted on a cream tile so it keeps its identity in
+/// both themes (the way a real app icon does).
+class _MarginMarkPainter extends CustomPainter {
+  const _MarginMarkPainter(this.dotColor);
+
+  final Color dotColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(size.width * 0.28)),
+      Paint()..color = const Color(0xFFEFE7D6),
+    );
+    final s = size.width / 32;
+    final ink = Paint()
+      ..color = const Color(0xFF211E18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3 * s
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(19 * s, 9 * s)
+        ..lineTo(12 * s, 9 * s)
+        ..lineTo(12 * s, 23 * s)
+        ..lineTo(19 * s, 23 * s),
+      ink,
+    );
+    canvas.drawCircle(Offset(22.5 * s, 16 * s), 2.4 * s, Paint()..color = dotColor);
+  }
+
+  @override
+  bool shouldRepaint(_MarginMarkPainter old) => old.dotColor != dotColor;
 }
