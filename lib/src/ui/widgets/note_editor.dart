@@ -13,6 +13,7 @@ import '../../desktop/file_reveal.dart';
 import '../clipboard_service.dart';
 import '../find/find_session.dart';
 import '../link_target.dart';
+import '../text_transforms.dart';
 import 'go_to_line_bar.dart';
 import 'markdown_editing_controller.dart';
 
@@ -476,6 +477,54 @@ class _NoteEditorState extends State<NoteEditor> {
     widget.onChanged(updated);
   }
 
+  /// Shows the text-transform submenu at [anchor] and applies the pick to
+  /// [base] (the value captured while the selection was live).
+  Future<void> _showTextTools(Offset anchor, TextEditingValue base) async {
+    final l10n = AppLocalizations.of(context);
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromCenter(center: anchor, width: 1, height: 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(value: 'upper', child: Text(l10n.caseUpper)),
+        PopupMenuItem(value: 'lower', child: Text(l10n.caseLower)),
+        PopupMenuItem(value: 'proper', child: Text(l10n.caseProper)),
+        const PopupMenuDivider(),
+        PopupMenuItem(value: 'sort', child: Text(l10n.sortLines)),
+        PopupMenuItem(value: 'noEmpty', child: Text(l10n.removeEmptyLines)),
+        const PopupMenuDivider(),
+        PopupMenuItem(value: 'trim', child: Text(l10n.trimTrailingSpaces)),
+        PopupMenuItem(value: 'tabs', child: Text(l10n.tabsToSpaces)),
+      ],
+    );
+    if (action == null || !mounted) return;
+    _applyTextTool(action, base);
+  }
+
+  /// Applies the [action] transform to the selection in [base] (or the whole
+  /// text when the selection is empty), writing the result through the edit
+  /// stack (so it saves and Ctrl+Z undoes it).
+  void _applyTextTool(String action, TextEditingValue base) {
+    final text = base.text;
+    final sel = base.selection;
+    final hasSel = sel.isValid && !sel.isCollapsed;
+    final start = hasSel ? sel.start : 0;
+    final end = hasSel ? sel.end : text.length;
+    final target = text.substring(start, end);
+    final result = applyTextTool(action, target);
+    if (result == target) return;
+    final updated = text.replaceRange(start, end, result);
+    _controller.value = TextEditingValue(
+      text: updated,
+      selection:
+          TextSelection(baseOffset: start, extentOffset: start + result.length),
+    );
+    widget.onChanged(updated);
+  }
+
   /// The editing field itself. Shared by the wrapped and no-wrap layouts.
   Widget _editorField(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -527,6 +576,20 @@ class _NoteEditorState extends State<NoteEditor> {
             onPressed: () {
               ContextMenuController.removeAny();
               widget.onToggleWordWrap!();
+            },
+          ));
+        }
+        // Text transforms (case / lines / whitespace), on the selection or — when
+        // nothing is selected — the whole document. Captured now while the
+        // selection is live, since opening the submenu drops the field's focus.
+        if (!widget.readOnly) {
+          final anchor = editableState.contextMenuAnchors.primaryAnchor;
+          final captured = _controller.value;
+          items.add(ContextMenuButtonItem(
+            label: l10n.textTools,
+            onPressed: () {
+              ContextMenuController.removeAny();
+              _showTextTools(anchor, captured);
             },
           ));
         }

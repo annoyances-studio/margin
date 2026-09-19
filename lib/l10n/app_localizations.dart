@@ -853,6 +853,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Switch folio'**
   String get switchFolio;
+
+  /// Editor right-click item that opens the text-transform submenu (case, lines, whitespace).
+  ///
+  /// In en, this message translates to:
+  /// **'Text tools'**
+  String get textTools;
+
+  /// Text transform: convert to uppercase.
+  ///
+  /// In en, this message translates to:
+  /// **'UPPERCASE'**
+  String get caseUpper;
+
+  /// Text transform: convert to lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'lowercase'**
+  String get caseLower;
+
+  /// Text transform: title-case each word.
+  ///
+  /// In en, this message translates to:
+  /// **'Proper Case'**
+  String get caseProper;
+
+  /// Text transform: sort the selected lines alphabetically.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort lines'**
+  String get sortLines;
+
+  /// Text transform: drop blank lines.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove empty lines'**
+  String get removeEmptyLines;
+
+  /// Text transform: remove trailing whitespace on each line.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim trailing spaces'**
+  String get trimTrailingSpaces;
+
+  /// Text transform: replace tabs with spaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs to spaces'**
+  String get tabsToSpaces;
 }
 
 class _AppLocalizationsDelegate

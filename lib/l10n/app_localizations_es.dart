@@ -407,4 +407,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get switchFolio => 'Cambiar de folio';
+
+  @override
+  String get textTools => 'Herramientas de texto';
+
+  @override
+  String get caseUpper => 'MAYÚSCULAS';
+
+  @override
+  String get caseLower => 'minúsculas';
+
+  @override
+  String get caseProper => 'Tipo Título';
+
+  @override
+  String get sortLines => 'Ordenar líneas';
+
+  @override
+  String get removeEmptyLines => 'Quitar líneas vacías';
+
+  @override
+  String get trimTrailingSpaces => 'Quitar espacios finales';
+
+  @override
+  String get tabsToSpaces => 'Tabulaciones a espacios';
 }

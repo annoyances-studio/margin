@@ -402,4 +402,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get switchFolio => 'Switch folio';
+
+  @override
+  String get textTools => 'Text tools';
+
+  @override
+  String get caseUpper => 'UPPERCASE';
+
+  @override
+  String get caseLower => 'lowercase';
+
+  @override
+  String get caseProper => 'Proper Case';
+
+  @override
+  String get sortLines => 'Sort lines';
+
+  @override
+  String get removeEmptyLines => 'Remove empty lines';
+
+  @override
+  String get trimTrailingSpaces => 'Trim trailing spaces';
+
+  @override
+  String get tabsToSpaces => 'Tabs to spaces';
 }

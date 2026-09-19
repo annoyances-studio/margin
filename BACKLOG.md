@@ -92,15 +92,11 @@ Remaining:
 - **Find & replace (Edit mode)** — extend the shipped Ctrl+F find engine with a
   replace field (replace / replace-all), Edit/Split only. Reuse the find match
   model; add the replace UI to `note_editor_pane.dart`'s find session.
-- **Right-click edit tools (Edit mode)** — quick text transforms in the editor
-  context menu, operating on the selection, or the **whole document when nothing
-  is selected**. Pure string ops over the field text (undoable via the normal
-  edit stack):
-  - **Case:** UPPERCASE, lowercase, Proper Case.
-  - **Lines:** sort selected lines; remove empty lines.
-  - **Whitespace:** trim trailing space per line; tabs → spaces.
-  Keep them read-only-safe (hidden when browsing). Add to the existing
-  `contextMenuBuilder` in `note_editor.dart` alongside Paste-as-Markdown.
+- **Text tools: natural (numeric) line sort** — the shipped right-click *Sort
+  lines* is plain case-insensitive alphabetical, so `10` sorts before `2`. Add a
+  numeric/natural-sort variant (parse leading numbers, natural-compare). More
+  involved than the pure string ops; a follow-up to the shipped text-transforms
+  menu in `text_transforms.dart`.
 - **Line-number gutter (editor)** — optional companion to the shipped go-to-line
   (Ctrl+G): a toggleable left gutter numbering source lines, so a line Claude
   cites is visible without jumping. Deferred for the pixel-alignment work (the

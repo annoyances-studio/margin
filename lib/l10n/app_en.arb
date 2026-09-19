@@ -271,5 +271,22 @@
   "@pasteFailed": { "description": "Snackbar shown when a paste fails and there is no plain text to fall back to." },
 
   "switchFolio": "Switch folio",
-  "@switchFolio": { "description": "Tooltip on the folio switcher at the top of the folder tree — opens recent folios to jump between them." }
+  "@switchFolio": { "description": "Tooltip on the folio switcher at the top of the folder tree — opens recent folios to jump between them." },
+
+  "textTools": "Text tools",
+  "@textTools": { "description": "Editor right-click item that opens the text-transform submenu (case, lines, whitespace)." },
+  "caseUpper": "UPPERCASE",
+  "@caseUpper": { "description": "Text transform: convert to uppercase." },
+  "caseLower": "lowercase",
+  "@caseLower": { "description": "Text transform: convert to lowercase." },
+  "caseProper": "Proper Case",
+  "@caseProper": { "description": "Text transform: title-case each word." },
+  "sortLines": "Sort lines",
+  "@sortLines": { "description": "Text transform: sort the selected lines alphabetically." },
+  "removeEmptyLines": "Remove empty lines",
+  "@removeEmptyLines": { "description": "Text transform: drop blank lines." },
+  "trimTrailingSpaces": "Trim trailing spaces",
+  "@trimTrailingSpaces": { "description": "Text transform: remove trailing whitespace on each line." },
+  "tabsToSpaces": "Tabs to spaces",
+  "@tabsToSpaces": { "description": "Text transform: replace tabs with spaces." }
 }
