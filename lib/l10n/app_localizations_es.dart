@@ -431,4 +431,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tabsToSpaces => 'Tabulaciones a espacios';
+
+  @override
+  String get windowMinimize => 'Minimizar';
+
+  @override
+  String get windowMaximizeRestore => 'Maximizar / Restaurar';
 }

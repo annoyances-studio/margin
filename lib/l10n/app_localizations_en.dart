@@ -426,4 +426,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tabsToSpaces => 'Tabs to spaces';
+
+  @override
+  String get windowMinimize => 'Minimize';
+
+  @override
+  String get windowMaximizeRestore => 'Maximize / Restore';
 }

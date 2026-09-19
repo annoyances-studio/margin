@@ -901,6 +901,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tabs to spaces'**
   String get tabsToSpaces;
+
+  /// App-mark window menu: minimize the window.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get windowMinimize;
+
+  /// App-mark window menu: toggle maximize/restore.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize / Restore'**
+  String get windowMaximizeRestore;
 }
 
 class _AppLocalizationsDelegate

@@ -290,16 +290,60 @@ class _FolioScreenState extends State<FolioScreen> {
     );
   }
 
-  Widget _appMark() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6),
-    child: SizedBox(
-      width: 22,
-      height: 22,
+  /// The app mark. On desktop it doubles as the window menu (like a classic
+  /// system menu, minus Move/Size — those are Alt+Space / Win+Arrow natively):
+  /// Minimize, Maximize/Restore, Always on top, Close Margin.
+  Widget _appMark() {
+    final mark = SizedBox(
+      width: 18,
+      height: 18,
       child: CustomPaint(
         painter: _MarginMarkPainter(Theme.of(context).colorScheme.primary),
       ),
-    ),
-  );
+    );
+    if (!isDesktop) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: mark,
+      );
+    }
+    return PopupMenuButton<String>(
+      tooltip: _l10n.appName,
+      position: PopupMenuPosition.under,
+      padding: EdgeInsets.zero,
+      onSelected: (v) {
+        switch (v) {
+          case 'minimize':
+            minimizeWindow();
+          case 'maxrestore':
+            toggleMaximizeWindow();
+          case 'ontop':
+            _toggleAlwaysOnTop();
+          case 'close':
+            _handleOverflow('quit');
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(value: 'minimize', child: Text(_l10n.windowMinimize)),
+        PopupMenuItem(
+          value: 'maxrestore',
+          child: Text(_l10n.windowMaximizeRestore),
+        ),
+        const PopupMenuDivider(),
+        CheckedPopupMenuItem(
+          value: 'ontop',
+          checked: controller.alwaysOnTop,
+          child: Text(_l10n.alwaysOnTop),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(value: 'close', child: Text(_l10n.closeMargin)),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: mark,
+      ),
+    );
+  }
 
   /// The breadcrumb shown in the title bar's drag region: the open note's folder
   /// path and name (folio name when none is open). Non-interactive so the region
@@ -692,17 +736,12 @@ class _FolioScreenState extends State<FolioScreen> {
     itemBuilder: (_) => [
       if (controller.canSync)
         PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
-      if (isDesktop)
-        CheckedPopupMenuItem(
-          value: 'alwaysOnTop',
-          checked: controller.alwaysOnTop,
-          child: Text(_l10n.alwaysOnTop),
-        ),
       PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
-      PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
-      // Desktop hides to the tray on window-close; this quits for real.
-      if (isDesktop)
-        PopupMenuItem(value: 'quit', child: Text(_l10n.closeMargin)),
+      // Desktop moves window-level items (always-on-top, Close Margin) to the
+      // app-mark menu and Close folio to the folio switcher, so the overflow
+      // stays lean (Sync now + Settings). Mobile keeps Close folio here.
+      if (!isDesktop)
+        PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
     ],
   );
 

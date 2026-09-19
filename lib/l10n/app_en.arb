@@ -288,5 +288,10 @@
   "trimTrailingSpaces": "Trim trailing spaces",
   "@trimTrailingSpaces": { "description": "Text transform: remove trailing whitespace on each line." },
   "tabsToSpaces": "Tabs to spaces",
-  "@tabsToSpaces": { "description": "Text transform: replace tabs with spaces." }
+  "@tabsToSpaces": { "description": "Text transform: replace tabs with spaces." },
+
+  "windowMinimize": "Minimize",
+  "@windowMinimize": { "description": "App-mark window menu: minimize the window." },
+  "windowMaximizeRestore": "Maximize / Restore",
+  "@windowMaximizeRestore": { "description": "App-mark window menu: toggle maximize/restore." }
 }
