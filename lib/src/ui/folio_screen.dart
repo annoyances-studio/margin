@@ -116,10 +116,10 @@ class _FolioScreenState extends State<FolioScreen> {
   }
 
   void _openSettings() => SettingsDialog.show(
-        context,
-        startupService: widget.startupService,
-        controller: controller,
-      );
+    context,
+    startupService: widget.startupService,
+    controller: controller,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -138,15 +138,15 @@ class _FolioScreenState extends State<FolioScreen> {
             //   mode, so a browsed folder (which resolves to preview) opens
             //   rendered rather than on the raw editor page.
             if (switched) {
-              WidgetsBinding.instance
-                  .addPostFrameCallback((_) => _syncViewAcrossLayout(wide));
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _syncViewAcrossLayout(wide),
+              );
             } else if (firstBuild && !wide) {
-              WidgetsBinding.instance
-                  .addPostFrameCallback((_) => _syncViewAcrossLayout(false));
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _syncViewAcrossLayout(false),
+              );
             }
-            return wide
-                ? _buildWide(context)
-                : _buildNarrow(context);
+            return wide ? _buildWide(context) : _buildNarrow(context);
           },
         );
       },
@@ -189,83 +189,98 @@ class _FolioScreenState extends State<FolioScreen> {
     final crumb = _titleBreadcrumb();
 
     return PreferredSize(
-      preferredSize: const Size.fromHeight(46),
+      preferredSize: const Size.fromHeight(40),
       child: Material(
         color: scheme.surfaceContainer,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: 44,
-              child: Row(
-                children: [
-                  // macOS: leave room for the native traffic-lights; else the mark.
-                  if (onMac) const SizedBox(width: 72) else _appMark(),
-                  IconButton(
-                    tooltip: _showTree ? _l10n.hideFolders : _l10n.showFolders,
-                    icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
+              height: 38,
+              child: IconButtonTheme(
+                data: IconButtonThemeData(
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(32, 32),
+                    padding: EdgeInsets.zero,
+                    iconSize: 18,
                     visualDensity: VisualDensity.compact,
-                    onPressed: () => setState(() => _showTree = !_showTree),
                   ),
-                  IconButton(
-                    tooltip: _l10n.navigateBack,
-                    icon: const Icon(Icons.arrow_back),
-                    visualDensity: VisualDensity.compact,
-                    onPressed:
-                        controller.canGoBack ? () => controller.goBack() : null,
-                  ),
-                  IconButton(
-                    tooltip: _l10n.navigateForward,
-                    icon: const Icon(Icons.arrow_forward),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: controller.canGoForward
-                        ? () => controller.goForward()
-                        : null,
-                  ),
-                  IconButton(
-                    tooltip: controller.isGitFolio
-                        ? _l10n.pullLatest
-                        : _l10n.refreshTree,
-                    icon: const Icon(Icons.refresh),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => controller.refreshTree(),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: isDesktop ? DragToMoveArea(child: crumb) : crumb,
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: _titleSearch(),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _viewModeControl(),
-                  ),
-                  if (controller.selectedNotePath != null)
+                ),
+                child: Row(
+                  children: [
+                    // macOS: leave room for the native traffic-lights; else the mark.
+                    if (onMac) const SizedBox(width: 72) else _appMark(),
                     IconButton(
-                      tooltip: _l10n.backlinks,
-                      icon: const Icon(Icons.hub_outlined),
+                      tooltip: _showTree
+                          ? _l10n.hideFolders
+                          : _l10n.showFolders,
+                      icon: Icon(_showTree ? Icons.menu_open : Icons.menu),
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => _showBacklinks(context),
+                      onPressed: () => setState(() => _showTree = !_showTree),
                     ),
-                  if (controller.selectedNotePath != null &&
-                      !controller.isBrowsing)
                     IconButton(
-                      tooltip: _l10n.attachFile,
-                      icon: const Icon(Icons.attach_file),
+                      tooltip: _l10n.navigateBack,
+                      icon: const Icon(Icons.arrow_back),
                       visualDensity: VisualDensity.compact,
-                      onPressed: _attachFile,
+                      onPressed: controller.canGoBack
+                          ? () => controller.goBack()
+                          : null,
                     ),
-                  if (!controller.isBrowsing) _saveAction(),
-                  if (controller.syncError != null) _syncRetryAction(),
-                  _overflowMenu(),
-                  if (onMac) _appMark(),
-                  if (showOwnButtons) const _WindowButtons(),
-                ],
+                    IconButton(
+                      tooltip: _l10n.navigateForward,
+                      icon: const Icon(Icons.arrow_forward),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: controller.canGoForward
+                          ? () => controller.goForward()
+                          : null,
+                    ),
+                    IconButton(
+                      tooltip: controller.isGitFolio
+                          ? _l10n.pullLatest
+                          : _l10n.refreshTree,
+                      icon: const Icon(Icons.refresh),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => controller.refreshTree(),
+                    ),
+                    // Breathing room between the nav cluster and the title.
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 3,
+                      child: isDesktop ? DragToMoveArea(child: crumb) : crumb,
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _titleSearch(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: _viewModeControl(),
+                    ),
+                    if (controller.selectedNotePath != null)
+                      IconButton(
+                        tooltip: _l10n.backlinks,
+                        icon: const Icon(Icons.hub_outlined),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _showBacklinks(context),
+                      ),
+                    if (controller.selectedNotePath != null &&
+                        !controller.isBrowsing)
+                      IconButton(
+                        tooltip: _l10n.attachFile,
+                        icon: const Icon(Icons.attach_file),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: _attachFile,
+                      ),
+                    if (!controller.isBrowsing) _saveAction(),
+                    if (controller.syncError != null) _syncRetryAction(),
+                    _overflowMenu(),
+                    if (onMac) _appMark(),
+                    if (showOwnButtons) const _WindowButtons(),
+                  ],
+                ),
               ),
             ),
             if (controller.isBusy) const LinearProgressIndicator(minHeight: 2),
@@ -276,29 +291,28 @@ class _FolioScreenState extends State<FolioScreen> {
   }
 
   Widget _appMark() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CustomPaint(
-            painter: _MarginMarkPainter(Theme.of(context).colorScheme.primary),
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    child: SizedBox(
+      width: 22,
+      height: 22,
+      child: CustomPaint(
+        painter: _MarginMarkPainter(Theme.of(context).colorScheme.primary),
+      ),
+    ),
+  );
 
   /// The breadcrumb shown in the title bar's drag region: the open note's folder
   /// path and name (folio name when none is open). Non-interactive so the region
   /// stays draggable. The literal full path lives in the status bar.
   Widget _titleBreadcrumb() {
     final scheme = Theme.of(context).colorScheme;
-    final muted = Theme.of(context)
-        .textTheme
-        .bodyMedium
-        ?.copyWith(color: scheme.onSurfaceVariant);
-    final strong = Theme.of(context)
-        .textTheme
-        .bodyMedium
-        ?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600);
+    final muted = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant);
+    final strong = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: scheme.onSurface,
+      fontWeight: FontWeight.w600,
+    );
     final notePath = controller.selectedNotePath;
     final spans = <InlineSpan>[];
     if (notePath == null) {
@@ -336,15 +350,17 @@ class _FolioScreenState extends State<FolioScreen> {
         controller: _searchController,
         onChanged: controller.setSearchQuery,
         textInputAction: TextInputAction.search,
-        style: Theme.of(context).textTheme.bodyMedium,
+        style: Theme.of(context).textTheme.bodySmall,
         decoration: InputDecoration(
           isDense: true,
-          prefixIcon: const Icon(Icons.search, size: 18),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 34, minHeight: 34),
+          prefixIcon: const Icon(Icons.search, size: 16),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 30,
+            minHeight: 28,
+          ),
           hintText: _l10n.searchNotes,
           filled: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(vertical: 5),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -373,8 +389,9 @@ class _FolioScreenState extends State<FolioScreen> {
     if (notePath == null) return '${controller.folioName}$_unsyncedMark';
     final slash = notePath.lastIndexOf('/');
     final file = slash < 0 ? notePath : notePath.substring(slash + 1);
-    var name =
-        file.toLowerCase().endsWith('.md') ? file.substring(0, file.length - 3) : file;
+    var name = file.toLowerCase().endsWith('.md')
+        ? file.substring(0, file.length - 3)
+        : file;
     if (name.toLowerCase() == 'readme') {
       final folder = slash < 0 ? '' : notePath.substring(0, slash);
       final fslash = folder.lastIndexOf('/');
@@ -402,10 +419,9 @@ class _FolioScreenState extends State<FolioScreen> {
                   _wideTitle(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               // Caret line/column — only this text rebuilds as the caret moves.
@@ -417,10 +433,11 @@ class _FolioScreenState extends State<FolioScreen> {
                         padding: const EdgeInsets.only(left: 14),
                         child: Text(
                           _l10n.lineColumn(caret.line, caret.col),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: scheme.onSurfaceVariant,
                                 fontFeatures: const [
-                                  FontFeature.tabularFigures()
+                                  FontFeature.tabularFigures(),
                                 ],
                               ),
                         ),
@@ -433,8 +450,8 @@ class _FolioScreenState extends State<FolioScreen> {
                     controller.syncError != null
                         ? Icons.cloud_off_outlined
                         : (controller.hasUnsyncedChanges
-                            ? Icons.cloud_upload_outlined
-                            : Icons.cloud_done_outlined),
+                              ? Icons.cloud_upload_outlined
+                              : Icons.cloud_done_outlined),
                     size: 14,
                     color: controller.syncError != null
                         ? scheme.error
@@ -471,33 +488,62 @@ class _FolioScreenState extends State<FolioScreen> {
   }
 
   Widget _mobileHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _mobileTitle(),
-              style: Theme.of(context).textTheme.titleMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+    final showWinBtns = isDesktop && !isMacOSDesktop;
+    final title = Row(
+      children: [
+        Expanded(
+          child: Text(
+            _mobileTitle(),
+            style: Theme.of(context).textTheme.titleMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          // A brief cue that the latest version is being fetched on open.
-          if (controller.noteRefreshing)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
+        ),
+        // A brief cue that the latest version is being fetched on open.
+        if (controller.noteRefreshing)
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 const SizedBox(
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 6),
-                Text(_l10n.checkingForUpdates,
-                    style: Theme.of(context).textTheme.bodySmall),
-              ]),
+                Text(
+                  _l10n.checkingForUpdates,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
+          ),
+      ],
+    );
+
+    // Mobile: a simple padded header. Desktop narrow: the OS title bar is hidden
+    // and this layout replaces the merged title bar, so make the header draggable
+    // and give it the window buttons (macOS keeps its native controls).
+    if (!isDesktop) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+        child: title,
+      );
+    }
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          Expanded(
+            child: DragToMoveArea(
+              child: Padding(
+                padding: EdgeInsets.only(left: 16, right: showWinBtns ? 8 : 16),
+                child: title,
+              ),
+            ),
+          ),
+          if (showWinBtns) const _WindowButtons(),
         ],
       ),
     );
@@ -538,8 +584,7 @@ class _FolioScreenState extends State<FolioScreen> {
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
           onDownloadImage: controller.downloadImageAsAttachment,
           wordWrap: controller.wordWrap,
-          onToggleWordWrap: () =>
-              controller.setWordWrap(!controller.wordWrap),
+          onToggleWordWrap: () => controller.setWordWrap(!controller.wordWrap),
           readOnly: controller.isBrowsing,
           onOpenLink: controller.openLink,
         ),
@@ -633,43 +678,43 @@ class _FolioScreenState extends State<FolioScreen> {
   // --- shared app-bar actions ---
 
   Widget _saveAction() => IconButton(
-        tooltip: _l10n.save,
-        icon: const Icon(Icons.save_outlined),
-        onPressed: controller.isDirty ? () => controller.save() : null,
-      );
+    tooltip: _l10n.save,
+    icon: const Icon(Icons.save_outlined),
+    onPressed: controller.isDirty ? () => controller.save() : null,
+  );
 
   /// The 3-dot overflow menu, shared by the desktop app bar and the phone
   /// bottom bar: Settings, Close, and (desktop only) an Always-on-top toggle.
   Widget _overflowMenu() => PopupMenuButton<String>(
-        icon: const Icon(Icons.more_vert),
-        tooltip: _l10n.more,
-        onSelected: _handleOverflow,
-        itemBuilder: (_) => [
-          if (controller.canSync)
-            PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
-          if (isDesktop)
-            CheckedPopupMenuItem(
-              value: 'alwaysOnTop',
-              checked: controller.alwaysOnTop,
-              child: Text(_l10n.alwaysOnTop),
-            ),
-          PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
-          PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
-          // Desktop hides to the tray on window-close; this quits for real.
-          if (isDesktop)
-            PopupMenuItem(value: 'quit', child: Text(_l10n.closeMargin)),
-        ],
-      );
+    icon: const Icon(Icons.more_vert),
+    tooltip: _l10n.more,
+    onSelected: _handleOverflow,
+    itemBuilder: (_) => [
+      if (controller.canSync)
+        PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
+      if (isDesktop)
+        CheckedPopupMenuItem(
+          value: 'alwaysOnTop',
+          checked: controller.alwaysOnTop,
+          child: Text(_l10n.alwaysOnTop),
+        ),
+      PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
+      PopupMenuItem(value: 'close', child: Text(_l10n.closeFolio)),
+      // Desktop hides to the tray on window-close; this quits for real.
+      if (isDesktop)
+        PopupMenuItem(value: 'quit', child: Text(_l10n.closeMargin)),
+    ],
+  );
 
   /// Shown when a background sync failed: a tap retries. Non-blocking.
   Widget _syncRetryAction() => IconButton(
-        tooltip: controller.syncError,
-        icon: Icon(
-          Icons.cloud_off_outlined,
-          color: Theme.of(context).colorScheme.error,
-        ),
-        onPressed: () => controller.syncNow(),
-      );
+    tooltip: controller.syncError,
+    icon: Icon(
+      Icons.cloud_off_outlined,
+      color: Theme.of(context).colorScheme.error,
+    ),
+    onPressed: () => controller.syncNow(),
+  );
 
   void _handleOverflow(String value) {
     switch (value) {
@@ -726,15 +771,19 @@ class _FolioScreenState extends State<FolioScreen> {
       default:
         return; // dismissed
     }
-    messenger.showSnackBar(SnackBar(
-      content: Text(l10n.copiedToClipboard),
-      duration: const Duration(seconds: 1),
-    ));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l10n.copiedToClipboard),
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   Future<void> _toggleAlwaysOnTop() async {
     final value = !controller.alwaysOnTop;
-    await controller.setAlwaysOnTop(value); // persists + notifies (updates check)
+    await controller.setAlwaysOnTop(
+      value,
+    ); // persists + notifies (updates check)
     await setWindowAlwaysOnTop(value);
   }
 
@@ -758,29 +807,45 @@ class _FolioScreenState extends State<FolioScreen> {
     final notePath = controller.selectedNotePath;
     if (notePath == null) return '${controller.folioName}$_unsyncedMark';
     final name = notePath.split('/').last;
-    final title =
-        name.endsWith('.md') ? name.substring(0, name.length - 3) : name;
+    final title = name.endsWith('.md')
+        ? name.substring(0, name.length - 3)
+        : name;
     return '$title$_unsyncedMark';
   }
 
   Widget _viewModeControl() {
     return SegmentedButton<EditorViewMode>(
       showSelectedIcon: false,
-      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+      // Match the search box: same ~30px height and the same gently-rounded
+      // corners (radius 8) rather than the default pill.
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 8),
+        ),
+        // Match the search box height (~26px). A hard max is needed — Material
+        // keeps a taller default height that minimumSize alone doesn't override.
+        minimumSize: const WidgetStatePropertyAll(Size(0, 26)),
+        maximumSize: const WidgetStatePropertyAll(Size(double.infinity, 26)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
       segments: [
         ButtonSegment(
           value: EditorViewMode.edit,
-          icon: const Icon(Icons.edit_note),
+          icon: const Icon(Icons.edit_note, size: 18),
           tooltip: _l10n.editor,
         ),
         ButtonSegment(
           value: EditorViewMode.split,
-          icon: const Icon(Icons.vertical_split_outlined),
+          icon: const Icon(Icons.vertical_split_outlined, size: 18),
           tooltip: _l10n.splitEditorPreview,
         ),
         ButtonSegment(
           value: EditorViewMode.preview,
-          icon: const Icon(Icons.visibility_outlined),
+          icon: const Icon(Icons.visibility_outlined, size: 18),
           tooltip: _l10n.preview,
         ),
       ],
@@ -847,8 +912,10 @@ class _FolioScreenState extends State<FolioScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onHorizontalDragUpdate: (d) => setState(() {
-          _treeWidth =
-              (_treeWidth + d.delta.dx).clamp(_minTreeWidth, _maxTreeWidth);
+          _treeWidth = (_treeWidth + d.delta.dx).clamp(
+            _minTreeWidth,
+            _maxTreeWidth,
+          );
         }),
         child: SizedBox(
           width: 8,
@@ -877,10 +944,7 @@ class _FolioScreenState extends State<FolioScreen> {
       children: [
         _folioBar(),
         const Divider(height: 1),
-        if (includeSearch) ...[
-          _searchField(),
-          const Divider(height: 1),
-        ],
+        if (includeSearch) ...[_searchField(), const Divider(height: 1)],
         Expanded(
           child: controller.isSearching
               ? _searchResultsList(onNoteSelected: onNoteSelected)
@@ -889,8 +953,9 @@ class _FolioScreenState extends State<FolioScreen> {
                   selectedNotePath: controller.selectedNotePath,
                   // Always-scrollable on phones so pull-to-refresh fires even
                   // when the tree is short.
-                  physics:
-                      scrollable ? const AlwaysScrollableScrollPhysics() : null,
+                  physics: scrollable
+                      ? const AlwaysScrollableScrollPhysics()
+                      : null,
                   canRevealInFileManager:
                       canRevealInFileManager && controller.isLocalFolio,
                   readOnly: controller.isBrowsing,
@@ -995,9 +1060,9 @@ class _FolioScreenState extends State<FolioScreen> {
 
     walk(tree, 0);
     if (folders.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_l10n.createFolderFirst)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_l10n.createFolderFirst)));
       _goToPage(0);
       return;
     }
@@ -1068,8 +1133,9 @@ class _FolioScreenState extends State<FolioScreen> {
                 child: Text(l10n.cancel),
               ),
               FilledButton(
-                onPressed: () => Navigator.of(context)
-                    .pop((name: field.text.trim(), folder: folder)),
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop((name: field.text.trim(), folder: folder)),
                 child: Text(l10n.create),
               ),
             ],
@@ -1090,7 +1156,8 @@ class _FolioScreenState extends State<FolioScreen> {
   /// A thin line separating the toolbar from the content. When the selected
   /// note's folder has a color, the line takes that color as a visual cue.
   Widget _accentDivider() {
-    final color = colorFromHex(controller.selectedNoteFolderColor) ??
+    final color =
+        colorFromHex(controller.selectedNoteFolderColor) ??
         Theme.of(context).colorScheme.outlineVariant;
     return Container(height: 2, color: color);
   }
@@ -1131,10 +1198,10 @@ class _FolioScreenState extends State<FolioScreen> {
         PopupMenuItem<int>(value: -1, child: Text(_l10n.closeFolio)),
       ],
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
         child: Row(
           children: [
-            Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
+            Icon(Icons.folder_outlined, size: 17, color: scheme.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1151,12 +1218,12 @@ class _FolioScreenState extends State<FolioScreen> {
   }
 
   static IconData _recentTypeIcon(String type) => switch (type) {
-        'webdav' => Icons.cloud_outlined,
-        'onedrive' => Icons.cloud_queue_outlined,
-        'git' => Icons.cloud_download_outlined,
-        'saf' => Icons.phone_android,
-        _ => Icons.folder_outlined,
-      };
+    'webdav' => Icons.cloud_outlined,
+    'onedrive' => Icons.cloud_queue_outlined,
+    'git' => Icons.cloud_download_outlined,
+    'saf' => Icons.phone_android,
+    _ => Icons.folder_outlined,
+  };
 
   /// The folio row atop the tree: the folio switcher plus the folder-level
   /// actions (reveal in file manager, new top-level folder), so the folio has
@@ -1200,10 +1267,12 @@ class _FolioScreenState extends State<FolioScreen> {
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: message));
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(_l10n.copiedToClipboard),
-                duration: const Duration(seconds: 1),
-              ));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_l10n.copiedToClipboard),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
             }
           },
         ),
@@ -1246,14 +1315,19 @@ class _FolioScreenState extends State<FolioScreen> {
     final l10n = _l10n;
     switch (action) {
       case TreeAction.newNote:
-        final name = await _promptName(title: l10n.newNote, label: l10n.noteName);
+        final name = await _promptName(
+          title: l10n.newNote,
+          label: l10n.noteName,
+        );
         if (name != null && name.isNotEmpty) {
           await controller.createNote(name, folderPath: folder.path);
           _goToPage(1); // on phones, swipe to the editor (no-op on desktop)
         }
       case TreeAction.newSubfolder:
-        final name =
-            await _promptName(title: l10n.newSubfolder, label: l10n.folderName);
+        final name = await _promptName(
+          title: l10n.newSubfolder,
+          label: l10n.folderName,
+        );
         if (name != null && name.isNotEmpty) {
           await controller.createFolder(name, parentPath: folder.path);
         }
@@ -1320,7 +1394,12 @@ class _FolioScreenState extends State<FolioScreen> {
                             leading: const Icon(Icons.description_outlined),
                             title: Text(n.title),
                             subtitle: n.path.contains('/')
-                                ? Text(n.path.substring(0, n.path.lastIndexOf('/')))
+                                ? Text(
+                                    n.path.substring(
+                                      0,
+                                      n.path.lastIndexOf('/'),
+                                    ),
+                                  )
                                 : null,
                             onTap: () {
                               Navigator.of(ctx).pop();
@@ -1426,8 +1505,10 @@ class _FolioScreenState extends State<FolioScreen> {
     String? confirmLabel,
   }) async {
     final field = TextEditingController(text: initialValue);
-    field.selection =
-        TextSelection(baseOffset: 0, extentOffset: initialValue.length);
+    field.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: initialValue.length,
+    );
     return showDialog<String>(
       context: context,
       builder: (context) {
@@ -1446,8 +1527,7 @@ class _FolioScreenState extends State<FolioScreen> {
               child: Text(l10n.cancel),
             ),
             FilledButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(field.text.trim()),
+              onPressed: () => Navigator.of(context).pop(field.text.trim()),
               child: Text(confirmLabel ?? l10n.create),
             ),
           ],
@@ -1526,13 +1606,14 @@ class _WinBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      width: 46,
-      height: 44,
+      width: 42,
+      height: 38,
       child: InkWell(
         onTap: () => onTap(),
-        hoverColor:
-            danger ? const Color(0xFFD64545) : scheme.onSurface.withValues(alpha: .08),
-        child: Icon(icon, size: 15, color: scheme.onSurfaceVariant),
+        hoverColor: danger
+            ? const Color(0xFFD64545)
+            : scheme.onSurface.withValues(alpha: .08),
+        child: Icon(icon, size: 14, color: scheme.onSurfaceVariant),
       ),
     );
   }
@@ -1567,7 +1648,11 @@ class _MarginMarkPainter extends CustomPainter {
         ..lineTo(19 * s, 23 * s),
       ink,
     );
-    canvas.drawCircle(Offset(22.5 * s, 16 * s), 2.4 * s, Paint()..color = dotColor);
+    canvas.drawCircle(
+      Offset(22.5 * s, 16 * s),
+      2.4 * s,
+      Paint()..color = dotColor,
+    );
   }
 
   @override

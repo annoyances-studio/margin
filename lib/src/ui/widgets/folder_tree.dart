@@ -88,7 +88,9 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   void _applyDefaultCollapse(FolderNode root, String? selectedNotePath) {
     final keepOpen = _ancestorFolderPaths(selectedNotePath);
     void walk(FolderNode f) {
-      if (f.path.isNotEmpty && _known.add(f.path) && !keepOpen.contains(f.path)) {
+      if (f.path.isNotEmpty &&
+          _known.add(f.path) &&
+          !keepOpen.contains(f.path)) {
         _collapsed.add(f.path);
       }
       for (final child in f.folders) {
@@ -113,8 +115,8 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   }
 
   void _toggle(String path) => setState(() {
-        if (!_collapsed.remove(path)) _collapsed.add(path);
-      });
+    if (!_collapsed.remove(path)) _collapsed.add(path);
+  });
 
   /// Collapses (or expands) [folder] and every folder beneath it.
   void _setSubtreeCollapsed(FolderNode folder, bool collapsed) {
@@ -154,10 +156,7 @@ class _FolderTreeViewState extends State<FolderTreeView> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text(
-            l10n.emptyFolders,
-            textAlign: TextAlign.center,
-          ),
+          child: Text(l10n.emptyFolders, textAlign: TextAlign.center),
         ),
       );
     }
@@ -165,33 +164,40 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   }
 
   List<Widget> _childrenOf(FolderNode folder, AppLocalizations l10n) => [
-        for (final child in folder.folders)
-          _FolderTile(
-            folder: child,
-            expanded: _isExpanded(child.path),
-            onToggle: () => _toggle(child.path),
-            menuItems: _folderMenuItems(l10n),
-            menuTooltip: l10n.folderActions,
-            onAction: (a) => _onFolderAction(child, a),
-            onOpenNote: () => widget.onOpenFolderNote(child),
-            folderNoteTooltip: _folderNoteTooltip(child, l10n),
-            children: _childrenOf(child, l10n),
-          ),
-        for (final note in folder.notes) _noteTile(note, l10n),
-      ];
+    for (final child in folder.folders)
+      _FolderTile(
+        folder: child,
+        expanded: _isExpanded(child.path),
+        onToggle: () => _toggle(child.path),
+        menuItems: _folderMenuItems(l10n),
+        menuTooltip: l10n.folderActions,
+        onAction: (a) => _onFolderAction(child, a),
+        onOpenNote: () => widget.onOpenFolderNote(child),
+        folderNoteTooltip: _folderNoteTooltip(child, l10n),
+        children: _childrenOf(child, l10n),
+      ),
+    for (final note in folder.notes) _noteTile(note, l10n),
+  ];
 
   Widget _noteTile(NoteNode note, AppLocalizations l10n) {
     return Builder(
       builder: (context) {
         final tile = ListTile(
           dense: true,
-          leading: const Icon(Icons.description_outlined),
+          visualDensity: const VisualDensity(vertical: -3),
+          minVerticalPadding: 0,
+          minLeadingWidth: 0,
+          horizontalTitleGap: 8,
+          contentPadding: const EdgeInsets.only(left: 12, right: 2),
+          leading: const Icon(Icons.description_outlined, size: 18),
           title: Text(note.title),
           selected: note.path == widget.selectedNotePath,
           selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
           selectedColor: Theme.of(context).colorScheme.onPrimaryContainer,
           trailing: PopupMenuButton<TreeAction>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Icons.more_vert, size: 18),
+            iconSize: 18,
+            padding: EdgeInsets.zero,
             tooltip: l10n.noteActions,
             itemBuilder: (_) => _noteMenuItems(l10n),
             onSelected: (a) => widget.onNoteAction(note, a),
@@ -201,10 +207,11 @@ class _FolderTreeViewState extends State<FolderTreeView> {
         final info = _noteTooltip(context, note, l10n);
         return GestureDetector(
           onSecondaryTapDown: (details) => _showTreeMenu(
-              context,
-              details.globalPosition,
-              _noteMenuItems(l10n),
-              (a) => widget.onNoteAction(note, a)),
+            context,
+            details.globalPosition,
+            _noteMenuItems(l10n),
+            (a) => widget.onNoteAction(note, a),
+          ),
           child: info == null ? tile : Tooltip(message: info, child: tile),
         );
       },
@@ -214,7 +221,10 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   /// A modified-date + size tooltip for a note, from the listing metadata.
   /// Null when the backend reports neither (so no empty tooltip appears).
   String? _noteTooltip(
-      BuildContext context, NoteNode note, AppLocalizations l10n) {
+    BuildContext context,
+    NoteNode note,
+    AppLocalizations l10n,
+  ) {
     final lines = _metaLines(context, l10n, note.modified, note.size);
     return lines.isEmpty ? null : lines.join('\n');
   }
@@ -223,7 +233,11 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   /// modified date and size when available.
   String _folderNoteTooltip(FolderNode folder, AppLocalizations l10n) {
     final lines = _metaLines(
-        context, l10n, folder.folderNoteModified, folder.folderNoteSize);
+      context,
+      l10n,
+      folder.folderNoteModified,
+      folder.folderNoteSize,
+    );
     return [l10n.openFolderNote, ...lines].join('\n');
   }
 
@@ -238,8 +252,10 @@ class _FolderTreeViewState extends State<FolderTreeView> {
     if (modified != null) {
       final m = MaterialLocalizations.of(context);
       final local = modified.toLocal();
-      parts.add('${l10n.modifiedLabel} ${m.formatMediumDate(local)} '
-          '${m.formatTimeOfDay(TimeOfDay.fromDateTime(local))}');
+      parts.add(
+        '${l10n.modifiedLabel} ${m.formatMediumDate(local)} '
+        '${m.formatTimeOfDay(TimeOfDay.fromDateTime(local))}',
+      );
     }
     if (size != null) parts.add(_formatSize(size));
     return parts;
@@ -252,52 +268,61 @@ class _FolderTreeViewState extends State<FolderTreeView> {
   }
 
   List<PopupMenuEntry<TreeAction>> _folderMenuItems(AppLocalizations l10n) => [
-        // Browsed plain folders are read-only: mutating actions are hidden, but
-        // collapse/expand and reveal-in-manager still apply.
-        if (widget.readOnly) ...[
-          PopupMenuItem(
-              value: TreeAction.collapseAll, child: Text(l10n.collapseAll)),
-          PopupMenuItem(
-              value: TreeAction.expandAll, child: Text(l10n.expandAll)),
-          if (widget.canRevealInFileManager)
-            PopupMenuItem(
-              value: TreeAction.openInFileManager,
-              child: Text(l10n.openInFileManager),
-            ),
-        ] else ...[
-          PopupMenuItem(value: TreeAction.newNote, child: Text(l10n.newNote)),
-          PopupMenuItem(
-              value: TreeAction.newSubfolder, child: Text(l10n.newSubfolder)),
-          PopupMenuItem(
-              value: TreeAction.renameFolder, child: Text(l10n.renameEllipsis)),
-          PopupMenuItem(
-              value: TreeAction.setColor, child: Text(l10n.setColorEllipsis)),
-          if (widget.canRevealInFileManager)
-            PopupMenuItem(
-              value: TreeAction.openInFileManager,
-              child: Text(l10n.openInFileManager),
-            ),
-          const PopupMenuDivider(),
-          PopupMenuItem(
-              value: TreeAction.collapseAll, child: Text(l10n.collapseAll)),
-          PopupMenuItem(
-              value: TreeAction.expandAll, child: Text(l10n.expandAll)),
-          const PopupMenuDivider(),
-          PopupMenuItem(
-              value: TreeAction.deleteFolder, child: Text(l10n.deleteFolder)),
-        ],
-      ];
+    // Browsed plain folders are read-only: mutating actions are hidden, but
+    // collapse/expand and reveal-in-manager still apply.
+    if (widget.readOnly) ...[
+      PopupMenuItem(
+        value: TreeAction.collapseAll,
+        child: Text(l10n.collapseAll),
+      ),
+      PopupMenuItem(value: TreeAction.expandAll, child: Text(l10n.expandAll)),
+      if (widget.canRevealInFileManager)
+        PopupMenuItem(
+          value: TreeAction.openInFileManager,
+          child: Text(l10n.openInFileManager),
+        ),
+    ] else ...[
+      PopupMenuItem(value: TreeAction.newNote, child: Text(l10n.newNote)),
+      PopupMenuItem(
+        value: TreeAction.newSubfolder,
+        child: Text(l10n.newSubfolder),
+      ),
+      PopupMenuItem(
+        value: TreeAction.renameFolder,
+        child: Text(l10n.renameEllipsis),
+      ),
+      PopupMenuItem(
+        value: TreeAction.setColor,
+        child: Text(l10n.setColorEllipsis),
+      ),
+      if (widget.canRevealInFileManager)
+        PopupMenuItem(
+          value: TreeAction.openInFileManager,
+          child: Text(l10n.openInFileManager),
+        ),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: TreeAction.collapseAll,
+        child: Text(l10n.collapseAll),
+      ),
+      PopupMenuItem(value: TreeAction.expandAll, child: Text(l10n.expandAll)),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: TreeAction.deleteFolder,
+        child: Text(l10n.deleteFolder),
+      ),
+    ],
+  ];
 
   List<PopupMenuEntry<TreeAction>> _noteMenuItems(AppLocalizations l10n) => [
-        if (widget.canRevealInFileManager)
-          PopupMenuItem(
-            value: TreeAction.openContainingFolder,
-            child: Text(l10n.openContainingFolder),
-          ),
-        if (!widget.readOnly)
-          PopupMenuItem(
-              value: TreeAction.deleteNote, child: Text(l10n.deleteNote)),
-      ];
+    if (widget.canRevealInFileManager)
+      PopupMenuItem(
+        value: TreeAction.openContainingFolder,
+        child: Text(l10n.openContainingFolder),
+      ),
+    if (!widget.readOnly)
+      PopupMenuItem(value: TreeAction.deleteNote, child: Text(l10n.deleteNote)),
+  ];
 }
 
 /// A folder row with an explicit expand/collapse chevron beside its actions
@@ -345,7 +370,7 @@ class _FolderTile extends StatelessWidget {
           child: InkWell(
             onTap: onToggle,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+              padding: const EdgeInsets.fromLTRB(12, 5, 2, 5),
               child: Row(
                 children: [
                   Icon(
@@ -353,15 +378,15 @@ class _FolderTile extends StatelessWidget {
                     // filled variants carry the folder's accent color.
                     expanded
                         ? (color != null
-                            ? Icons.folder_open
-                            : Icons.folder_open_outlined)
+                              ? Icons.folder_open
+                              : Icons.folder_open_outlined)
                         : (color != null
-                            ? Icons.folder
-                            : Icons.folder_outlined),
+                              ? Icons.folder
+                              : Icons.folder_outlined),
                     color: color,
-                    size: 22,
+                    size: 19,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   // Fill the middle so the chevron + menu sit at a consistent
                   // right edge (and the name gets the space). Tapping the name
                   // opens the folder note; the empty area falls through to the
@@ -401,10 +426,12 @@ class _FolderTile extends StatelessWidget {
                     // (→) when collapsed.
                     turns: expanded ? 0 : -0.25,
                     duration: const Duration(milliseconds: 150),
-                    child: const Icon(Icons.expand_more, size: 20),
+                    child: const Icon(Icons.expand_more, size: 18),
                   ),
                   PopupMenuButton<TreeAction>(
-                    icon: const Icon(Icons.more_vert),
+                    icon: const Icon(Icons.more_vert, size: 18),
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
                     tooltip: menuTooltip,
                     itemBuilder: (_) => menuItems,
                     onSelected: onAction,
@@ -441,8 +468,12 @@ Future<void> _showTreeMenu(
 ) async {
   final action = await showMenu<TreeAction>(
     context: context,
-    position:
-        RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
+    position: RelativeRect.fromLTRB(
+      position.dx,
+      position.dy,
+      position.dx,
+      position.dy,
+    ),
     items: items,
   );
   if (action != null) onSelected(action);
