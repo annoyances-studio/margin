@@ -55,6 +55,9 @@ class NoteEditorPane extends StatefulWidget {
   /// Toggles [wordWrap] from the editor's right-click menu. Null hides the item.
   final VoidCallback? onToggleWordWrap;
 
+  /// Reports the caret line/column upward (for the desktop status bar).
+  final ValueChanged<({int line, int col})?>? onCaretChanged;
+
   /// Read-only mode (browsed plain folders): no editing, no paste-as-markdown.
   final bool readOnly;
 
@@ -78,6 +81,7 @@ class NoteEditorPane extends StatefulWidget {
     this.onDownloadImage,
     this.wordWrap = true,
     this.onToggleWordWrap,
+    this.onCaretChanged,
     this.readOnly = false,
     this.onOpenLink,
     this.onNavigateBack,
@@ -173,6 +177,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
       onDownloadImage: widget.onDownloadImage,
       wordWrap: widget.wordWrap,
       onToggleWordWrap: widget.onToggleWordWrap,
+      onCaretChanged: widget.onCaretChanged,
       readOnly: widget.readOnly,
       onOpenLink: widget.onOpenLink,
       find: _find,

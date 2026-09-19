@@ -268,5 +268,8 @@
   "@pastePlainFallback": { "description": "Snackbar shown when Paste as Markdown fails on rich content and falls back to inserting plain text." },
 
   "pasteFailed": "Couldn't paste this content.",
-  "@pasteFailed": { "description": "Snackbar shown when a paste fails and there is no plain text to fall back to." }
+  "@pasteFailed": { "description": "Snackbar shown when a paste fails and there is no plain text to fall back to." },
+
+  "switchFolio": "Switch folio",
+  "@switchFolio": { "description": "Tooltip on the folio switcher at the top of the folder tree — opens recent folios to jump between them." }
 }

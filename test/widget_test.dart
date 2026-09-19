@@ -59,11 +59,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The new note is auto-selected: the status bar shows the full path, the
-    // title bar shows the document name, and the tree shows the note.
+    // The new note is auto-selected. The full literal path shows in the status
+    // bar; the tree shows the folder and the note (the title-bar breadcrumb is a
+    // Text.rich, which find.text does not match).
     expect(find.text('My Notes / Work / meeting.md'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget); // folder in tree
-    // "meeting" appears twice now: the tree row and the title-bar document name.
-    expect(find.text('meeting'), findsNWidgets(2));
+    expect(find.text('meeting'), findsOneWidget); // note in tree
   });
 }

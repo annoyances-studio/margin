@@ -47,6 +47,10 @@ class _FolioScreenState extends State<FolioScreen> {
   /// Last title pushed to the OS window, to avoid redundant native calls.
   String? _lastWinTitle;
 
+  /// The editor's current caret line/column, shown in the desktop status bar.
+  /// A notifier so only the status-bar text rebuilds as the caret moves.
+  final ValueNotifier<({int line, int col})?> _caret = ValueNotifier(null);
+
   /// Desktop sidebar width, adjustable by dragging the divider (clamped).
   double _treeWidth = 280;
   static const double _minTreeWidth = 180;
@@ -76,6 +80,7 @@ class _FolioScreenState extends State<FolioScreen> {
 
   @override
   void dispose() {
+    _caret.dispose();
     _pageController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -181,17 +186,7 @@ class _FolioScreenState extends State<FolioScreen> {
     final onMac = isMacOSDesktop;
     final showOwnButtons = isDesktop && !onMac;
 
-    final title = Container(
-      alignment: Alignment.center,
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Text(
-        _documentName(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.titleSmall,
-      ),
-    );
+    final crumb = _titleBreadcrumb();
 
     return PreferredSize(
       preferredSize: const Size.fromHeight(46),
@@ -236,7 +231,15 @@ class _FolioScreenState extends State<FolioScreen> {
                     onPressed: () => controller.refreshTree(),
                   ),
                   Expanded(
-                    child: isDesktop ? DragToMoveArea(child: title) : title,
+                    flex: 3,
+                    child: isDesktop ? DragToMoveArea(child: crumb) : crumb,
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _titleSearch(),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -283,9 +286,88 @@ class _FolioScreenState extends State<FolioScreen> {
         ),
       );
 
-  /// The open document's display name for the title bar / OS window title: the
-  /// note name without `.md`; a top-level README shows its folder's name; no
-  /// note open falls back to the Folio name.
+  /// The breadcrumb shown in the title bar's drag region: the open note's folder
+  /// path and name (folio name when none is open). Non-interactive so the region
+  /// stays draggable. The literal full path lives in the status bar.
+  Widget _titleBreadcrumb() {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = Theme.of(context)
+        .textTheme
+        .bodyMedium
+        ?.copyWith(color: scheme.onSurfaceVariant);
+    final strong = Theme.of(context)
+        .textTheme
+        .bodyMedium
+        ?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600);
+    final notePath = controller.selectedNotePath;
+    final spans = <InlineSpan>[];
+    if (notePath == null) {
+      spans.add(TextSpan(text: controller.folioName, style: strong));
+    } else {
+      final parts = notePath.split('/');
+      final file = parts.removeLast();
+      final name = file.toLowerCase().endsWith('.md')
+          ? file.substring(0, file.length - 3)
+          : file;
+      for (final folder in parts) {
+        spans.add(TextSpan(text: folder, style: muted));
+        spans.add(TextSpan(text: '  ›  ', style: muted));
+      }
+      spans.add(TextSpan(text: name, style: strong));
+    }
+    return Container(
+      alignment: Alignment.centerLeft,
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Text.rich(
+        TextSpan(children: spans),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  /// The note search field, hosted in the title bar on desktop (results still
+  /// render in the tree). Shares [_searchController] with the mobile field.
+  Widget _titleSearch() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 210),
+      child: TextField(
+        controller: _searchController,
+        onChanged: controller.setSearchQuery,
+        textInputAction: TextInputAction.search,
+        style: Theme.of(context).textTheme.bodyMedium,
+        decoration: InputDecoration(
+          isDense: true,
+          prefixIcon: const Icon(Icons.search, size: 18),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 34, minHeight: 34),
+          hintText: _l10n.searchNotes,
+          filled: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: controller.isSearching
+              ? IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  tooltip: _l10n.cancel,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    _searchController.clear();
+                    controller.clearSearch();
+                  },
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  /// The open document's display name for the OS window title (taskbar /
+  /// alt-tab): the note name without `.md`; a top-level README shows its
+  /// folder's name; no note open falls back to the Folio name.
   String _documentName() {
     final notePath = controller.selectedNotePath;
     if (notePath == null) return '${controller.folioName}$_unsyncedMark';
@@ -326,17 +408,38 @@ class _FolioScreenState extends State<FolioScreen> {
                       ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ),
+              // Caret line/column — only this text rebuilds as the caret moves.
+              ValueListenableBuilder<({int line, int col})?>(
+                valueListenable: _caret,
+                builder: (context, caret, _) => caret == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 14),
+                        child: Text(
+                          _l10n.lineColumn(caret.line, caret.col),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ],
+                              ),
+                        ),
+                      ),
+              ),
               if (controller.canSync)
-                Icon(
-                  controller.syncError != null
-                      ? Icons.cloud_off_outlined
-                      : (controller.hasUnsyncedChanges
-                          ? Icons.cloud_upload_outlined
-                          : Icons.cloud_done_outlined),
-                  size: 14,
-                  color: controller.syncError != null
-                      ? scheme.error
-                      : scheme.onSurfaceVariant,
+                Padding(
+                  padding: const EdgeInsets.only(left: 14),
+                  child: Icon(
+                    controller.syncError != null
+                        ? Icons.cloud_off_outlined
+                        : (controller.hasUnsyncedChanges
+                            ? Icons.cloud_upload_outlined
+                            : Icons.cloud_done_outlined),
+                    size: 14,
+                    color: controller.syncError != null
+                        ? scheme.error
+                        : scheme.onSurfaceVariant,
+                  ),
                 ),
             ],
           ),
@@ -705,6 +808,7 @@ class _FolioScreenState extends State<FolioScreen> {
         onDownloadImage: controller.downloadImageAsAttachment,
         wordWrap: controller.wordWrap,
         onToggleWordWrap: () => controller.setWordWrap(!controller.wordWrap),
+        onCaretChanged: (c) => _caret.value = c,
         readOnly: controller.isBrowsing,
         onOpenLink: controller.openLink,
         onNavigateBack: () => controller.goBack(),
@@ -724,7 +828,8 @@ class _FolioScreenState extends State<FolioScreen> {
             // A slightly distinct surface tone sets the sidebar apart from the
             // editor (VS Code / Claude-desktop style).
             color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: _treePanelContent(),
+            // Search lives in the title bar on desktop, not the tree.
+            child: _treePanelContent(includeSearch: false),
           ),
         ),
         _treeResizeHandle(),
@@ -764,14 +869,18 @@ class _FolioScreenState extends State<FolioScreen> {
   Widget _treePanelContent({
     VoidCallback? onNoteSelected,
     bool scrollable = false,
+    bool includeSearch = true,
   }) {
     final tree = controller.tree;
     if (tree == null) return const SizedBox.shrink();
     return Column(
       children: [
-        _treeHeader(),
-        _searchField(),
+        _folioBar(),
         const Divider(height: 1),
+        if (includeSearch) ...[
+          _searchField(),
+          const Divider(height: 1),
+        ],
         Expanded(
           child: controller.isSearching
               ? _searchResultsList(onNoteSelected: onNoteSelected)
@@ -986,36 +1095,96 @@ class _FolioScreenState extends State<FolioScreen> {
     return Container(height: 2, color: color);
   }
 
-  Widget _treeHeader() {
-    final canReveal = canRevealInFileManager && controller.isLocalFolio;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
-      child: Row(
-        children: [
-          Text(
-            _l10n.folders,
-            style: Theme.of(context).textTheme.labelLarge,
+  /// The folio switcher at the top of the tree: the current Folio's name, tap to
+  /// drop down recent Folios and jump between them (or close this one). This is
+  /// the "switch workspace" control — moved out of the title bar and aligned
+  /// with the editor breadcrumb across the sub-header row.
+  Widget _folioSwitcher() {
+    final scheme = Theme.of(context).colorScheme;
+    final recents = controller.recentFolios;
+    return PopupMenuButton<int>(
+      tooltip: _l10n.switchFolio,
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 4),
+      onSelected: (i) {
+        if (i == -1) {
+          controller.closeFolio();
+        } else {
+          controller.openRecentFolio(recents[i]);
+        }
+      },
+      itemBuilder: (_) => [
+        for (var i = 0; i < recents.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            child: Row(
+              children: [
+                Icon(_recentTypeIcon(recents[i].type), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(recents[i].name, overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
-          if (canReveal)
-            IconButton(
-              tooltip: _l10n.openFolioInFileManager,
-              icon: const Icon(Icons.folder_open_outlined),
-              visualDensity: VisualDensity.compact,
-              onPressed: () {
-                final abs = controller.localAbsolutePath('');
-                if (abs != null) revealInFileManager(abs);
-              },
+        if (recents.isNotEmpty) const PopupMenuDivider(),
+        PopupMenuItem<int>(value: -1, child: Text(_l10n.closeFolio)),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        child: Row(
+          children: [
+            Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                controller.folioName,
+                style: Theme.of(context).textTheme.titleSmall,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          if (!controller.isBrowsing)
-            IconButton(
-              tooltip: _l10n.newTopLevelFolder,
-              icon: const Icon(Icons.create_new_folder_outlined),
-              visualDensity: VisualDensity.compact,
-              onPressed: _promptNewRootFolder,
-            ),
-        ],
+            Icon(Icons.expand_more, size: 18, color: scheme.onSurfaceVariant),
+          ],
+        ),
       ),
+    );
+  }
+
+  static IconData _recentTypeIcon(String type) => switch (type) {
+        'webdav' => Icons.cloud_outlined,
+        'onedrive' => Icons.cloud_queue_outlined,
+        'git' => Icons.cloud_download_outlined,
+        'saf' => Icons.phone_android,
+        _ => Icons.folder_outlined,
+      };
+
+  /// The folio row atop the tree: the folio switcher plus the folder-level
+  /// actions (reveal in file manager, new top-level folder), so the folio has
+  /// its own action row that mirrors the per-folder rows below it.
+  Widget _folioBar() {
+    final canReveal = canRevealInFileManager && controller.isLocalFolio;
+    return Row(
+      children: [
+        Expanded(child: _folioSwitcher()),
+        if (canReveal)
+          IconButton(
+            tooltip: _l10n.openFolioInFileManager,
+            icon: const Icon(Icons.folder_open_outlined),
+            visualDensity: VisualDensity.compact,
+            onPressed: () {
+              final abs = controller.localAbsolutePath('');
+              if (abs != null) revealInFileManager(abs);
+            },
+          ),
+        if (!controller.isBrowsing)
+          IconButton(
+            tooltip: _l10n.newTopLevelFolder,
+            icon: const Icon(Icons.create_new_folder_outlined),
+            visualDensity: VisualDensity.compact,
+            onPressed: _promptNewRootFolder,
+          ),
+        const SizedBox(width: 4),
+      ],
     );
   }
 

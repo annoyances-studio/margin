@@ -399,4 +399,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pasteFailed => 'Couldn\'t paste this content.';
+
+  @override
+  String get switchFolio => 'Switch folio';
 }

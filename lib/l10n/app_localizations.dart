@@ -847,6 +847,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t paste this content.'**
   String get pasteFailed;
+
+  /// Tooltip on the folio switcher at the top of the folder tree — opens recent folios to jump between them.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch folio'**
+  String get switchFolio;
 }
 
 class _AppLocalizationsDelegate

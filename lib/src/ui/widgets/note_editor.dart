@@ -80,6 +80,10 @@ class NoteEditor extends StatefulWidget {
   /// and focuses, so the field scrolls it exactly into view.
   final GoToLineRequest? goToLine;
 
+  /// Reports the 1-based caret line/column as it moves, so a host (the desktop
+  /// status bar) can display it. Null when there is no valid caret.
+  final ValueChanged<({int line, int col})?>? onCaretChanged;
+
   const NoteEditor({
     super.key,
     required this.notePath,
@@ -96,6 +100,7 @@ class NoteEditor extends StatefulWidget {
     this.onOpenLink,
     this.find,
     this.goToLine,
+    this.onCaretChanged,
   });
 
   @override
@@ -214,6 +219,7 @@ class _NoteEditorState extends State<NoteEditor> {
     final selection = _controller.selection;
     if (!selection.isValid) {
       _caret.value = null;
+      widget.onCaretChanged?.call(null);
       return;
     }
     final text = _controller.text;
@@ -224,6 +230,7 @@ class _NoteEditorState extends State<NoteEditor> {
       line: '\n'.allMatches(before).length + 1,
       col: offset - lastNewline, // lastNewline is -1 when on line 1 → col = offset+1
     );
+    widget.onCaretChanged?.call(_caret.value);
   }
 
   /// Jumps to the requested 1-based line: selects that line and focuses the
@@ -615,38 +622,7 @@ class _NoteEditorState extends State<NoteEditor> {
               onOpenLink: widget.onOpenLink,
             ),
           ),
-        // Caret line/column pill, bottom-right. Hidden while the link affordance
-        // occupies the bottom strip (it takes priority).
-        if (link == null)
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: IgnorePointer(
-              child: ValueListenableBuilder<({int line, int col})?>(
-                valueListenable: _caret,
-                builder: (context, caret, _) =>
-                    caret == null ? const SizedBox.shrink() : _caretPill(context, caret),
-              ),
-            ),
-          ),
       ],
-    );
-  }
-
-  Widget _caretPill(BuildContext context, ({int line, int col}) caret) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.inverseSurface.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        AppLocalizations.of(context).lineColumn(caret.line, caret.col),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onInverseSurface,
-        ),
-      ),
     );
   }
 }

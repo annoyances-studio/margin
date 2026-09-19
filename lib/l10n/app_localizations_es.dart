@@ -404,4 +404,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pasteFailed => 'No se pudo pegar este contenido.';
+
+  @override
+  String get switchFolio => 'Cambiar de folio';
 }
