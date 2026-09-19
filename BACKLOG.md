@@ -89,6 +89,18 @@ Remaining:
 
 ## Editor & viewing
 
+- **Find & replace (Edit mode)** — extend the shipped Ctrl+F find engine with a
+  replace field (replace / replace-all), Edit/Split only. Reuse the find match
+  model; add the replace UI to `note_editor_pane.dart`'s find session.
+- **Right-click edit tools (Edit mode)** — quick text transforms in the editor
+  context menu, operating on the selection, or the **whole document when nothing
+  is selected**. Pure string ops over the field text (undoable via the normal
+  edit stack):
+  - **Case:** UPPERCASE, lowercase, Proper Case.
+  - **Lines:** sort selected lines; remove empty lines.
+  - **Whitespace:** trim trailing space per line; tabs → spaces.
+  Keep them read-only-safe (hidden when browsing). Add to the existing
+  `contextMenuBuilder` in `note_editor.dart` alongside Paste-as-Markdown.
 - **Line-number gutter (editor)** — optional companion to the shipped go-to-line
   (Ctrl+G): a toggleable left gutter numbering source lines, so a line Claude
   cites is visible without jumping. Deferred for the pixel-alignment work (the
@@ -195,8 +207,15 @@ Remaining:
   theme. Includes a **theme-mode switch** (System / Dark / Light) instead of
   always following the OS, and optional **per-Folio `theme.yaml`** so different
   Folios carry different accent colors as a "which Folio am I in" cue.
-- Mirror the open note's **breadcrumb into the OS window title** (currently just
-  "Margin"); smaller breadcrumb font in the app bar.
+- **App mark → window system menu (desktop).** Make the top-left Margin mark a
+  touch smaller and, on click, open a menu of window commands — Restore /
+  Move / Size / Minimize / Maximize (the standard Windows system menu, custom-
+  drawn), plus **Always on top** and **Close Margin**. This is the home for the
+  window-level actions currently scattered in the overflow ⋮.
+- **Neaten the title-bar overflow ⋮ (desktop).** Once the app-mark menu exists,
+  the desktop ⋮ should hold just **Settings** — Always-on-top and Close Margin
+  move to the app-mark menu, Close folio is already on the folio switcher. Mobile
+  keeps its fuller overflow (no app-mark menu there).
 - Move the folder **expand/collapse chevron to the left** of the name (less busy,
   symmetric) rather than beside the ⋮ menu.
 - **Dragged-file label** — dragged attachments insert `![]()` / `[name]()`; give

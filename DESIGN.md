@@ -384,6 +384,16 @@ platform:
   two-panel layout fits better.
 - Minimize to tray. Tray menu: Open, Sync now, Quit.
 - A small Settings dialog; on desktop it offers "start at login" (run on logon).
+- **Custom frameless chrome (realized):** the OS title bar is hidden
+  (`window_manager` `TitleBarStyle.hidden`) and Margin draws one merged bar — app
+  mark, history nav, the note breadcrumb + note search, the view-mode control,
+  the overflow menu, and its own window buttons (macOS keeps native
+  traffic-lights and moves the mark to the right). A **folio switcher** + the
+  folder actions sit atop the tree; a **status bar** carries the full path, caret
+  Ln/Col, and sync state; the OS window title tracks the open note's name. The
+  tree opens **collapsed by default** (open/closed folder icons). When a desktop
+  window is narrowed to the phone layout, its header becomes draggable and gains
+  the window buttons, so the frameless window is controllable at any size.
 
 ### Editor (realized approach)
 

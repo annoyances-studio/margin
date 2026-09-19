@@ -93,10 +93,17 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
   **serialized** (`_opChain`/`_serialize`/`_run`) so background sync never races
   mutations — but **reads (note open) run outside the queue** to stay responsive.
 - `lib/src/ui/` — `MarginApp` (root, lifecycle save-on-background), `FolioScreen`
-  (desktop two-pane + phone 3-page pager), `OpenFolioScreen` (landing),
-  `clipboard_service.dart` (win32 CF_HTML on Windows, plain elsewhere).
-- `lib/src/desktop/` — window/tray (`window_manager`, `tray_manager`),
-  run-at-login (`StartupService`, `--minimized` flag), file reveal.
+  (desktop: a **custom frameless title bar** — app mark, history nav, breadcrumb
+  + note search, view-mode control, overflow menu, and Margin's own window
+  buttons — plus a folio switcher + folder actions atop the tree and a status bar
+  (full path · caret Ln/Col · sync); phone: a 3-page pager whose header carries
+  the window buttons when a desktop window is narrow). The tree opens
+  **collapsed by default** (open/closed folder icons). `OpenFolioScreen`
+  (landing), `clipboard_service.dart` (win32 CF_HTML on Windows, plain elsewhere).
+- `lib/src/desktop/` — window/tray (`window_manager`, `tray_manager`; the OS
+  title bar is hidden via `TitleBarStyle.hidden`, so Margin draws its own bar and
+  window controls), run-at-login (`StartupService`, `--minimized` flag), file
+  reveal.
 - `lib/src/mobile/` — Android Back→background (method channel in MainActivity).
 
 ## Conventions (match the existing code)
@@ -132,10 +139,16 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
 
 Feature-complete for daily use: local/device/WebDAV/OneDrive backends,
 clone-then-sync + offline-first, rich bidirectional copy/paste (incl. image
-download/attach), note search, run-at-login (+start minimized), drag-to-attach,
-folder notes (README.md), table-pipe styling, and **companion mode** — read-only
-browsing of any plain Markdown folder (in-app `.md` link navigation, deep search,
-backlinks, overview-on-open, manual Refresh). All on `main`, binaries build for
-Windows + Android. **Remaining work is tracked in `BACKLOG.md`** — highlights:
-SFTP backend, conflict surfacing, mobile companion (via OneDrive), note Rename,
-move/copy, CI → iOS build, publishing.
+download/attach), note search, find-in-note (Ctrl+F) + go-to-line (Ctrl+G) +
+back/forward history, run-at-login (+start minimized), drag-to-attach, folder
+notes (README.md), table-pipe styling, and the **desktop chrome refit**
+(frameless merged title bar, folio switcher, status bar, collapsed-by-default
+tree). **Companion mode** — read-only browsing of any plain Markdown folder
+(in-app `.md` link navigation, deep search, backlinks, overview-on-open, manual
+Refresh) — runs on desktop, cloud (OneDrive/WebDAV), Android **SAF** folders, and
+a read-only **git-read backend** (Android · JGit · LFS-aware · pull to refresh).
+Shipping off-store: **CI** builds a signed Android APK + a Windows zip on a `v*`
+tag (**v1.2.0** current); Android developer verification is done. **Remaining
+work is tracked in `BACKLOG.md`** — highlights: SFTP backend, conflict surfacing,
+note Rename, move/copy, the git-read shared-storage destination, macOS/Linux/iOS
+builds, Play publishing.
