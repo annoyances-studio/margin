@@ -185,6 +185,11 @@ Remaining:
 
 ## Theming & cosmetic
 
+- **View-mode control is ~4px taller than the search box** (title bar). Material's
+  `SegmentedButton` keeps a minimum segment height that `maximumSize`/`minimumSize`
+  don't override, so it overshoots the search field by ~2px top and bottom. Small;
+  fix by wrapping in a tight `SizedBox`/`FittedBox` or a custom segmented control.
+
 - `[larger]` **Configurable colors / editable themes** — the editor accents
   (links blue, table pipes orange) are hardcoded; expose them via a user-editable
   theme. Includes a **theme-mode switch** (System / Dark / Light) instead of
