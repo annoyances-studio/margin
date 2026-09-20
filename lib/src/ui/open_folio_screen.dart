@@ -121,6 +121,20 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
+                if (controller.syncProgress!.path != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    controller.syncProgress!.path!.split('/').last,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
+                ],
               ] else if (controller.isBusy) ...[
                 const SizedBox(height: 24),
                 const LinearProgressIndicator(),

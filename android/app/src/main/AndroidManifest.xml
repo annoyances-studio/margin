@@ -3,6 +3,10 @@
          remote image download. Declared here so release builds have it too —
          the debug/profile manifests add it for those variants only. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Held only while a sync/clone is transferring bytes, so the screen
+         turning off does not suspend the CPU or idle Wi-Fi and drop the
+         connection mid-transfer. Released as soon as the sync finishes. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="Margin•"
         android:name="${applicationName}"

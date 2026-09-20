@@ -206,12 +206,16 @@ class WebDavBackend implements StorageBackend {
       final isDirectory = _local(response, 'collection').isNotEmpty;
       final lengthText = _localText(response, 'getcontentlength');
       final modifiedText = _localText(response, 'getlastmodified');
+      final etag = _localText(response, 'getetag');
 
       entries.add(StorageEntry(
         path: relPath,
         isDirectory: isDirectory,
         size: isDirectory ? null : int.tryParse(lengthText ?? ''),
         modified: _parseHttpDate(modifiedText),
+        // The ETag is sync's cache fingerprint: it changes when the file does,
+        // so an unchanged file is not re-downloaded. Falls back to size+mtime.
+        tag: isDirectory || etag == null || etag.isEmpty ? null : 'et:$etag',
       ));
     }
     return entries;

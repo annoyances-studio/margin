@@ -199,6 +199,10 @@ class OneDriveBackend implements StorageBackend {
           isDirectory: isDir,
           size: isDir ? null : (item['size'] as num?)?.toInt(),
           modified: _parseDate(item['lastModifiedDateTime']),
+          // A content-addressed fingerprint for sync's cache: quickXorHash
+          // changes iff the bytes change, so an unchanged file is never
+          // re-downloaded. Fall back to the (weaker) eTag when absent.
+          tag: isDir ? null : _fileTag(item),
         ));
       }
       final link = json['@odata.nextLink'] as String?;
@@ -323,6 +327,17 @@ class OneDriveBackend implements StorageBackend {
   static DateTime? _parseDate(dynamic value) {
     if (value is String) return DateTime.tryParse(value)?.toUtc();
     return null;
+  }
+
+  /// A per-file version token for sync's content-hash cache: the content-hash
+  /// `quickXorHash` when Graph reports one, else the item's eTag.
+  static String? _fileTag(Map<String, dynamic> item) {
+    final hashes = (item['file'] as Map<String, dynamic>?)?['hashes'];
+    if (hashes is Map && hashes['quickXorHash'] is String) {
+      return 'qx:${hashes['quickXorHash']}';
+    }
+    final etag = item['eTag'];
+    return etag is String ? 'et:$etag' : null;
   }
 
   /// Releases the underlying HTTP client.

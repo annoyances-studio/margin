@@ -224,6 +224,44 @@ note (conflict, Phone, 2026-05-22).md
 
 The user reconciles manually. No automatic merge.
 
+### Fast, resumable transfers
+
+Hashing a file means reading its bytes — and for a remote, downloading them. A
+big image-heavy Folio makes that cost visible, so the engine avoids re-fetching
+bytes it doesn't need:
+
+- **Content-hash cache.** The sync-state record keeps, per side, a
+  `fingerprint → content-hash` memo. A `fingerprint` is a cheap backend token —
+  OneDrive's `quickXorHash`, a WebDAV `ETag`, or `size:mtime` as a fallback
+  (`StorageEntry.fingerprint`). If a file's fingerprint is unchanged since last
+  sync, its stored hash is reused instead of re-reading the file. The content
+  hash stays the canonical, cross-backend comparison key (the planner compares
+  local vs remote hashes directly), so the cache is a pure speed-up: a cold or
+  stale cache costs work, never correctness. A fingerprint is only ever matched
+  against the *same* backend's prior record, so a local `size:mtime` and a
+  remote `quickXorHash` never meet.
+- **Single-download first clone.** A naive clone would fetch every file twice —
+  once to hash it into a snapshot, once to pull it. When the base and the local
+  side are both empty (a fresh clone), the engine instead lists the remote by
+  metadata only and hashes each file from the one copy it downloads while
+  pulling it. `properties.yaml` is pulled first so an interrupted clone is still
+  a reopenable Folio.
+- **Checkpoint & resume.** During a long run the engine periodically calls back
+  with a *partial* sync-state that is safe to persist (every path in it is
+  genuinely in sync). If a run is interrupted (dropped connection, screen off),
+  the next run resumes from the last checkpoint — the already-transferred bytes
+  are not fetched again — instead of starting over. A clone that fails partway
+  still **adopts the partial cache** (offline-first): the user lands on the
+  notes that arrived, with the failure surfaced as a retryable sync error rather
+  than a dead error screen.
+- **Keep-awake (Android).** A long sync/clone holds a partial CPU wake lock and
+  a high-performance Wi-Fi lock (`KeepAwake`, over the `margin/app` channel) so
+  the screen turning off can't suspend the process or idle Wi-Fi mid-transfer
+  and drop the connection. Both carry a timeout so a crash can't leak them, and
+  they're released as soon as the run finishes. Best-effort and no-op off
+  Android; true headless background sync (a foreground service) is intentionally
+  **not** done — see BACKLOG.
+
 #### Surfacing & resolution (design)
 
 The guiding principle is **never lose data, even for a user who ignores the

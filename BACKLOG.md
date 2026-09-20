@@ -39,6 +39,19 @@ what's *not done yet* lives here.**
   place; a scan to remove files no note references is still to do.
 - `[larger]` **Further mobile cloud providers** (Google Drive, Dropbox) — a
   per-provider effort over OAuth + provider REST, still built-in (no plugins).
+- `[parked]` **Headless background sync (Android foreground service)** — sync
+  while the app isn't in front at all. Parked: needs a foreground service +
+  persistent notification + extra permissions, which cuts against Margin's
+  few-deps/simple grain. The keep-awake + resumable-clone work (DESIGN.md → Fast,
+  resumable transfers) makes a *foreground* clone reliable enough that the
+  screen turning off no longer kills it, covering the real pain; revisit only if
+  headless sync is genuinely needed.
+- **Resumed-clone tail is re-hashed once** — a *fresh* clone downloads each file
+  once, but a clone resumed after an interruption re-fetches its remaining
+  (not-yet-pulled) files twice: once to hash them into the snapshot, once to
+  pull. Already-pulled files are skipped via the cache. Minor and bounded; a fix
+  would defer hashing pull-targets in the general path too
+  (`SyncEngine._walk`/`_snapshot`).
 
 ## Companion mode (read-only plain-folder browsing)
 

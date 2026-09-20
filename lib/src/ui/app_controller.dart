@@ -21,6 +21,7 @@ import '../folio/note.dart';
 import '../folio/note_properties.dart';
 import '../folio/folio.dart';
 import '../folio/folio_exception.dart';
+import '../mobile/keep_awake.dart';
 import '../settings/recent_folios.dart';
 import '../settings/settings_store.dart';
 import '../storage/local_folder_backend.dart';
@@ -64,6 +65,10 @@ class AppController extends ChangeNotifier {
   final SafChannel _saf;
   final GitChannel _git;
 
+  /// Keeps the device awake during a long sync/clone. Injectable so tests use a
+  /// no-op fake.
+  final KeepAwake _keepAwake;
+
   AppController({
     SettingsStore? settings,
     CredentialStore? credentials,
@@ -73,6 +78,7 @@ class AppController extends ChangeNotifier {
     ClipboardService? clipboard,
     SafChannel? saf,
     GitChannel? git,
+    KeepAwake? keepAwake,
   })  : _settings = settings ?? InMemorySettingsStore(),
         _credentials = credentials ?? InMemoryCredentialStore(),
         _syncStates = syncStates ?? InMemorySyncStateStore(),
@@ -80,6 +86,7 @@ class AppController extends ChangeNotifier {
         _clipboard = clipboard ?? createClipboardService(),
         _saf = saf ?? const MethodChannelSaf(),
         _git = git ?? const MethodChannelGit(),
+        _keepAwake = keepAwake ?? createKeepAwake(),
         _cacheRoot = cacheRoot ??
             (() async {
               final docs = await getApplicationDocumentsDirectory();
@@ -102,9 +109,10 @@ class AppController extends ChangeNotifier {
   /// Whether the open Folio is a git clone that Refresh can pull.
   bool get isGitFolio => _gitUrl != null;
 
-  /// Progress of an in-flight cache/sync, or null when idle.
-  ({int completed, int total})? _syncProgress;
-  ({int completed, int total})? get syncProgress => _syncProgress;
+  /// Progress of an in-flight cache/sync, or null when idle. [path] is the file
+  /// currently being transferred, shown so a long clone/sync is legible.
+  ({int completed, int total, String? path})? _syncProgress;
+  ({int completed, int total, String? path})? get syncProgress => _syncProgress;
 
   /// Whether the open Folio has a remote peer it can sync with.
   bool get canSync => _syncPeer != null;
@@ -821,14 +829,43 @@ class AppController extends ChangeNotifier {
         remote: remote,
         deviceName: _deviceName,
       );
-      final result = await engine.sync(
-        await _syncStates.load(id),
-        onProgress: (progress) {
-          _syncProgress = (completed: progress.completed, total: progress.total);
-          _notify();
-        },
-      );
-      await _syncStates.save(id, result.newState);
+      SyncResult? result;
+      try {
+        final base = await _syncStates.load(id);
+        result = await _keepAwake.guard<SyncResult>(() => engine.sync(
+          base,
+          onProgress: (progress) {
+            _syncProgress = (
+              completed: progress.completed,
+              total: progress.total,
+              path: progress.path,
+            );
+            _notify();
+          },
+          // Persist progress mid-clone so an interrupted first sync (dropped
+          // connection, screen off) resumes near where it stopped, never from
+          // zero — and the bytes already pulled are not fetched again.
+          onCheckpoint: (partial) => _syncStates.save(id, partial),
+        ));
+        await _syncStates.save(id, result.newState);
+      } catch (e) {
+        // Offline-first: a failed/partial clone must not strand the user on the
+        // landing screen. Adopt whatever reached the cache so the pulled notes
+        // are usable, and surface the failure as a sync error to retry later.
+        _syncProgress = null;
+        if (await File(p.join(cacheDir.path, 'properties.yaml')).exists()) {
+          _adopt(await Folio.open(local), ContentService(local));
+          _syncPeer = remote;
+          _folioId = id;
+          await _pruneEmptyFolders();
+          await _reloadTree();
+          await _restoreLastNote();
+          unawaited(_settings.setLastFolioId(id));
+          _syncError = e.toString();
+          return;
+        }
+        rethrow; // nothing usable landed — let the caller report the error
+      }
       _syncProgress = null;
 
       // Adopt the local cache as the working backend; keep the remote peer.
@@ -870,14 +907,20 @@ class AppController extends ChangeNotifier {
       remote: peer,
       deviceName: _deviceName,
     );
-    final result = await engine.sync(
-      await _syncStates.load(id),
+    final base = await _syncStates.load(id);
+    final result = await _keepAwake.guard<SyncResult>(() => engine.sync(
+      base,
       allowEmptying: allowEmptying,
       onProgress: (progress) {
-        _syncProgress = (completed: progress.completed, total: progress.total);
+        _syncProgress = (
+          completed: progress.completed,
+          total: progress.total,
+          path: progress.path,
+        );
         notifyListeners();
       },
-    );
+      onCheckpoint: (partial) => _syncStates.save(id, partial),
+    ));
     _syncProgress = null;
     if (result.withheld) {
       // A side looks empty — don't touch anything; ask the user to confirm.

@@ -85,6 +85,13 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
 - `lib/src/sync/` — `SyncEngine`/`SyncPlanner`/`SyncState`: three-way sync over
   **any two backends** (this is the sync extensibility). Conflict = keep-both
   copy. **Emptying guard**: withholds a wipe-everything plan for confirmation.
+  Transfers avoid re-downloading bytes: a **content-hash cache** (per-side
+  `fingerprint → hash` in `SyncState`, fingerprint = `StorageEntry.fingerprint`:
+  OneDrive `quickXorHash` / WebDAV `ETag` / `size:mtime`), a **single-download
+  first clone** (empty base+local: list by metadata, hash from the copy it
+  pulls), and periodic **checkpoints** so an interrupted run resumes, not
+  restarts. Android holds a **keep-awake** lock during a run (`KeepAwake`, via
+  the `margin/app` channel) — see DESIGN.md → "Fast, resumable transfers".
 - `lib/src/ui/app_controller.dart` — the heart. Owns the open Folio, tree,
   selected note, editing buffer. **Clone-then-sync**: remote Folios run against
   a local cache (`Margin/<UUID>/`) with the remote as a sync peer; offline-first

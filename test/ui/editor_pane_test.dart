@@ -287,8 +287,7 @@ void main() {
     expect(field.controller!.text.substring(sel.start, sel.end), 'l3');
   });
 
-  testWidgets('overflow menu offers always-on-top, settings, and close',
-      (tester) async {
+  testWidgets('desktop overflow menu is trimmed to settings', (tester) async {
     final controller = await openWithNote(tester);
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
@@ -296,12 +295,12 @@ void main() {
     await tester.tap(find.byTooltip('More'));
     await tester.pumpAndSettle();
 
-    // On the desktop test host, the always-on-top toggle is offered.
-    expect(find.text('Always on top'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Close Folio'), findsOneWidget);
-    // Desktop-only: quit the whole app (vs. just closing the Folio).
-    expect(find.text('Close Margin'), findsOneWidget);
+    // Desktop moved window/folio items out of the overflow: always-on-top and
+    // Close Margin live in the app-mark menu, Close Folio in the folio switcher.
+    expect(find.text('Always on top'), findsNothing);
+    expect(find.text('Close Folio'), findsNothing);
+    expect(find.text('Close Margin'), findsNothing);
     // Copy lives in the editor/preview context menu now, not the overflow.
     expect(find.text('Copy note'), findsNothing);
   });

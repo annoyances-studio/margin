@@ -4,6 +4,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.net.wifi.WifiManager
+import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.util.Base64
 import androidx.documentfile.provider.DocumentFile
@@ -32,6 +34,12 @@ class MainActivity : FlutterActivity() {
 
     // JGit clone is blocking network+disk work; keep it off the main thread.
     private val ioExecutor = Executors.newSingleThreadExecutor()
+
+    // Held only while a long sync/clone runs so the screen turning off does not
+    // suspend the CPU or idle Wi-Fi mid-transfer (which drops the connection).
+    // Both carry a timeout so a crash can never leak them indefinitely.
+    private var syncWakeLock: PowerManager.WakeLock? = null
+    private var syncWifiLock: WifiManager.WifiLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -79,9 +87,62 @@ class MainActivity : FlutterActivity() {
                     }
                     // Pull the latest into an existing clone (Refresh).
                     "gitPull" -> gitPull(call, result)
+                    // --- Keep-awake while a long sync/clone transfers bytes ---
+                    "acquireSyncWakeLock" -> {
+                        acquireSyncWakeLock(call.argument<Int>("timeoutMs"))
+                        result.success(true)
+                    }
+                    "releaseSyncWakeLock" -> {
+                        releaseSyncWakeLock()
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    // Acquires a partial CPU wake lock and a high-performance Wi-Fi lock so a
+    // sync in progress survives the screen turning off. [timeoutMs] is a safety
+    // cap (the CPU lock auto-releases after it); release() is called normally in
+    // the Dart `finally`. Idempotent — a second acquire is a no-op.
+    private fun acquireSyncWakeLock(timeoutMs: Int?) {
+        try {
+            if (syncWakeLock == null) {
+                val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                syncWakeLock = pm.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "margin:sync",
+                )
+            }
+            val lock = syncWakeLock!!
+            if (!lock.isHeld) {
+                val cap = (timeoutMs ?: 0).toLong()
+                if (cap > 0) lock.acquire(cap) else lock.acquire()
+            }
+            if (syncWifiLock == null) {
+                val wm = applicationContext
+                    .getSystemService(Context.WIFI_SERVICE) as WifiManager
+                syncWifiLock = wm.createWifiLock(
+                    WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                    "margin:sync",
+                )
+            }
+            syncWifiLock?.let { if (!it.isHeld) it.acquire() }
+        } catch (e: Exception) {
+            // Keep-awake is best-effort; if it fails the sync still runs, just
+            // without protection from the screen turning off.
+        }
+    }
+
+    private fun releaseSyncWakeLock() {
+        try {
+            syncWakeLock?.let { if (it.isHeld) it.release() }
+        } catch (e: Exception) {
+        }
+        try {
+            syncWifiLock?.let { if (it.isHeld) it.release() }
+        } catch (e: Exception) {
+        }
     }
 
     private fun uriArg(call: io.flutter.plugin.common.MethodCall): Uri =
