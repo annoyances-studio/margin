@@ -589,6 +589,29 @@ connection (typical on mobile) must never block opening notes already held.
 This is why per-note sidecars and `properties.yaml` matter: they are the
 metadata the sync reasons about.
 
+### Cache transparency & lifecycle
+
+A `Margin/<UUID>/` cache is real data sitting on the device, so the app never
+hides one. Two rules keep the "Folios on this device" list an honest picture of
+what's cached:
+
+- **The list is unbounded.** Every Folio you've opened stays listed and
+  therefore removable. (It used to be a capped "recent" list — but a Folio that
+  fell off the end left its cache behind, invisible and unmanageable. That's the
+  wrong kind of hidden state for a plain-files app.)
+- **Removing a Folio discards its cache.** The ✕ deletes the `Margin/<id>/`
+  cache and its sync state, so re-adding is a clean clone, not a silent resume
+  against stale bytes. Scoped to remote Folios (a rebuildable cache keyed by the
+  remote id); a **local** Folio's folder is the user's own data and is never
+  touched, nor is the open Folio.
+- **Orphans are pruned on startup.** Any `Margin/<id>/` with a `properties.yaml`
+  but no list entry (e.g. left by the old capped list) is deleted at launch —
+  never `DeviceNotes/`, the active Folio, or non-Folio data.
+
+The list shows each cloud Folio's on-device **size** (a lazy background walk),
+and **Folio properties** (overflow menu) reports size + file count on demand, so
+a big Folio is only walked when asked.
+
 ### Sidecar as a search index
 
 The per-note sidecar `<note>.md.yaml` is the note's **lightweight search

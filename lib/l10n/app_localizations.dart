@@ -140,10 +140,10 @@ abstract class AppLocalizations {
   /// **'Create a Folio in the local file system'**
   String get createFolioLocal;
 
-  /// Landing section label above the recently opened Folios.
+  /// Landing section label above the list of Folios that have data (a cache) on this device.
   ///
   /// In en, this message translates to:
-  /// **'Recent'**
+  /// **'Folios on this device'**
   String get recentFolios;
 
   /// Tooltip on the X that removes an entry from the recent Folios.
@@ -229,6 +229,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not fully synced — tap to resume'**
   String get notFullySynced;
+
+  /// Overflow-menu item and dialog title showing details about the open Folio.
+  ///
+  /// In en, this message translates to:
+  /// **'Folio properties'**
+  String get folioProperties;
+
+  /// Label for how much of the Folio is cached locally.
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get folioOnDevice;
+
+  /// A count of files, e.g. in a Folio's on-device cache.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files'**
+  String filesCount(int count);
+
+  /// Shown for a local-folder Folio, which lives in the user's folder rather than a cache.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored in your own folder (not cached)'**
+  String get folioLocalFolder;
 
   /// Dialog title when naming a new Folio.
   ///

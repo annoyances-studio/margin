@@ -65,7 +65,7 @@ void main() {
     await controller.start();
     await pumpScreen(tester);
 
-    expect(find.text('Recent'), findsOneWidget);
+    expect(find.text('Folios on this device'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('https://dav.example.com/notes/'), findsOneWidget);
   });
@@ -81,11 +81,11 @@ void main() {
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
     expect(find.text('Notes'), findsNothing);
-    expect(find.text('Recent'), findsNothing);
+    expect(find.text('Folios on this device'), findsNothing);
   });
 
   testWidgets('no Recent section when there are no recents', (tester) async {
     await pumpScreen(tester);
-    expect(find.text('Recent'), findsNothing);
+    expect(find.text('Folios on this device'), findsNothing);
   });
 }

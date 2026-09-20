@@ -22,8 +22,8 @@
   "createFolioLocal": "Create a Folio in the local file system",
   "@createFolioLocal": { "description": "Open-a-Folio option: create a new Folio in a chosen local folder." },
 
-  "recentFolios": "Recent",
-  "@recentFolios": { "description": "Landing section label above the recently opened Folios." },
+  "recentFolios": "Folios on this device",
+  "@recentFolios": { "description": "Landing section label above the list of Folios that have data (a cache) on this device." },
 
   "removeFromRecent": "Remove from recent",
   "@removeFromRecent": { "description": "Tooltip on the X that removes an entry from the recent Folios." },
@@ -64,6 +64,21 @@
 
   "notFullySynced": "Not fully synced — tap to resume",
   "@notFullySynced": { "description": "Persistent cue that a clone/sync is incomplete (e.g. interrupted); tapping resumes it." },
+
+  "folioProperties": "Folio properties",
+  "@folioProperties": { "description": "Overflow-menu item and dialog title showing details about the open Folio." },
+
+  "folioOnDevice": "On this device",
+  "@folioOnDevice": { "description": "Label for how much of the Folio is cached locally." },
+
+  "filesCount": "{count} files",
+  "@filesCount": {
+    "description": "A count of files, e.g. in a Folio's on-device cache.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "folioLocalFolder": "Stored in your own folder (not cached)",
+  "@folioLocalFolder": { "description": "Shown for a local-folder Folio, which lives in the user's folder rather than a cache." },
 
   "nameFolioTitle": "Name this Folio",
   "@nameFolioTitle": { "description": "Dialog title when naming a new Folio." },

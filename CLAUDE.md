@@ -92,6 +92,13 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
   pulls), and periodic **checkpoints** so an interrupted run resumes, not
   restarts. Android holds a **keep-awake** lock during a run (`KeepAwake`, via
   the `margin/app` channel) — see DESIGN.md → "Fast, resumable transfers".
+  Cache lifecycle is kept transparent: the landing list ("Folios on this
+  device") is **unbounded** so every cached Folio stays manageable, removing a
+  Folio discards its `Margin/<id>/` cache + sync state (remote Folios only,
+  never a local folder or the open Folio), and `start()` prunes orphan caches
+  (skipped under `flutter test`, which walks the real docs dir; tests call
+  `pruneOrphanCaches` directly). See DESIGN.md → "Cache transparency &
+  lifecycle".
 - `lib/src/ui/app_controller.dart` — the heart. Owns the open Folio, tree,
   selected note, editing buffer. **Clone-then-sync**: remote Folios run against
   a local cache (`Margin/<UUID>/`) with the remote as a sync peer; offline-first

@@ -9,8 +9,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../settings/recent_folios.dart';
 import '../storage/onedrive_auth.dart';
 import 'app_controller.dart';
+import 'byte_format.dart';
 
 /// The landing screen: a primary "open this device's notes" button for the
 /// user who just wants to take notes, an "Open a Folio" button that unfolds
@@ -234,7 +236,7 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
           ),
           leading: Icon(_recentIcon(recent.type)),
           title: Text(recent.name, overflow: TextOverflow.ellipsis),
-          subtitle: Text(recent.location, overflow: TextOverflow.ellipsis),
+          subtitle: _recentSubtitle(recent),
           trailing: IconButton(
             icon: const Icon(Icons.close),
             tooltip: l10n.removeFromRecent,
@@ -243,6 +245,31 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
           onTap: () => controller.openRecentFolio(recent),
         ),
     ];
+  }
+
+  /// The Folio's location, plus — for a Folio with an on-device cache — its
+  /// size once a lazy background walk finishes (so the list shows what's using
+  /// space without blocking, and local Folios stay just a path).
+  Widget _recentSubtitle(RecentFolio recent) {
+    final location = Text(recent.location, overflow: TextOverflow.ellipsis);
+    final id = recent.id;
+    if (id == null) return location;
+    return FutureBuilder<({int bytes, int files})?>(
+      future: controller.folioCacheStats(id),
+      builder: (context, snap) {
+        final stats = snap.data;
+        if (stats == null) return location;
+        return Row(
+          children: [
+            Flexible(child: location),
+            Text(
+              '  ·  ${formatBytes(stats.bytes)}',
+              style: TextStyle(color: Theme.of(context).colorScheme.outline),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   static IconData _recentIcon(String type) => switch (type) {

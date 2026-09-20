@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/mobile/keep_awake.dart';
 import 'package:margin/src/settings/recent_folios.dart';
+import 'package:margin/src/settings/settings_store.dart';
 import 'package:margin/src/sync/sync_state_store.dart';
 import 'package:margin/src/ui/app_controller.dart';
 
@@ -178,6 +179,57 @@ void main() {
       await c.pendingCacheDiscard;
 
       expect(Directory('${cacheDir.path}/$id').existsSync(), isTrue);
+    });
+  });
+
+  test('folioCacheStats reports the cached size and file count', () async {
+    final c = AppController(cacheRoot: () async => cacheDir);
+    addTearDown(c.dispose);
+    await c.openThroughCache(remote); // pulls properties.yaml + a.md + b.md
+
+    final stats = await c.currentFolioCacheStats();
+    expect(stats, isNotNull);
+    expect(stats!.files, greaterThanOrEqualTo(3));
+    expect(stats.bytes, greaterThan(0));
+  });
+
+  group('orphan-cache prune on startup', () {
+    Directory dir(String name) => Directory('${cacheDir.path}/$name');
+    Future<void> seedFolioCache(String name) async {
+      await dir(name).create(recursive: true);
+      await File('${dir(name).path}/properties.yaml')
+          .writeAsString('name: $name');
+    }
+
+    test('deletes caches with no list entry, keeps listed/device/non-cache',
+        () async {
+      // A listed Folio (its cache must survive)...
+      await seedFolioCache('keep-id');
+      // ...an orphan cache from an older capped list (must be pruned)...
+      await seedFolioCache('orphan-id');
+      // ...the on-device Folio (never a cache, must survive)...
+      await seedFolioCache('DeviceNotes');
+      // ...and unrelated data with no Folio marker (must survive).
+      final other = Directory('${cacheDir.path}/misc')..createSync();
+      File('${other.path}/data.txt').writeAsStringSync('x');
+
+      final settings = InMemorySettingsStore();
+      await settings.setRecentFolios(encodeRecentFolios(const [
+        RecentFolio(type: 'onedrive', location: 'x', name: 'Keep', id: 'keep-id'),
+      ]));
+      final c = AppController(
+        cacheRoot: () async => cacheDir,
+        settings: settings,
+      );
+      addTearDown(c.dispose);
+
+      await c.start(); // auto-prune is skipped under flutter test
+      await c.pruneOrphanCaches(); // …so exercise it directly
+
+      expect(dir('orphan-id').existsSync(), isFalse, reason: 'orphan pruned');
+      expect(dir('keep-id').existsSync(), isTrue, reason: 'listed survives');
+      expect(dir('DeviceNotes').existsSync(), isTrue, reason: 'device survives');
+      expect(other.existsSync(), isTrue, reason: 'non-cache data survives');
     });
   });
 }

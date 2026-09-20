@@ -74,12 +74,13 @@ void main() {
     expect(list.map((f) => f.name), ['C', 'A renamed']);
   });
 
-  test('default cap is the configured maximum', () {
+  test('is unbounded by default (the list tracks on-device data)', () {
     var list = const <RecentFolio>[];
-    for (var i = 0; i < kMaxRecentFolios + 3; i++) {
+    for (var i = 0; i < 30; i++) {
       list = upsertRecentFolio(
           list, RecentFolio(type: 'local', location: '/$i', name: '$i'));
     }
-    expect(list, hasLength(kMaxRecentFolios));
+    // Nothing is silently dropped — every distinct Folio stays listed.
+    expect(list, hasLength(30));
   });
 }

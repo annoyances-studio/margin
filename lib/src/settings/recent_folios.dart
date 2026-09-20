@@ -4,10 +4,6 @@
 
 import 'dart:convert';
 
-/// How many recent Folios the app remembers — in practice a "quick Folio
-/// switch" list on the landing screen.
-const int kMaxRecentFolios = 8;
-
 /// A remembered way back into a Folio — everything needed to reconnect
 /// *except* secrets (WebDAV passwords and OAuth tokens stay in the OS
 /// keystore; reconnect reads them from there).
@@ -92,13 +88,19 @@ List<RecentFolio> decodeRecentFolios(String? source) {
 String encodeRecentFolios(List<RecentFolio> folios) =>
     jsonEncode(folios.map((f) => f.toJson()).toList(growable: false));
 
-/// Returns a new list with [entry] at the front, any earlier entry for the
-/// same target removed, and the result capped at [cap].
+/// Returns a new list with [entry] at the front and any earlier entry for the
+/// same target removed.
+///
+/// The list is **unbounded by default**: it doubles as the record of which
+/// Folios have data on this device, so it must not silently drop entries whose
+/// on-device cache still exists (that data would become invisible and
+/// unmanageable). Pass [cap] only where a bounded list is genuinely wanted.
 List<RecentFolio> upsertRecentFolio(
   List<RecentFolio> folios,
   RecentFolio entry, {
-  int cap = kMaxRecentFolios,
+  int? cap,
 }) {
   final rest = folios.where((f) => !f.sameTarget(entry));
-  return [entry, ...rest].take(cap).toList(growable: false);
+  final merged = [entry, ...rest];
+  return (cap == null ? merged : merged.take(cap)).toList(growable: false);
 }

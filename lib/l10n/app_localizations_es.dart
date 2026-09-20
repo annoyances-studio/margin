@@ -31,7 +31,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Crear un Folio en el sistema de archivos local';
 
   @override
-  String get recentFolios => 'Recientes';
+  String get recentFolios => 'Folios en este dispositivo';
 
   @override
   String get removeFromRecent => 'Quitar de recientes';
@@ -76,6 +76,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notFullySynced => 'Sincronización incompleta — toca para reanudar';
+
+  @override
+  String get folioProperties => 'Propiedades del Folio';
+
+  @override
+  String get folioOnDevice => 'En este dispositivo';
+
+  @override
+  String filesCount(int count) {
+    return '$count archivos';
+  }
+
+  @override
+  String get folioLocalFolder => 'Guardado en tu propia carpeta (sin caché)';
 
   @override
   String get nameFolioTitle => 'Nombra este Folio';

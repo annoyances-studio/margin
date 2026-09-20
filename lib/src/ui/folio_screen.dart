@@ -15,6 +15,7 @@ import '../desktop/desktop_integration.dart';
 import '../desktop/file_reveal.dart';
 import '../desktop/startup_service.dart';
 import 'app_controller.dart';
+import 'byte_format.dart';
 import 'color_hex.dart';
 import 'settings_dialog.dart';
 import 'widgets/attach_drop_target.dart';
@@ -738,6 +739,9 @@ class _FolioScreenState extends State<FolioScreen> {
     itemBuilder: (_) => [
       if (controller.canSync)
         PopupMenuItem(value: 'sync', child: Text(_l10n.syncNow)),
+      if (controller.hasFolio)
+        PopupMenuItem(
+            value: 'properties', child: Text(_l10n.folioProperties)),
       PopupMenuItem(value: 'settings', child: Text(_l10n.settings)),
       // Desktop moves window-level items (always-on-top, Close Margin) to the
       // app-mark menu and Close folio to the folio switcher, so the overflow
@@ -765,12 +769,100 @@ class _FolioScreenState extends State<FolioScreen> {
         _toggleAlwaysOnTop();
       case 'settings':
         _openSettings();
+      case 'properties':
+        _showFolioProperties();
       case 'close':
         controller.closeFolio();
       case 'quit':
         quitDesktopApp();
     }
   }
+
+  /// A small dialog with the open Folio's details — chiefly how much it takes
+  /// on this device (size + file count), computed on demand so a big Folio is
+  /// never walked unless the user asks. A local-folder Folio has no cache, so
+  /// it just says where it really lives.
+  Future<void> _showFolioProperties() async {
+    final l10n = _l10n;
+    final cloud = controller.isCloudFolio;
+    // Compute the (on-demand) walk once, not per dialog rebuild.
+    final statsFuture =
+        cloud ? controller.currentFolioCacheStats() : null;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.folioProperties),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              controller.folioName,
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            if (statsFuture != null)
+              FutureBuilder<({int bytes, int files})?>(
+                future: statsFuture,
+                builder: (c, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 10),
+                        Text('${l10n.folioOnDevice}…'),
+                      ],
+                    );
+                  }
+                  final s = snap.data;
+                  final value = s == null
+                      ? '—'
+                      : '${formatBytes(s.bytes)}  ·  ${l10n.filesCount(s.files)}';
+                  return _propRow(l10n.folioOnDevice, value);
+                },
+              )
+            else
+              Text(
+                l10n.folioLocalFolder,
+                style: Theme.of(ctx)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.close),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _propRow(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 110,
+              child: Text(
+                label,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
 
   /// Lets the user copy the open note as rich text (for Word/web), Markdown
   /// source, or plain text — the copy half of the clipboard interop.

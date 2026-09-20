@@ -284,10 +284,52 @@ class AppController extends ChangeNotifier {
 
   // --- opening / creating (path-based, used by the picker UI) ---
 
-  /// App startup: load view settings, then restore the last repository.
+  /// App startup: load view settings, kick off orphan-cache cleanup in the
+  /// background (best-effort; must never block or delay showing the UI), then
+  /// restore the last repository.
+  ///
+  /// The auto-prune is skipped under `flutter test`: it walks the real app
+  /// documents dir, which would give unit tests a filesystem side effect (and
+  /// resolving that dir can hang the test process). Tests that exercise pruning
+  /// call [pruneOrphanCaches] directly with an injected cache root.
   Future<void> start() async {
     await _loadViewSettings();
+    if (Platform.environment['FLUTTER_TEST'] != 'true') {
+      unawaited(pruneOrphanCaches());
+    }
     await restoreLastFolio();
+  }
+
+  /// Deletes on-device Folio caches that no list entry points at, so nothing is
+  /// cached invisibly (the list now keeps every Folio, so an orphan means data
+  /// the user can neither see nor manage — e.g. left by an older capped list).
+  /// Best-effort; only touches directories that are actually a Folio cache
+  /// (hold a `properties.yaml`), never `DeviceNotes/` or the active Folio.
+  Future<void> pruneOrphanCaches() async {
+    try {
+      final root = await _cacheRoot();
+      if (!await root.exists()) return;
+      final keep = <String>{
+        for (final r in _recentFolios)
+          if (r.id != null) r.id!,
+      };
+      final last = await _settings.getLastFolioId();
+      if (last != null) keep.add(last);
+
+      await for (final entity in root.list(followLinks: false)) {
+        if (entity is! Directory) continue;
+        final name = p.basename(entity.path);
+        if (name == 'DeviceNotes' || keep.contains(name)) continue;
+        // Only prune what is unmistakably a Folio cache, so unrelated data that
+        // happens to sit under Margin/ is never deleted.
+        final marker = File(p.join(entity.path, 'properties.yaml'));
+        if (!await marker.exists()) continue;
+        await entity.delete(recursive: true);
+        await _syncStates.delete(name);
+      }
+    } catch (_) {
+      // best-effort cleanup — a leftover cache only costs disk
+    }
   }
 
   Future<void> _loadViewSettings() async {
@@ -342,9 +384,64 @@ class AppController extends ChangeNotifier {
       _cacheDiscardFuture ?? Future<void>.value();
   Future<void>? _cacheDiscardFuture;
 
+  /// Memoised cache-stats *futures* per Folio id. Memoising the future (not just
+  /// its result) is deliberate: a `FutureBuilder` fed a fresh future on every
+  /// rebuild never settles, so a stable future per id keeps the list from
+  /// re-walking a big cache each frame. Cleared when the cache is discarded.
+  final Map<String, Future<({int bytes, int files})?>> _cacheStatsFutures = {};
+
+  /// Total size and file count of a Folio's on-device cache
+  /// (`<cacheRoot>/<id>`), or null when there is no cache (e.g. a local Folio,
+  /// or one whose cache was pruned). A metadata-only walk — no file contents are
+  /// read. Pass [refresh] to recompute after the cache changes.
+  Future<({int bytes, int files})?> folioCacheStats(
+    String id, {
+    bool refresh = false,
+  }) {
+    if (!refresh) {
+      final cached = _cacheStatsFutures[id];
+      if (cached != null) return cached;
+    }
+    final future = _computeCacheStats(id);
+    _cacheStatsFutures[id] = future;
+    return future;
+  }
+
+  Future<({int bytes, int files})?> _computeCacheStats(String id) async {
+    try {
+      final dir = Directory(p.join((await _cacheRoot()).path, id));
+      if (!await dir.exists()) return null;
+      var bytes = 0;
+      var files = 0;
+      await for (final e in dir.list(recursive: true, followLinks: false)) {
+        if (e is File) {
+          bytes += await e.length();
+          files++;
+        }
+      }
+      return (bytes: bytes, files: files);
+    } catch (_) {
+      return null; // unreadable cache → treat as unknown
+    }
+  }
+
+  /// Whether the open Folio is a remote Folio with an on-device cache (as
+  /// opposed to a local folder, which lives in the user's own directory).
+  bool get isCloudFolio => canSync && _folioId != null;
+
+  /// Cache stats for the currently open Folio (size + file count), or null when
+  /// it has no on-device cache. See [folioCacheStats].
+  Future<({int bytes, int files})?> currentFolioCacheStats(
+      {bool refresh = true}) {
+    final id = _folioId;
+    if (id == null) return Future<({int bytes, int files})?>.value(null);
+    return folioCacheStats(id, refresh: refresh);
+  }
+
   /// Deletes a remote Folio's on-device cache directory (`<cacheRoot>/<id>`) and
   /// its persisted sync state. Best-effort: a leftover only costs disk space.
   Future<void> _discardFolioCache(String id) async {
+    _cacheStatsFutures.remove(id);
     try {
       final dir = Directory(p.join((await _cacheRoot()).path, id));
       if (await dir.exists()) await dir.delete(recursive: true);
