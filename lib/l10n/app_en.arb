@@ -59,6 +59,12 @@
     }
   },
 
+  "scanningFolder": "Scanning your folder…",
+  "@scanningFolder": { "description": "Shown while a clone/sync is enumerating the folder tree, before the per-file download count is known." },
+
+  "notFullySynced": "Not fully synced — tap to resume",
+  "@notFullySynced": { "description": "Persistent cue that a clone/sync is incomplete (e.g. interrupted); tapping resumes it." },
+
   "nameFolioTitle": "Name this Folio",
   "@nameFolioTitle": { "description": "Dialog title when naming a new Folio." },
 

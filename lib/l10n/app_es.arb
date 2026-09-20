@@ -21,6 +21,8 @@
   "password": "Contraseña",
   "connect": "Conectar",
   "syncing": "Sincronizando {completed} de {total}…",
+  "scanningFolder": "Explorando tu carpeta…",
+  "notFullySynced": "Sincronización incompleta — toca para reanudar",
   "nameFolioTitle": "Nombra este Folio",
   "folioNameLabel": "Nombre del Folio",
   "closeFolio": "Cerrar Folio",

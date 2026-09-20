@@ -71,6 +71,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get scanningFolder => 'Scanning your folder…';
+
+  @override
+  String get notFullySynced => 'Not fully synced — tap to resume';
+
+  @override
   String get nameFolioTitle => 'Name this Folio';
 
   @override

@@ -117,6 +117,10 @@ class AppController extends ChangeNotifier {
   /// Whether the open Folio has a remote peer it can sync with.
   bool get canSync => _syncPeer != null;
 
+  /// True while a background clone/sync is actively running — so the UI can show
+  /// an honest "Syncing…/resuming" cue instead of a bare spinner.
+  bool get isSyncing => _autoSyncing || _syncProgress != null;
+
   /// The open Folio's id (the cache key). Exposed for tests.
   @visibleForTesting
   String? get folioId => _folioId;
@@ -320,6 +324,38 @@ class AppController extends ChangeNotifier {
         _recentFolios.where((f) => !f.sameTarget(entry)).toList(growable: false);
     unawaited(_settings.setRecentFolios(encodeRecentFolios(_recentFolios)));
     notifyListeners();
+    // Removing a Folio also discards its disposable on-device cache and sync
+    // record, so re-adding it later is a clean start — not a silent resume
+    // against stale data (which shows a confusing partial file count). Only for
+    // remote Folios, whose local copy is a rebuildable cache keyed by the
+    // remote id; a `local` Folio's "cache" IS the user's own folder and is
+    // never touched, and the currently-open Folio is left intact.
+    final id = entry.id;
+    if (id != null && entry.type != 'local' && id != _folioId) {
+      _cacheDiscardFuture = _discardFolioCache(id);
+    }
+  }
+
+  /// The in-flight cache discard from [removeRecentFolio], if any (for tests).
+  @visibleForTesting
+  Future<void> get pendingCacheDiscard =>
+      _cacheDiscardFuture ?? Future<void>.value();
+  Future<void>? _cacheDiscardFuture;
+
+  /// Deletes a remote Folio's on-device cache directory (`<cacheRoot>/<id>`) and
+  /// its persisted sync state. Best-effort: a leftover only costs disk space.
+  Future<void> _discardFolioCache(String id) async {
+    try {
+      final dir = Directory(p.join((await _cacheRoot()).path, id));
+      if (await dir.exists()) await dir.delete(recursive: true);
+    } catch (_) {
+      // ignore — reclaiming the cache is best-effort
+    }
+    try {
+      await _syncStates.delete(id);
+    } catch (_) {
+      // ignore
+    }
   }
 
   /// Reopens a remembered Folio, dispatching on its backend type — the same

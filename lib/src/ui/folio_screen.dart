@@ -169,6 +169,7 @@ class _FolioScreenState extends State<FolioScreen> {
           _accentDivider(),
           if (controller.error != null) _errorBanner(controller.error!),
           if (controller.syncNeedsEmptyConfirm) _emptySyncBanner(),
+          _syncBanner(),
           Expanded(child: _wideContent()),
           _statusBar(),
         ],
@@ -522,6 +523,7 @@ class _FolioScreenState extends State<FolioScreen> {
             _accentDivider(),
             if (controller.error != null) _errorBanner(controller.error!),
             if (controller.syncNeedsEmptyConfirm) _emptySyncBanner(),
+            _syncBanner(),
             if (controller.isBusy) const LinearProgressIndicator(minHeight: 2),
             Expanded(child: _mobilePager()),
             _mobileBottomBar(),
@@ -1336,6 +1338,92 @@ class _FolioScreenState extends State<FolioScreen> {
           child: Text(_l10n.syncAnyway),
         ),
       ],
+    );
+  }
+
+  /// A compact, honest sync-state strip so a clone/sync is never a mystery:
+  /// a determinate bar with the current file while transferring, an
+  /// indeterminate "Syncing…" while a resume runs, or a tappable "Not fully
+  /// synced — tap to resume" when a run was left incomplete (a partial clone
+  /// then never looks finished). Renders nothing when idle and in sync.
+  Widget _syncBanner() {
+    if (!controller.canSync) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final progress = controller.syncProgress;
+
+    if (progress != null) {
+      final frac =
+          progress.total == 0 ? null : progress.completed / progress.total;
+      final file = progress.path == null
+          ? ''
+          : '  ·  ${progress.path!.split('/').last}';
+      return _syncStrip(
+        bar: LinearProgressIndicator(value: frac, minHeight: 2),
+        text: '${_l10n.syncing(progress.completed, progress.total)}$file',
+        background: scheme.surfaceContainer,
+        foreground: scheme.onSurfaceVariant,
+      );
+    }
+    if (controller.isSyncing) {
+      // Running but no per-file count yet: it's enumerating the tree.
+      return _syncStrip(
+        bar: const LinearProgressIndicator(minHeight: 2),
+        text: _l10n.scanningFolder,
+        background: scheme.surfaceContainer,
+        foreground: scheme.onSurfaceVariant,
+      );
+    }
+    if (controller.syncError != null) {
+      return InkWell(
+        onTap: () => controller.syncNow(),
+        child: _syncStrip(
+          icon: Icons.cloud_off_outlined,
+          text: _l10n.notFullySynced,
+          background: scheme.errorContainer,
+          foreground: scheme.onErrorContainer,
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _syncStrip({
+    Widget? bar,
+    IconData? icon,
+    required String text,
+    required Color background,
+    required Color foreground,
+  }) {
+    return Material(
+      color: background,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ?bar,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 14, color: foreground),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: foreground),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

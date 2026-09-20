@@ -138,6 +138,14 @@ class _OpenFolioScreenState extends State<OpenFolioScreen> {
               ] else if (controller.isBusy) ...[
                 const SizedBox(height: 24),
                 const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.scanningFolder,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
               ],
               if (controller.error != null) ...[
                 const SizedBox(height: 24),

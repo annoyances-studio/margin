@@ -7,6 +7,7 @@ import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.PowerManager
 import android.provider.DocumentsContract
+import android.view.WindowManager
 import android.util.Base64
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.android.FlutterActivity
@@ -128,6 +129,14 @@ class MainActivity : FlutterActivity() {
                 )
             }
             syncWifiLock?.let { if (!it.isHeld) it.acquire() }
+            // Keep the screen on for the duration: the strongest, simplest
+            // guard against the auto screen-timeout that drops the connection
+            // mid-transfer. The CPU/Wi-Fi locks above are best-effort backup
+            // (and cover a manual power-off); this keeps the app foreground and
+            // the network unthrottled while a long clone/sync runs.
+            runOnUiThread {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
         } catch (e: Exception) {
             // Keep-awake is best-effort; if it fails the sync still runs, just
             // without protection from the screen turning off.
@@ -135,6 +144,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun releaseSyncWakeLock() {
+        try {
+            runOnUiThread {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        } catch (e: Exception) {
+        }
         try {
             syncWakeLock?.let { if (it.isHeld) it.release() }
         } catch (e: Exception) {

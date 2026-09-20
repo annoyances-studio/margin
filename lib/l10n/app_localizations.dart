@@ -218,6 +218,18 @@ abstract class AppLocalizations {
   /// **'Syncing {completed} of {total}…'**
   String syncing(int completed, int total);
 
+  /// Shown while a clone/sync is enumerating the folder tree, before the per-file download count is known.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning your folder…'**
+  String get scanningFolder;
+
+  /// Persistent cue that a clone/sync is incomplete (e.g. interrupted); tapping resumes it.
+  ///
+  /// In en, this message translates to:
+  /// **'Not fully synced — tap to resume'**
+  String get notFullySynced;
+
   /// Dialog title when naming a new Folio.
   ///
   /// In en, this message translates to:

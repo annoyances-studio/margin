@@ -18,6 +18,11 @@ abstract interface class SyncStateStore {
 
   /// Saves the latest synced [state] for [folioId].
   Future<void> save(String folioId, SyncState state);
+
+  /// Forgets the state for [folioId] (e.g. when its cache is discarded), so a
+  /// later open starts from a clean base rather than a stale one. Deleting a
+  /// non-existent state is a no-op.
+  Future<void> delete(String folioId);
 }
 
 /// A non-persistent [SyncStateStore] for tests and as a safe default.
@@ -31,6 +36,9 @@ class InMemorySyncStateStore implements SyncStateStore {
   @override
   Future<void> save(String folioId, SyncState state) async =>
       _states[folioId] = state;
+
+  @override
+  Future<void> delete(String folioId) async => _states.remove(folioId);
 }
 
 /// A [SyncStateStore] that writes one JSON file per Folio under the app support
@@ -67,5 +75,11 @@ class FileSyncStateStore implements SyncStateStore {
     final file = await _file(folioId);
     await file.parent.create(recursive: true);
     await file.writeAsString(state.encode());
+  }
+
+  @override
+  Future<void> delete(String folioId) async {
+    final file = await _file(folioId);
+    if (await file.exists()) await file.delete();
   }
 }

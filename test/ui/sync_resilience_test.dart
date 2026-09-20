@@ -8,6 +8,8 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margin/margin.dart';
 import 'package:margin/src/mobile/keep_awake.dart';
+import 'package:margin/src/settings/recent_folios.dart';
+import 'package:margin/src/sync/sync_state_store.dart';
 import 'package:margin/src/ui/app_controller.dart';
 
 /// Fails `read` for one chosen path, so a test can interrupt a clone partway
@@ -86,6 +88,9 @@ void main() {
     expect(c.hasFolio, isTrue, reason: 'partial clone must be usable');
     expect(c.canSync, isTrue);
     expect(c.syncError, isNotNull, reason: 'the failure is surfaced to retry');
+    // Idle-but-incomplete: the state the "Not fully synced — tap to resume"
+    // banner keys on (syncError set, nothing running).
+    expect(c.isSyncing, isFalse);
 
     final id = c.folioId!;
     expect(File('${cacheDir.path}/$id/properties.yaml').existsSync(), isTrue);
@@ -127,5 +132,52 @@ void main() {
     expect(awake.acquired, greaterThanOrEqualTo(1));
     expect(awake.released, awake.acquired, reason: 'always released');
     expect(awake.heldDuringAction, isTrue);
+  });
+
+  group('removing a Folio clears its cache', () {
+    late Directory stateDir;
+    late FileSyncStateStore store;
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp('margin_state_');
+      store = FileSyncStateStore(stateDir);
+    });
+    tearDown(() async {
+      if (await stateDir.exists()) await stateDir.delete(recursive: true);
+    });
+
+    test('discards the on-device cache and sync state (clean re-add)',
+        () async {
+      final c = AppController(cacheRoot: () async => cacheDir, syncStates: store);
+      addTearDown(c.dispose);
+      await c.openThroughCache(remote);
+      final id = c.folioId!;
+      final cache = Directory('${cacheDir.path}/$id');
+      final stateFile = File('${stateDir.path}/$id.json');
+      expect(cache.existsSync(), isTrue);
+      expect(stateFile.existsSync(), isTrue);
+
+      c.closeFolio(); // not the open Folio anymore
+      c.removeRecentFolio(
+          RecentFolio(type: 'onedrive', location: 'x', name: 'n', id: id));
+      await c.pendingCacheDiscard;
+
+      // Clean slate: a later open would be a fresh clone, not a stale resume.
+      expect(cache.existsSync(), isFalse);
+      expect(stateFile.existsSync(), isFalse);
+    });
+
+    test('never touches the cache of the currently-open Folio', () async {
+      final c = AppController(cacheRoot: () async => cacheDir, syncStates: store);
+      addTearDown(c.dispose);
+      await c.openThroughCache(remote);
+      final id = c.folioId!;
+
+      // Removing the recent while the Folio is still open must not delete it.
+      c.removeRecentFolio(
+          RecentFolio(type: 'onedrive', location: 'x', name: 'n', id: id));
+      await c.pendingCacheDiscard;
+
+      expect(Directory('${cacheDir.path}/$id').existsSync(), isTrue);
+    });
   });
 }
