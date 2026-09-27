@@ -7,6 +7,12 @@
 
 #include <iostream>
 
+unsigned int GetMarginShowMessage() {
+  static const UINT message =
+      ::RegisterWindowMessageW(L"studio.annoyances.margin.ShowInstance");
+  return message;
+}
+
 void CreateAndAttachConsole() {
   if (::AllocConsole()) {
     FILE *unused;

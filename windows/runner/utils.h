@@ -16,4 +16,9 @@ std::string Utf8FromUtf16(const wchar_t* utf16_string);
 // encoded in UTF-8. Returns an empty std::vector<std::string> on failure.
 std::vector<std::string> GetCommandLineArguments();
 
+// The registered, process-wide window-message id used to ask an already-running
+// Margin instance to surface its window (single-instance support). It is the
+// same value in every process because it is derived from a fixed string.
+unsigned int GetMarginShowMessage();
+
 #endif  // RUNNER_UTILS_H_

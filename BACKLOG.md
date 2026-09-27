@@ -267,6 +267,12 @@ Remaining:
   the listing. Play / Obtainium / F-Droid all optional; off-store is the default.
 - **Verify macOS + Linux desktop builds** — scaffolding exists (`flutter create`,
   binary `margin`), but neither has been built; each needs its OS or a CI runner.
+- **Single-instance on macOS + Linux** — Windows is done (named mutex + registered
+  "surface" broadcast + AppUserModelID in `windows/runner/`; a pinned/second launch
+  activates the running window instead of opening a duplicate). macOS and Linux
+  need their own: macOS via the app lifecycle / a re-open handler (or
+  `LSMultipleInstancesProhibited`), Linux via a mutex/abstract-socket guard that
+  signals the first instance to raise its window.
 - **macOS file access under App Sandbox** — the generated macOS runner enables App
   Sandbox, which blocks reading arbitrary folders (companion mode's whole point).
   Direct distribution: relax the entitlement; App Store: security-scoped bookmarks
