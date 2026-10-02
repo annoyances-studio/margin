@@ -50,6 +50,16 @@ Margin is developed openly with the help of Claude (Anthropic). We state this
 plainly. The code and design are open source so the work can be inspected,
 reused, and given back.
 
+## Contributing
+
+Contributions are welcome, but Margin is a solo-maintained, opinionated project.
+Please **open an issue to discuss before sending a non-trivial change** — every
+change is reviewed before merging, and this is a side project, so replies may be
+slow. Changes that don't fit Margin's direction (plain files, no plugins, no code
+execution) may be declined. The full test suite must stay green. See
+[CONTRIBUTING.md](CONTRIBUTING.md); report security issues privately via
+[SECURITY.md](SECURITY.md).
+
 ## License
 
 Mozilla Public License 2.0 (MPL-2.0). See [LICENSE](LICENSE) and [NOTICE](NOTICE).
