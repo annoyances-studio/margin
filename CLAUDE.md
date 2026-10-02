@@ -162,7 +162,7 @@ tree). **Companion mode** — read-only browsing of any plain Markdown folder
 Refresh) — runs on desktop, cloud (OneDrive/WebDAV), Android **SAF** folders, and
 a read-only **git-read backend** (Android · JGit · LFS-aware · pull to refresh).
 Shipping off-store: **CI** builds a signed Android APK + a Windows zip on a `v*`
-tag (**v1.3.1** current); Android developer verification is done. **Remaining
+tag (**v1.4.0** current); Android developer verification is done. **Remaining
 work is tracked in `BACKLOG.md`** — highlights: SFTP backend, conflict surfacing,
 note Rename, move/copy, the git-read shared-storage destination, macOS/Linux/iOS
 builds, Play publishing.
