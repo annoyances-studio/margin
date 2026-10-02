@@ -4,6 +4,10 @@ Plain Markdown notes in a folder you own — and a calm reader for any folder of
 Markdown you already have. Multiplatform (Flutter), no lock-in, no code
 execution, no plugins.
 
+> **Have a folder of Claude-generated Markdown?** Open it read-only and Margin
+> is a reader for it — follow `.md` links, search the whole folder, and see
+> backlinks. Nothing to import, no lock-in; the files stay plain files.
+
 Margin is the first app from [Annoyances Studio](https://github.com/annoyances-studio) —
 small apps that fix day-to-day annoyances. This one started with "reading my own
 Markdown is annoying."
