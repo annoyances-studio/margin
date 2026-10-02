@@ -17,6 +17,11 @@ bool get isDesktop =>
 /// traffic-lights there (left) and moves the Margin mark to the right.
 bool get isMacOSDesktop => !kIsWeb && Platform.isMacOS;
 
+/// Whether the window is currently maximized — so the custom title bar can show
+/// the restore glyph instead of the maximize one. Kept current by [DesktopTray]
+/// (a [WindowListener]); the UI watches it with a [ValueListenableBuilder].
+final ValueNotifier<bool> windowMaximized = ValueNotifier<bool>(false);
+
 /// Sets up the desktop window: a sensible size and "close hides to tray"
 /// behaviour (DESIGN.md). No-op off desktop.
 ///
@@ -133,6 +138,9 @@ class DesktopTray with TrayListener, WindowListener {
     windowManager.addListener(this);
     trayManager.addListener(this);
     try {
+      windowMaximized.value = await windowManager.isMaximized();
+    } catch (_) {}
+    try {
       await trayManager.setIcon(Platform.isWindows ? _iconWindows : _iconOther);
       await trayManager.setToolTip('Margin•');
       await trayManager.setContextMenu(Menu(items: [
@@ -165,6 +173,12 @@ class DesktopTray with TrayListener, WindowListener {
         _quit();
     }
   }
+
+  @override
+  void onWindowMaximize() => windowMaximized.value = true;
+
+  @override
+  void onWindowUnmaximize() => windowMaximized.value = false;
 
   @override
   void onWindowClose() async {

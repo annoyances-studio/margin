@@ -37,6 +37,9 @@ class NoteEditorPane extends StatefulWidget {
   /// file (browsing a remote/SAF folder). Forwarded to the preview.
   final Future<Uint8List?> Function(String src)? imageLoader;
 
+  /// Bumped on refresh so the preview drops cached/decoded images. Forwarded.
+  final int imageEpoch;
+
   /// Opens the formatted-copy chooser ("Special Copy") from the editor/preview
   /// context menus. Null hides the item.
   final VoidCallback? onSpecialCopy;
@@ -86,6 +89,7 @@ class NoteEditorPane extends StatefulWidget {
     this.onOpenLink,
     this.onNavigateBack,
     this.imageLoader,
+    this.imageEpoch = 0,
   });
 
   @override
@@ -190,6 +194,7 @@ class _NoteEditorPaneState extends State<NoteEditorPane> {
       data: widget.body,
       imageBaseDir: widget.imageBaseDir,
       imageLoader: widget.imageLoader,
+      imageEpoch: widget.imageEpoch,
       find: _find,
       onSpecialCopy: widget.onSpecialCopy,
       onOpenLink: widget.onOpenLink,

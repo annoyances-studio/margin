@@ -59,6 +59,11 @@ class MarkdownPreview extends StatefulWidget {
   /// (browsing a remote/SAF folder). Null → such images show a broken icon.
   final Future<Uint8List?> Function(String src)? imageLoader;
 
+  /// Bumped when the user refreshes, so cached/decoded images are dropped and
+  /// re-read from disk (an updated attachment or a git pull can change the bytes
+  /// under a stable path, which the image cache would otherwise keep stale).
+  final int imageEpoch;
+
   const MarkdownPreview({
     super.key,
     required this.data,
@@ -68,6 +73,7 @@ class MarkdownPreview extends StatefulWidget {
     this.onSpecialCopy,
     this.onOpenLink,
     this.imageLoader,
+    this.imageEpoch = 0,
   });
 
   @override
@@ -123,6 +129,10 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
     if (oldWidget.find != widget.find) {
       oldWidget.find?.removeListener(_onFind);
       widget.find?.addListener(_onFind);
+    }
+    // A refresh: drop memoised backend-image reads so they re-fetch fresh bytes.
+    if (oldWidget.imageEpoch != widget.imageEpoch) {
+      _imageBytes.clear();
     }
   }
 
@@ -460,18 +470,28 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
 
   Widget _buildImage(MarkdownImageConfig config) {
     final uri = config.uri;
+    // A plain-text width hint in the alt (`![alt|300](path)` / `|300x200`) sizes
+    // the preview without touching the file — portable, since other renderers
+    // show the literal alt and still render the image. The hint wins over any
+    // size flutter_markdown parsed itself.
+    final hint = imageSizeFromAlt(config.alt);
+    final width = hint.width ?? config.width;
+    final height = hint.height ?? config.height;
+
     if (uri.scheme == 'http' || uri.scheme == 'https') {
-      return Image.network(uri.toString(),
-          width: config.width, height: config.height);
+      return Image.network(uri.toString(), width: width, height: height);
     }
 
-    // Fast path: a real file on disk (local Folio / synced cache).
+    // Fast path: a real file on disk (local Folio / synced cache). Keyed by the
+    // refresh epoch so a refresh rebuilds a fresh Image (re-reading the file),
+    // since Flutter's image cache keys FileImage by path, not by content.
     final path = resolveLinkTarget(uri.path, widget.imageBaseDir);
     if (path != null) {
       return Image.file(
         File(path),
-        width: config.width,
-        height: config.height,
+        key: ValueKey('$path#${widget.imageEpoch}'),
+        width: width,
+        height: height,
         errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
       );
     }
@@ -482,13 +502,33 @@ class _MarkdownPreviewState extends State<MarkdownPreview> {
     if (loader != null) {
       final future = _imageBytes.putIfAbsent(uri.path, () => loader(uri.path));
       return _BackendImage(
+        width: width,
+        height: height,
         future: future,
-        width: config.width,
-        height: config.height,
       );
     }
     return const Icon(Icons.image_not_supported_outlined);
   }
+}
+
+/// Parses an Obsidian-style size hint from image alt text: a trailing `|W` or
+/// `|WxH` (e.g. `alt|300`, `alt|300x200`). Returns the width/height to apply in
+/// the preview; either may be null (just a width scales proportionally).
+///
+/// The hint lives in the alt so it stays plain-text and portable — other
+/// renderers show the literal alt and still render the full-resolution image;
+/// only the display size changes, never the file.
+({double? width, double? height}) imageSizeFromAlt(String? alt) {
+  if (alt == null) return (width: null, height: null);
+  final bar = alt.lastIndexOf('|');
+  if (bar < 0) return (width: null, height: null);
+  final spec = alt.substring(bar + 1).trim();
+  final match = RegExp(r'^(\d{1,5})(?:x(\d{1,5}))?$').firstMatch(spec);
+  if (match == null) return (width: null, height: null);
+  return (
+    width: double.tryParse(match.group(1)!),
+    height: match.group(2) == null ? null : double.tryParse(match.group(2)!),
+  );
 }
 
 /// Whether [bytes] are a Git LFS pointer stub (a tiny text file) rather than the

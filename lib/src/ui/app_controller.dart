@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show PaintingBinding;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -1094,8 +1095,30 @@ class AppController extends ChangeNotifier {
   /// note is reloaded too — unless it has unsaved edits, which are never
   /// clobbered — and cleared if it vanished on disk. (A stop-gap until live
   /// file-watching; for remote Folios, "Sync now" remains the way to pull.)
+  /// Bumped by [refreshTree]; the preview watches it to drop memoised image
+  /// futures and re-resolve file images. On-disk image bytes can change under a
+  /// stable path (an updated attachment, a git pull), which Flutter's image
+  /// cache would otherwise keep showing stale until an app restart.
+  int get imageEpoch => _imageEpoch;
+  int _imageEpoch = 0;
+
+  /// Forgets every cached/decoded image so the next paint re-reads from disk.
+  void _invalidateImages() {
+    _imageEpoch++;
+    try {
+      PaintingBinding.instance.imageCache
+        ..clear()
+        ..clearLiveImages();
+    } catch (_) {
+      // No painting binding (e.g. a pure unit test) — the epoch bump suffices.
+    }
+  }
+
   Future<void> refreshTree() async {
     if (!hasFolio) return;
+    // Refresh means "show me what's on disk now", so stale images must not
+    // survive it (Flutter caches decoded images by path, ignoring new bytes).
+    _invalidateImages();
     await _run(() async {
       // A git Folio refreshes by pulling the remote into the local clone first
       // (fetch + reset + re-smudge LFS). Best-effort: on failure keep showing

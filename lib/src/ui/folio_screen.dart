@@ -627,6 +627,7 @@ class _FolioScreenState extends State<FolioScreen> {
           revision: controller.editorRevision,
           imageBaseDir: _imageBaseDir(),
           imageLoader: controller.readNoteImage,
+          imageEpoch: controller.imageEpoch,
           onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
           onSaveAttachment: controller.saveAttachmentForCurrentNote,
           onDownloadImage: controller.downloadImageAsAttachment,
@@ -643,6 +644,7 @@ class _FolioScreenState extends State<FolioScreen> {
                   data: controller.workingBody,
                   imageBaseDir: _imageBaseDir(),
                   imageLoader: controller.readNoteImage,
+                  imageEpoch: controller.imageEpoch,
                   physics: const AlwaysScrollableScrollPhysics(),
                   onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
                   onOpenLink: controller.openLink,
@@ -1001,6 +1003,7 @@ class _FolioScreenState extends State<FolioScreen> {
         revision: controller.editorRevision,
         imageBaseDir: _imageBaseDir(),
         imageLoader: controller.readNoteImage,
+        imageEpoch: controller.imageEpoch,
         onSpecialCopy: controller.canCopyNote ? _showCopyMenu : null,
         onSaveAttachment: controller.saveAttachmentForCurrentNote,
         onDownloadImage: controller.downloadImageAsAttachment,
@@ -1807,7 +1810,15 @@ class _WindowButtons extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _WinBtn(icon: Icons.remove, onTap: minimizeWindow),
-        _WinBtn(icon: Icons.crop_square, onTap: toggleMaximizeWindow),
+        // The maximize button shows the restore (overlapping squares) glyph
+        // while maximized, like a native title bar.
+        ValueListenableBuilder<bool>(
+          valueListenable: windowMaximized,
+          builder: (_, maximized, _) => _WinBtn(
+            icon: maximized ? Icons.filter_none : Icons.crop_square,
+            onTap: toggleMaximizeWindow,
+          ),
+        ),
         _WinBtn(icon: Icons.close, onTap: closeWindow, danger: true),
       ],
     );

@@ -102,6 +102,18 @@ void main() {
     expect(c.hasUnsyncedChanges, isFalse);
   });
 
+  test('refreshTree bumps imageEpoch so stale images are dropped', () async {
+    final c = controller();
+    addTearDown(c.dispose);
+    await c.openThroughCache(remote);
+
+    final before = c.imageEpoch;
+    await c.refreshTree();
+    // The preview watches imageEpoch to re-read images whose on-disk bytes may
+    // have changed under a stable path (which the image cache keeps stale).
+    expect(c.imageEpoch, greaterThan(before));
+  });
+
   test('a local change marks the Folio unsynced, then auto-syncs to the remote',
       () async {
     final c = controller();
