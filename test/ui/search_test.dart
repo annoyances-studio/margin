@@ -69,4 +69,16 @@ void main() {
     await c.setSearchQuery('zzz-nothing');
     expect(c.searchResults, isEmpty);
   });
+
+  test('changing Folio clears the search (no stale results)', () async {
+    final c = await folioWithNotes();
+    await c.setSearchQuery('planning');
+    expect(c.isSearching, isTrue);
+    expect(c.searchResults, isNotEmpty);
+
+    // Opening a different Folio must drop the old query and its results.
+    await c.create(MemoryBackend(), 'Other');
+    expect(c.isSearching, isFalse);
+    expect(c.searchResults, isEmpty);
+  });
 }

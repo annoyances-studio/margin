@@ -127,6 +127,16 @@ class _FolioScreenState extends State<FolioScreen> {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
+        // Keep the search box in step with the controller's query, so changing
+        // Folio (which clears the query) also empties the field. Setting .text
+        // doesn't fire onChanged, so this never loops with the user's typing.
+        if (_searchController.text != controller.searchQuery) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _searchController.text != controller.searchQuery) {
+              _searchController.text = controller.searchQuery;
+            }
+          });
+        }
         return LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= _wideBreakpoint;

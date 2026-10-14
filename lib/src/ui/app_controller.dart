@@ -2098,6 +2098,10 @@ class AppController extends ChangeNotifier {
     _currentNote = null;
     _workingBody = '';
     _dirty = false;
+    // A new Folio's notes are different — drop any search from the old one so
+    // it doesn't show stale results against the new tree.
+    _searchQuery = '';
+    _searchResults = const [];
     // Cleared here; openThroughCache sets them after adopting the cache.
     _syncPeer = null;
     _folioId = null;
