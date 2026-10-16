@@ -5,6 +5,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as html_parser;
 import 'package:html2md/html2md.dart' as html2md;
 import 'package:markdown/markdown.dart' as md;
 
@@ -28,7 +30,7 @@ String markdownToHtml(String markdown) =>
 /// fenced code) so pasted content matches what the editor writes and styles —
 /// not html2md's defaults (Setext headings, `*` bullets).
 String htmlToMarkdown(String html) => html2md.convert(
-      html,
+      unwrapLayoutTables(html),
       styleOptions: const {
         'headingStyle': 'atx',
         'bulletListMarker': '-',
@@ -37,6 +39,59 @@ String htmlToMarkdown(String html) => html2md.convert(
         'strongDelimiter': '**',
       },
     ).trim();
+
+/// Flattens "layout" tables — a `<table>` used only to position another table
+/// (OneNote and Word wrap a data table in an outer one-cell table) — by
+/// replacing each such wrapper with its cells' contents, outermost first.
+///
+/// Without this the inner table is nested in a cell, which GitHub-flavored
+/// Markdown can't express, so html2md dumps it back as raw `<table>` HTML and
+/// the paste is unusable. A real data table (no nested table) is never touched.
+String unwrapLayoutTables(String html) {
+  if (!html.contains('<table')) return html;
+  final doc = html_parser.parse(html);
+  // Each unwrap mutates the tree, so re-scan from scratch until none remain
+  // (handles multiple levels of nesting); the guard caps pathological input.
+  for (var guard = 0; guard < 50; guard++) {
+    dom.Element? wrapper;
+    for (final t in doc.querySelectorAll('table')) {
+      if (t.querySelector('table') != null) {
+        wrapper = t;
+        break;
+      }
+    }
+    if (wrapper == null) break;
+    final parent = wrapper.parent;
+    if (parent == null) break;
+    // Move each of the wrapper's own cells' contents up in order, separated so
+    // adjacent text cells don't run together.
+    final moved = <dom.Node>[];
+    for (final cell in _ownCells(wrapper)) {
+      moved
+        ..addAll(cell.nodes.toList())
+        ..add(dom.Element.tag('br'));
+    }
+    for (final node in moved) {
+      parent.insertBefore(node, wrapper); // reparents the node
+    }
+    wrapper.remove();
+  }
+  return doc.body?.innerHtml ?? html;
+}
+
+/// The cells that belong to [table] itself — its direct rows' `td`/`th` — not
+/// the cells of any table nested inside them.
+Iterable<dom.Element> _ownCells(dom.Element table) sync* {
+  for (final section in table.children) {
+    final rows = section.localName == 'tr'
+        ? [section]
+        : section.children.where((e) => e.localName == 'tr');
+    for (final row in rows) {
+      yield* row.children
+          .where((e) => e.localName == 'td' || e.localName == 'th');
+    }
+  }
+}
 
 /// Flattens Markdown to readable plain text (no `#`/`**`/link syntax), keeping
 /// block boundaries as line breaks. Used for "copy as plain text".

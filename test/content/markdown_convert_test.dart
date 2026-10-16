@@ -42,6 +42,51 @@ void main() {
       expect(back, contains('**bold**'));
       expect(back, contains('[link](https://x.test)'));
     });
+
+    test('a plain data table becomes a GFM table', () {
+      final md = htmlToMarkdown(
+        '<table><tr><th>A</th><th>B</th></tr>'
+        '<tr><td>1</td><td>2</td></tr></table>',
+      );
+      expect(md, contains('| A | B |'));
+      expect(md, contains('| --- | --- |'));
+      expect(md, contains('| 1 | 2 |'));
+    });
+
+    test('unwraps a OneNote/Word layout table around the real one', () {
+      // OneNote wraps the data table in an invisible outer (layout) table;
+      // GFM can't nest a table in a cell, so without unwrapping the inner
+      // table is dumped back as raw <table> HTML.
+      const inner = '<table><tr><td>Usuario</td><td>Estado</td></tr>'
+          '<tr><td>ftpbmi</td><td>Creado</td></tr></table>';
+      final md = htmlToMarkdown(
+        '<table><tbody><tr><td>&nbsp;</td><td>$inner</td></tr></tbody></table>',
+      );
+      expect(md, isNot(contains('<table')), reason: 'no raw HTML survives');
+      expect(md, contains('| Usuario | Estado |'));
+      expect(md, contains('| ftpbmi | Creado |'));
+    });
+  });
+
+  group('unwrapLayoutTables', () {
+    test('leaves a non-nested table untouched', () {
+      const html = '<table><tr><td>x</td></tr></table>';
+      // Re-parsing normalizes attributes/whitespace, so assert the table and
+      // its cell survive rather than byte-equality.
+      final out = unwrapLayoutTables(html);
+      expect(out, contains('<table'));
+      expect(out, contains('x'));
+      expect('<table'.allMatches(out).length, 1); // still exactly one table
+    });
+
+    test('flattens nested tables to a single level', () {
+      const html = '<table><tr><td>'
+          '<table><tr><td>deep</td></tr></table>'
+          '</td></tr></table>';
+      final out = unwrapLayoutTables(html);
+      expect('<table'.allMatches(out).length, 1); // the wrapper is gone
+      expect(out, contains('deep'));
+    });
   });
 
   group('markdownToPlainText', () {
