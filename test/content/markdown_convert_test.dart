@@ -53,6 +53,19 @@ void main() {
       expect(md, contains('| 1 | 2 |'));
     });
 
+    test('recovers an Excel table from orphan rows (no <table> tag)', () {
+      // Excel's clipboard fragment has <tr>/<td> but no <table> (its fragment
+      // markers sit inside the table), which otherwise collapses to run-together
+      // text.
+      final md = htmlToMarkdown(
+        "<col width=96 style='width:72pt'>"
+        "<tr><td>Descripcion</td><td>Usuario</td></tr>"
+        "<tr><td>FTP Quito6</td><td>ftpbmi</td></tr>",
+      );
+      expect(md, contains('| Descripcion | Usuario |'));
+      expect(md, contains('| FTP Quito6 | ftpbmi |'));
+    });
+
     test('unwraps a OneNote/Word layout table around the real one', () {
       // OneNote wraps the data table in an invisible outer (layout) table;
       // GFM can't nest a table in a cell, so without unwrapping the inner
@@ -86,6 +99,24 @@ void main() {
       final out = unwrapLayoutTables(html);
       expect('<table'.allMatches(out).length, 1); // the wrapper is gone
       expect(out, contains('deep'));
+    });
+  });
+
+  group('wrapOrphanTableRows', () {
+    test('wraps bare rows that have no <table>', () {
+      final out = wrapOrphanTableRows('<tr><td>a</td><td>b</td></tr>');
+      expect(out, startsWith('<table>'));
+      expect(out, endsWith('</table>'));
+    });
+
+    test('leaves rows already inside a table alone', () {
+      const html = '<table><tr><td>a</td></tr></table>';
+      expect(wrapOrphanTableRows(html), html);
+    });
+
+    test('leaves non-table HTML alone', () {
+      const html = '<p>hello <strong>world</strong></p>';
+      expect(wrapOrphanTableRows(html), html);
     });
   });
 

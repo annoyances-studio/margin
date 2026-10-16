@@ -30,7 +30,7 @@ String markdownToHtml(String markdown) =>
 /// fenced code) so pasted content matches what the editor writes and styles —
 /// not html2md's defaults (Setext headings, `*` bullets).
 String htmlToMarkdown(String html) => html2md.convert(
-      unwrapLayoutTables(html),
+      unwrapLayoutTables(wrapOrphanTableRows(html)),
       styleOptions: const {
         'headingStyle': 'atx',
         'bulletListMarker': '-',
@@ -39,6 +39,21 @@ String htmlToMarkdown(String html) => html2md.convert(
         'strongDelimiter': '**',
       },
     ).trim();
+
+/// Wraps bare table rows in a `<table>` when the markup has `<tr>`/`<td>` but no
+/// enclosing `<table>`.
+///
+/// Excel puts its clipboard `<!--StartFragment-->`/`<!--EndFragment-->` markers
+/// *inside* the table (around the rows), so the fragment Margin extracts is
+/// orphan `<col>`/`<tr>`/`<td>` with the `<table>` tag stripped off. An HTML
+/// parser discards rows that aren't in a table, collapsing the whole thing to
+/// run-together text — so the paste loses the table entirely. Restoring the
+/// wrapper lets it convert to a GFM table.
+String wrapOrphanTableRows(String html) {
+  final hasRow = RegExp(r'<(tr|td|th)[\s>]', caseSensitive: false).hasMatch(html);
+  final hasTable = RegExp(r'<table[\s>]', caseSensitive: false).hasMatch(html);
+  return hasRow && !hasTable ? '<table>$html</table>' : html;
+}
 
 /// Flattens "layout" tables — a `<table>` used only to position another table
 /// (OneNote and Word wrap a data table in an outer one-cell table) — by
