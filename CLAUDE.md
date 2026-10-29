@@ -20,8 +20,19 @@ no code execution** (never an IDE). AI assistance is disclosed openly.
   working-directory path may still say `...imagina-noteswriter...` — **ignore
   that; the real repo is `C:\Code\margin`**. If you ever see two repos, this is
   the one.
-- Git remote: `origin = https://github.com/annoyances-studio/margin.git`, branch `main`
-  (moved from `danmarce/margin-app` when Annoyances Studio was created).
+- Git remote: `origin = https://github.com/othershore-studio/margin.git`, branch
+  `main`. History: `danmarce/margin-app` → `annoyances-studio/margin` →
+  `othershore-studio/margin` (repo transferred to the **othershore.studio** org;
+  GitHub redirects the old `annoyances-studio` URL, so an un-updated local remote
+  still works).
+- **Brand ≠ package id — do NOT "fix" the mismatch.** Margin is *branded*
+  **othershore.studio** (README, docs, site), but its **technical identity stays
+  `studio.annoyances.margin`** (applicationId, keystore DN "Annoyances Studio",
+  Entra OAuth redirect). The package id is invisible to users; changing it is pure
+  churn until first Play upload forces permanence — see BACKLOG "Full othershore
+  package migration". Keep the brand in docs/UI; leave the package id alone.
+  (annoyances.studio itself is not retired — it remains the home for small
+  scripts/plugins/utilities; othershore is for the bigger creative + AI apps.)
 - Commit/push only when the user asks. End commit messages with:
   `Co-Authored-By: Claude <model> <noreply@anthropic.com>`.
 
