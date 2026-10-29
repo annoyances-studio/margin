@@ -8,9 +8,9 @@ execution, no plugins.
 > is a reader for it — follow `.md` links, search the whole folder, and see
 > backlinks. Nothing to import, no lock-in; the files stay plain files.
 
-Margin is the first app from [Annoyances Studio](https://github.com/annoyances-studio) —
-small apps that fix day-to-day annoyances. This one started with "reading my own
-Markdown is annoying."
+Margin is an [othershore.studio](https://github.com/othershore-studio) project. It began as
+a day-to-day annoyance — "reading my own Markdown is annoying" — and grew past it
+into a full notes app and companion reader for plain Markdown.
 
 It's a ground-up rework of an abandoned 2006-era .NET notepad (NotesWriter),
 sharing nothing with that codebase beyond lineage and intent.

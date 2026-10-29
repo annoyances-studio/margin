@@ -260,6 +260,17 @@ Remaining:
   per-platform build paths differ; see CLAUDE.md).
 - **Google Play publishing** — needs an **AAB** (CI builds APK only today) plus
   the listing. Play / Obtainium / F-Droid all optional; off-store is the default.
+- `[parked]` **Full othershore package migration** — Margin is now *branded*
+  **othershore.studio**, but keeps its technical identity `studio.annoyances.margin`
+  (the applicationId is invisible to users, so changing it is pure churn with no
+  user-visible gain). Do this ONLY if first Play upload forces permanence, or a
+  clean namespace becomes genuinely worth it. It's the same pass as the earlier
+  Annoyances migration: new applicationId (`studio.othershore.margin`) → re-run
+  Android **developer verification** for the new package → new upload-key
+  signature hash → rewrite the Entra OAuth redirect `msauth://<pkg>/<hash>` (and
+  OneDrive) → existing sideload installs reinstall as a *new* app → optional new
+  keystore DN (cosmetic). The brand lives in the app/README/site; the package id
+  need not match it.
 - **Verify macOS + Linux desktop builds** — scaffolding exists (`flutter create`,
   binary `margin`), but neither has been built; each needs its OS or a CI runner.
 - **Single-instance on macOS + Linux** — Windows is done (named mutex + registered
